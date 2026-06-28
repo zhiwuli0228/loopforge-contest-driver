@@ -1,0 +1,4 @@
+.loopforge/
+.agents/
+__pycache__/
+*.pyc
