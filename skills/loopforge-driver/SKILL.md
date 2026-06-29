@@ -130,6 +130,50 @@ If the repair plan only touches allowed paths and stays within scope, the patch 
 
 If the repair plan violates guardrails, the orchestrator must write a blocked report and generate the final report.
 
+## Coding Skill Invocation
+
+When a SuperSpec stage declares a `skill` field, load and apply that skill before executing the stage.
+
+For patch implementation stages, treat the declared coding skill as the primary implementation guide.
+
+The driver must:
+
+1. read the declared skill
+2. read the stage inputs
+3. read optional stage references when present
+4. obey SuperPower write permissions
+5. modify only allowed target files
+6. write the declared output artifact
+7. include the applied skill path in the patch summary
+8. stop with `BLOCKED_WITH_REPORT` if the declared required skill is missing
+
+Do not replace a declared coding skill with generic implementation behavior.
+
+## Patch Stage Rule
+
+For any stage that modifies code:
+
+1. a repair plan must exist
+2. if a stage-level `skill` is declared, load and apply it
+3. modify only files allowed by the repair plan and SuperPower
+4. make the patch summary explicitly state which coding skill was applied
+5. do not start verification until the patch summary exists
+6. if the coding skill cannot be loaded, generate a blocked report and still finalize when possible
+
+## Coding Skill Replacement Contract
+
+The configured coding skill may be replaced by a stronger coding skill in the future.
+
+A replacement skill must preserve:
+
+1. the same stage input contract
+2. the same output path: `code/.loopforge/consistency/05-patch-summary.md`
+3. the same gate values
+4. the same write-scope restrictions
+5. the requirement to report the applied skill path
+
+Do not depend on internal implementation details of the coding skill.
+
 ## Rule Load Order
 
 Read the platform contract in this order:

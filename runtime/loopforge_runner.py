@@ -513,6 +513,7 @@ class LoopForgeRunner:
         task = self.config.get("task", {})
         execution = self.config.get("execution", {})
         governance = self.config.get("governance", {})
+        coding_skill = self.config.get("coding_skill", {})
         outputs = self.config.get("outputs", {})
         verification = self.config.get("verification", {})
         errors: List[str] = []
@@ -582,6 +583,11 @@ class LoopForgeRunner:
         if self.code_dir not in consistency_dir.parents:
             errors.append("outputs.consistency_dir must resolve under code/")
 
+        coding_skill_summary = self.validate_coding_skill_contract(coding_skill, governance, consistency_dir)
+        if not coding_skill_summary.get("ok"):
+            errors.extend(coding_skill_summary.get("errors", []))
+        warnings.extend(coding_skill_summary.get("warnings", []))
+
         working_directory = str(verification.get("working_directory", "code")).strip()
         verification_cwd = (self.work_dir / working_directory).resolve() if working_directory not in {"", "."} else self.work_dir
         if verification_cwd != self.code_dir and self.code_dir not in verification_cwd.parents:
@@ -625,6 +631,7 @@ class LoopForgeRunner:
                 "commands_count": commands_summary["selected_count"],
             },
             "governance": governance_summary,
+            "coding_skill": coding_skill_summary,
             "outputs": {
                 "consistency_dir": str(consistency_dir),
                 "final_report": str(final_report),
@@ -632,6 +639,98 @@ class LoopForgeRunner:
             },
             "profile_summary": profile_summary,
             "work_package_summary": work_package_summary,
+        }
+
+    def validate_coding_skill_contract(
+        self, coding_skill: Dict[str, Any], governance: Dict[str, Any], consistency_dir: Path
+    ) -> Dict[str, Any]:
+        errors: List[str] = []
+        warnings: List[str] = []
+
+        enabled = coding_skill.get("enabled")
+        required = coding_skill.get("required")
+        skill_path_value = str(coding_skill.get("skill", "")).strip()
+        apply_at = coding_skill.get("apply_at", [])
+        output_value = str(coding_skill.get("output", "")).strip()
+        skill_path = (self.work_dir / skill_path_value).resolve() if skill_path_value else None
+        output_path = (self.work_dir / output_value).resolve() if output_value else None
+
+        references_ready = False
+        stage_declared = False
+        superpower_policy_ready = False
+
+        if enabled is not True:
+            errors.append("coding_skill.enabled must be true")
+        if required is not True:
+            errors.append("coding_skill.required must be true")
+        if skill_path_value != "skills/code-implementation/SKILL.md":
+            errors.append("coding_skill.skill must be skills/code-implementation/SKILL.md")
+        if not isinstance(apply_at, list) or "patch_implementation" not in [str(item) for item in apply_at]:
+            errors.append("coding_skill.apply_at must include patch_implementation")
+        if output_value != "code/.loopforge/consistency/05-patch-summary.md":
+            errors.append("coding_skill.output must be code/.loopforge/consistency/05-patch-summary.md")
+        if output_path is None:
+            errors.append("coding_skill.output is required")
+        elif output_path != consistency_dir / "05-patch-summary.md":
+            errors.append("coding_skill.output must match outputs.consistency_dir/05-patch-summary.md")
+
+        if skill_path is None or not skill_path.exists():
+            errors.append("CODING_SKILL_MISSING: coding skill file not found")
+        else:
+            references_dir = skill_path.parent / "references"
+            references_ready = references_dir.exists()
+            if not references_ready:
+                errors.append("CODING_SKILL_MISSING: coding skill references directory not found")
+            else:
+                for name in (
+                    "java-secure-coding.md",
+                    "minimal-patch-rules.md",
+                    "patch-summary-template.md",
+                ):
+                    if not (references_dir / name).exists():
+                        errors.append(f"CODING_SKILL_MISSING: coding skill reference not found: {name}")
+
+        superspec_value = str(governance.get("superspec", "")).strip()
+        if superspec_value:
+            superspec_path = (self.work_dir / superspec_value).resolve()
+            if superspec_path.exists():
+                superspec_text = superspec_path.read_text(encoding="utf-8")
+                stage_declared = 'skill: "skills/code-implementation/SKILL.md"' in superspec_text
+                if not stage_declared:
+                    errors.append("CODING_SKILL_MISSING: 05-patch stage must declare skills/code-implementation/SKILL.md")
+            else:
+                warnings.append("cannot validate coding skill stage declaration because superspec file is missing")
+
+        superpower_value = str(governance.get("superpower", "")).strip()
+        if superpower_value:
+            superpower_path = (self.work_dir / superpower_value).resolve()
+            if superpower_path.exists():
+                superpower_text = superpower_path.read_text(encoding="utf-8")
+                superpower_policy_ready = (
+                    "coding_skill_policy:" in superpower_text
+                    and 'skill: "skills/code-implementation/SKILL.md"' in superpower_text
+                )
+                if not superpower_policy_ready:
+                    errors.append(
+                        "CODING_SKILL_MISSING: superpower must declare coding_skill_policy for skills/code-implementation/SKILL.md"
+                    )
+            else:
+                warnings.append("cannot validate coding skill policy because superpower file is missing")
+
+        return {
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "enabled": enabled is True,
+            "required": required is True,
+            "skill": skill_path_value,
+            "apply_at": [str(item) for item in apply_at] if isinstance(apply_at, list) else [],
+            "output": output_value,
+            "ready_status": "CODING_SKILL_READY" if len(errors) == 0 else "CODING_SKILL_MISSING",
+            "skill_exists": bool(skill_path and skill_path.exists()),
+            "references_ready": references_ready,
+            "stage_declared": stage_declared,
+            "superpower_policy_ready": superpower_policy_ready,
         }
 
     def validate_governance_contract(self, governance: Dict[str, Any]) -> Dict[str, Any]:
@@ -774,6 +873,8 @@ class LoopForgeRunner:
             "config_contract_ok": config_summary.get("ok", False),
             "profile_contract_ok": config_summary.get("profile_summary", {}).get("ok", False),
             "work_package_contract_ok": config_summary.get("work_package_summary", {}).get("ok", False),
+            "coding_skill_status": config_summary.get("coding_skill", {}).get("ready_status", "CODING_SKILL_MISSING"),
+            "coding_skill_contract_ok": config_summary.get("coding_skill", {}).get("ok", False),
         }
         ok = all(
             [
@@ -987,6 +1088,7 @@ class LoopForgeRunner:
         gate_counts = self.gate_status_counts(gate_lines)
         profile_summary = config_summary.get("profile_summary", {})
         work_package_summary = config_summary.get("work_package_summary", {})
+        coding_skill_contract = config_summary.get("coding_skill", {})
         mode_artifact_summary = (
             self.mode_artifact_summary_path.read_text(encoding="utf-8")
             if self.mode_artifact_summary_path.exists()
@@ -1063,6 +1165,21 @@ class LoopForgeRunner:
             f"- Working directory: {verification_contract.get('working_directory', '')}",
             f"- Timeout seconds: {verification_config.get('timeout_seconds', '')}",
             "",
+            "## Applied Coding Skill",
+            "",
+            f"- Enabled: {coding_skill_contract.get('enabled', False)}",
+            f"- Required: {coding_skill_contract.get('required', False)}",
+            f"- Skill: {coding_skill_contract.get('skill', '')}",
+            "- Stage: 05-patch",
+            f"- Patch summary: {coding_skill_contract.get('output', '')}",
+            f"- Result: {self.infer_coding_skill_result(verification, coding_skill_contract)}",
+            *(
+                [f"- Reason: {coding_skill_contract['errors'][0]}"]
+                if coding_skill_contract.get("errors")
+                and self.infer_coding_skill_result(verification, coding_skill_contract) == "BLOCKED_WITH_REPORT"
+                else []
+            ),
+            "",
             "## Cross-platform Notes",
             "",
             "- Windows development path: powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1",
@@ -1108,6 +1225,15 @@ class LoopForgeRunner:
         self.save_state(state)
         self.record_gate("FINALIZE", "PASS", "write final report", str(self.final_report_path))
         return {"ok": True, "report": str(self.final_report_path), "result": result_value}
+
+    def infer_coding_skill_result(self, verification: Dict[str, Any], coding_skill_contract: Dict[str, Any]) -> str:
+        if not coding_skill_contract.get("ok", False):
+            return "BLOCKED_WITH_REPORT"
+        if verification.get("ok") is True:
+            return "READY_FOR_VERIFICATION"
+        if verification:
+            return "DEGRADED_BUT_READY_FOR_VERIFICATION"
+        return "READY_FOR_VERIFICATION"
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:

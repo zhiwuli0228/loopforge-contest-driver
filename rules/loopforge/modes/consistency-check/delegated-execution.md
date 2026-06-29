@@ -62,3 +62,23 @@ Allowed gate values:
 - `FINAL_REPORT_READY`
 
 If a stage is blocked, the orchestrator must write a blocked report and continue to final report generation when possible.
+
+## Patch Coding Skill Policy
+
+The `05-patch` stage must use the configured coding skill when the stage declares a `skill` field.
+
+Default coding skill path:
+
+`skills/code-implementation/SKILL.md`
+
+The patch implementation must:
+
+1. load the declared coding skill
+2. execute only within the patch stage
+3. follow the repair plan
+4. obey SuperPower write permissions
+5. write `code/.loopforge/consistency/05-patch-summary.md`
+6. report the applied coding skill path
+7. preserve the stage gate contract
+
+The coding skill may be replaced in future versions without changing stage orchestration.

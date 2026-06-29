@@ -64,10 +64,18 @@ stages:
 
   - id: "05-patch"
     name: "Patch Implementation"
+    skill: "skills/code-implementation/SKILL.md"
     input:
       - "code/.loopforge/consistency/04-repair-plan.md"
+      - "profiles/superpower/consistency-check-guards.yaml"
+      - "skills/code-implementation/SKILL.md"
+    optional_input:
+      - "skills/code-implementation/references/java-secure-coding.md"
+      - "skills/code-implementation/references/minimal-patch-rules.md"
+      - "skills/code-implementation/references/patch-summary-template.md"
     output: "code/.loopforge/consistency/05-patch-summary.md"
     success_gate: "READY_FOR_VERIFICATION"
+    degraded_gate: "DEGRADED_BUT_READY_FOR_VERIFICATION"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: true
 

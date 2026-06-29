@@ -70,6 +70,37 @@ repair:
   large_scale_rewrite_forbidden: true
   unrelated_refactor_forbidden: true
 
+coding_skill_policy:
+  enabled: true
+  required_for_patch: true
+  skill: "skills/code-implementation/SKILL.md"
+  missing_skill_policy: "BLOCKED_WITH_REPORT"
+  allowed_stage:
+    - "05-patch"
+  output_required:
+    - "code/.loopforge/consistency/05-patch-summary.md"
+  patch_summary_must_include:
+    - "applied skill path"
+    - "modified files"
+    - "repair-plan items implemented"
+    - "security-sensitive areas touched"
+    - "deviations from repair plan"
+    - "gate status"
+  write_permissions:
+    allowed:
+      - "code/gulimall-product/**"
+      - "code/gulimall-common/**"
+      - "code/.loopforge/**"
+    forbidden:
+      - "INSTRUCTION.md"
+      - "loopforge.config.yaml"
+      - "skills/**"
+      - "rules/**"
+      - "profiles/**"
+      - "runtime/**"
+      - "scripts/**"
+      - "code/docs/**"
+
 git:
   add_allowed: false
   commit_allowed: false

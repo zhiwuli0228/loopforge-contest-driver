@@ -33,6 +33,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+CODING_SKILL_PATH="$WORK_DIR/skills/code-implementation/SKILL.md"
+CODING_SKILL_READY="no"
+if [[ -f "$CODING_SKILL_PATH" ]]; then
+  CODING_SKILL_READY="yes"
+fi
+
+echo "Coding skill: skills/code-implementation/SKILL.md"
+echo "Coding skill ready: $CODING_SKILL_READY"
+
 "$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" \
   --work-dir "$WORK_DIR" \
   --code-dir "$CODE_DIR" \
