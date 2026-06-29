@@ -1,0 +1,48 @@
+# Human-maintained configuration.
+# Agent must not modify this file during execution.
+
+platform:
+  layout: "single-root"
+  work_dir: "."
+  code_dir: "code"
+  artifact_dir: ".loopforge"
+  official_submission_os: "linux"
+  local_development_os:
+    - "windows"
+    - "linux"
+
+task:
+  name: "fill-by-human"
+  mode: "feature-development"
+  profile: "profiles/templates/feature-development.yaml"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  objective: "fill-by-human"
+
+execution:
+  unattended: true
+  max_repair_rounds: 2
+  fail_soft: true
+  always_finalize: true
+  allow_code_generation: true
+  allow_static_rule_modification: false
+  commit: false
+  push: false
+  create_pr: false
+
+verification:
+  source: "human-configured"
+  working_directory: "code"
+  timeout_seconds: 300
+  commands:
+    default:
+      - "fill-by-human-before-execution"
+    linux:
+      - "fill-by-human-before-linux-submission"
+    windows:
+      - "fill-by-human-before-windows-local-test"
+
+outputs:
+  final_report: "code/.loopforge/reports/final-report.md"
+  patch_snapshot_dir: "code/.loopforge/snapshots"

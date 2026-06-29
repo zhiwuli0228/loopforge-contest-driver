@@ -1,84 +1,146 @@
-# loopforge-driver
+---
+name: loopforge-driver
+description: Execute LoopForge hosted tasks from INSTRUCTION.md and loopforge.config.yaml. Use when asked to run LoopForge, start hosted execution, execute contest task, or run unattended repair and verification.
+---
 
-Use this skill as the single entry point for unattended contest execution.
+# LoopForge Driver Skill
+
+Use this skill as the single agent entry point for LoopForge execution.
+
+This is the canonical contest skill.
+
+Execution root:
+
+- Current directory: `.`
+- Target project: `code/`
+- Runtime artifacts: `code/.loopforge/`
+
+Canonical entry:
+
+- `INSTRUCTION.md`
+
+Configuration:
+
+- `loopforge.config.yaml`
+
+Runtime output:
+
+- `code/.loopforge/**`
 
 ## Mission
 
-Bootstrap and drive a LoopForge workflow inside the current target repository using local rules and a generated Python runner.
+Drive an unattended LoopForge run from the current root and apply task changes only inside `code/`.
 
 ## Required Inputs
 
-- the user task, problem statement, spec, or repair goal
-- the `rules/loopforge/` rule pack
+- `INSTRUCTION.md`
+- `loopforge.config.yaml`
+- `rules/loopforge/core/`
+- `rules/loopforge/modes/{task.mode}/`
+- relevant adapter rules under `rules/loopforge/adapters/`
+- the configured profile under `profiles/`
 
 ## Hard Constraints
 
-- Do not ask for human confirmation.
-- Do not use hooks.
-- Do not create multiple workflows.
-- Do not create multiple PRs.
-- Do not skip final report generation when the milestone supports it.
-- Do not claim success without verification evidence.
-- Bootstrap runner first.
-- Use fail-soft, block-late gate policy.
-- Keep all changes inside the current work tree.
-- Do not introduce third-party dependencies for the runner.
+- Do not modify static files in the current LoopForge root.
+- Do not generate or rewrite rules, profiles, or configuration.
+- Do not guess verification commands.
+- Read `loopforge.config.yaml` before selecting adapters or verification steps.
+- Treat `code/docs/` design sources as frozen unless the human explicitly changed the task boundary outside LoopForge execution.
+- Do not create commits, pushes, pull requests, or submissions.
+- Do not write outside `code/` except for reading LoopForge static assets from the current root.
+- Write runtime artifacts only under `code/.loopforge/`.
+- Stop after verification and final report generation.
+- Do not expand task scope beyond configured modules, design sources, or explicitly evidenced dependencies.
 
-## Required Rule Load Order
+## Cross-platform Execution Policy
 
-1. `rules/loopforge/00-core.md`
-2. `rules/loopforge/01-bootstrap-runner.md`
-3. `rules/loopforge/02-mode-selection.md`
-4. `rules/loopforge/03-spec-normalization.md`
-5. `rules/loopforge/04-brainstorm.md`
-6. `rules/loopforge/05-subagent-lease.md`
-7. `rules/loopforge/06-gate-policy-contest.md`
-8. `rules/loopforge/07-verification-policy.md`
-9. `rules/loopforge/08-repair-policy.md`
-10. `rules/loopforge/09-final-report.md`
-11. Mode-specific and language-specific rules as needed
-12. `rules/loopforge/20-runner-source-python.md`
+Development and local testing may run on Windows. Official submission runs on Linux.
 
-## Execution Procedure
+The agent must follow these rules:
 
-1. Select the task mode using `02-mode-selection.md`.
-2. Create `.loopforge/` and all required subdirectories.
-3. Extract the Python code block from `20-runner-source-python.md`.
-4. Write `.loopforge/runtime/loopforge_runner.py`.
-5. Run the runner with `--init` and `--self-check`.
-6. Run `--prepare <task-file>` to generate task, normalized spec, brainstorm, plan, and lease artifacts.
-7. Record task mode and project detection results.
-8. Run `--start-apply` before code changes to create the pre-apply snapshot and subagent report scaffold.
-9. Apply changes under lease control.
-10. Run `--complete-apply` after coding to update the subagent report with detected changes.
-11. Run `--integrate-review` after coding and before verification.
-12. Run verification and, if needed, `--repair` before finalization.
-13. Run finalize after verification or repair exhaustion.
-14. Always leave evidence files behind, even in degraded mode.
+1. Do not hard-code Windows-only paths.
+2. Do not hard-code Linux-only paths except in Linux submission scripts.
+3. Use `/` in configuration paths.
+4. Treat `scripts/bootstrap.sh` as the official Linux entry.
+5. Treat `scripts/bootstrap.ps1` as the Windows development entry.
+6. Use the Python runner for cross-platform deterministic actions.
+7. Do not modify verification commands.
+8. Select platform-specific commands from `loopforge.config.yaml`.
+9. If a platform-specific verification command is missing, fall back to default commands.
+10. If no command is configured, generate `BLOCKED_WITH_REPORT`.
+
+## Rule Load Order
+
+Read the platform contract in this order:
+
+1. `INSTRUCTION.md`
+2. `loopforge.config.yaml`
+3. `rules/loopforge/core/00-core.md`
+4. `rules/loopforge/core/01-work-code-boundary.md`
+5. `rules/loopforge/core/02-static-rule-ownership.md`
+6. `rules/loopforge/core/03-verification-contract.md`
+7. `rules/loopforge/core/04-gate-policy.md`
+8. `rules/loopforge/core/05-final-report.md`
+9. `rules/loopforge/core/06-code-generation-boundary.md`
+10. all files under `rules/loopforge/modes/{task.mode}/`
+11. relevant files under `rules/loopforge/adapters/`, including Java and Maven rules for Java Maven runs
+12. the configured profile under `profiles/`
+
+## Required Procedure
+
+1. Read `INSTRUCTION.md`.
+2. Read `loopforge.config.yaml`.
+3. Load all core rules in the declared order.
+4. Load the full rule set for `task.mode` from `rules/loopforge/modes/{mode}/`.
+5. Load adapter rules relevant to the configured language or platform.
+6. For Java runs, load both `adapters/java.md` and `adapters/maven.md` when Maven is detected or configured.
+7. Read the referenced profile from `profiles/`.
+8. Confirm the run is operating in a valid single-root layout with nested `code/`.
+9. Inspect `code/` and plan work according to the selected mode.
+10. Modify only files inside `code/`.
+11. Record mode-specific planning and analysis artifacts under `code/.loopforge/plan/` or another runner-compatible path referenced from `mode-artifacts.md`.
+12. Maintain `code/.loopforge/plan/mode-artifacts.md` as the index of mode-specific artifacts produced during the run.
+13. Use `runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
+14. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
+15. Leave `code/.loopforge/reports/final-report.md` behind and stop.
+
+## Mode Expectations
+
+- `feature-development`: expand requirements, define acceptance criteria, and implement the smallest useful slice.
+- `migration`: inventory the source system, define compatibility expectations, and migrate intentionally.
+- `defect-repair`: diagnose the failure, identify root cause, and apply the smallest effective patch.
+- `consistency-check`: default to analysis, mapping, and drift reporting; repair only if explicitly enabled.
+- `consistency-check` on Java Maven projects must read frozen design docs, produce design summary, implementation mapping, traceability matrix, drift report, repair plan, and verification evidence before stopping.
+- `skill-generation`: produce a reusable business skill from an underlying capability without altering LoopForge core.
+
+## Runner Invocation Pattern
+
+```text
+python runtime/loopforge_runner.py --work-dir . --code-dir code --init --self-check --detect
+python runtime/loopforge_runner.py --work-dir . --code-dir code --snapshot before-change
+python runtime/loopforge_runner.py --work-dir . --code-dir code --verify --finalize
+```
 
 ## Output Expectations
 
-The workflow should leave behind:
+At minimum, the run should leave behind:
 
-- `.loopforge/state/loop-state.json`
-- `.loopforge/gates/gate-events.md`
-- `.loopforge/snapshots/*.diff` when git is available
-- `.loopforge/reports/final-report.md` when finalize is implemented
+- `code/.loopforge/runtime/loopforge_runner.py`
+- `code/.loopforge/state/loop-state.json`
+- `code/.loopforge/state/verification-summary.json` when verification is attempted
+- `code/.loopforge/gates/gate-events.md`
+- `code/.loopforge/plan/mode-artifacts.md`
+- `code/.loopforge/reports/final-report.md`
 
-## Current Milestone Note
+## Mode Artifact Contract
 
-In this repository version, the runner is only required to support:
+Mode-specific artifacts should stay lightweight and auditable. Write them under `code/.loopforge/plan/` and index them from `mode-artifacts.md`.
 
-- `--init`
-- `--self-check`
-- `--detect`
-- `--snapshot <name>`
-- `--prepare <task-file>`
-- `--start-apply`
-- `--complete-apply`
-- `--integrate-review`
-- `--verify`
-- `--repair`
-- `--finalize`
+Recommended entries:
 
-Treat repair as a documented future stage unless explicitly implemented later.
+- `feature-development`: requirement summary, brainstorm decision note, design draft, implementation plan
+- `migration`: source inventory, target architecture summary, compatibility contract, migration plan
+- `defect-repair`: failure summary, root cause statement, minimal patch plan, changed-file summary
+- `consistency-check`: design summary, implementation mapping, traceability matrix, drift report, repair plan, test coverage gap
+- `skill-generation`: capability inventory, usage contract, skill draft summary, example coverage note

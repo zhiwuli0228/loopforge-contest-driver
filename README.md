@@ -1,13 +1,86 @@
-# LoopForge
+# LoopForge Core
 
-This repository now hosts the generic LoopForge platform in [`work/`](</E:/009workspace/codex/loopforge-contest-driver/work>).
+LoopForge is a reusable Loop Engineering hosting platform for unattended AI coding workflows. The contest package uses a single-root layout: this directory is the driver root and `code/` is the nested mutable target project.
 
-LoopForge is a reusable Loop Engineering hosting platform. A contest task is configured as a profile; the platform core remains stable.
+## Platform Model
 
-Primary entry points:
+```text
+.
+├── code/   # target project
+├── skills/
+├── runtime/
+├── scripts/
+├── rules/
+└── profiles/
+```
 
-- [`work/INSTRUCTION.md`](</E:/009workspace/codex/loopforge-contest-driver/work/INSTRUCTION.md>)
-- [`work/README.md`](</E:/009workspace/codex/loopforge-contest-driver/work/README.md>)
-- [`work/skills/loopforge-driver/SKILL.md`](</E:/009workspace/codex/loopforge-contest-driver/work/skills/loopforge-driver/SKILL.md>)
+- The current directory contains instructions, rules, profiles, runtime code, scripts, docs, and templates.
+- `code/` contains the project under repair, migration, development, or analysis.
+- `code/.loopforge/` stores execution artifacts, reports, and snapshots.
 
-Legacy root-level assets are retained temporarily for reference during the migration, but the formal submission package is the `work/` tree.
+## Design Boundaries
+
+- LoopForge core is task-agnostic.
+- Tasks are configured through `Mode + Profile`.
+- Static files in this root, except `code/`, are human-owned and read-only to the agent.
+- The agent may change files only in `code/` and `code/.loopforge/`.
+- The runner executes only human-configured verification commands.
+- LoopForge never performs commit, push, PR creation, or platform submission.
+
+## Supported Modes
+
+- `feature-development`: requirement-driven delivery
+- `migration`: source-to-target migration with compatibility control
+- `defect-repair`: minimal bug fixing with regression awareness
+- `consistency-check`: design-versus-implementation analysis with optional controlled repair
+- `skill-generation`: reusable business-skill creation from a tool capability
+
+Each mode defines:
+
+- applicability
+- ordered workflow phases
+- required artifacts
+- forbidden actions
+- final-report extensions
+
+## Key Files
+
+- `INSTRUCTION.md`
+- `loopforge.config.yaml`
+- `runtime/loopforge_runner.py`
+- `skills/loopforge-driver/SKILL.md`
+
+## Directory Map
+
+```text
+.
+├── docs/
+├── profiles/
+├── rules/
+├── runtime/
+├── scripts/
+├── skills/
+└── code/
+```
+
+Use `profiles/templates/` as starting points during adaptation and `profiles/examples/` as reference configurations for different task classes.
+
+## Verification Model
+
+LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
+
+## Runner Validation
+
+Before or during execution, the runner validates:
+
+- `platform.work_dir` and `platform.code_dir` against the actual invocation
+- `task.mode` against supported modes
+- `task.profile` existence and basic structure
+- profile mode alignment with `loopforge.config.yaml`
+- verification working-directory placement under `code/`
+- output paths staying under `code/`
+
+Phase-6 validation should cover both:
+
+- positive smoke checks for artifact creation
+- negative-path checks that prove invalid contracts degrade into `BLOCKED_WITH_REPORT`
