@@ -1,0 +1,78 @@
+profile:
+  name: "java-consistency-check-example"
+  class: "example"
+  intent: "illustrate a generic Java Maven multi-module consistency-check profile"
+
+task:
+  name: "java-consistency-check-example"
+  mode: "consistency-check"
+  objective: "compare Java implementation behavior against frozen design documents and report controlled drift"
+  language:
+    primary: "java"
+    secondary: []
+  profile_role: "java maven consistency analysis"
+  build_tool: "maven"
+
+inputs:
+  required:
+    - "frozen design documents"
+    - "implementation scope"
+  optional:
+    - "api contract"
+    - "entity schema"
+    - "repair authorization"
+    - "module inclusion list"
+    - "module exclusion list"
+
+execution:
+  analysis_first: true
+  controlled_repair_default: false
+  require_traceability_matrix: true
+  require_repair_plan: true
+  required_artifacts:
+    - "design-summary.md"
+    - "implementation-mapping.md"
+    - "traceability-matrix.md"
+    - "drift-report.md"
+    - "repair-plan.md"
+    - "test-coverage-gap.md"
+    - "mode-artifacts.md"
+  drift_classification:
+    - "missing implementation"
+    - "behavior mismatch"
+    - "entity or schema drift"
+    - "design ambiguity"
+  scope:
+    included_modules: []
+    excluded_modules: []
+  repair_policy:
+    minimal_patch: true
+    allow_common_module_change: true
+    forbid_unrelated_refactor: true
+    forbid_design_doc_change: true
+
+verification:
+  strategy: "human-configured"
+  command_source: "loopforge.config.yaml"
+  working_directory_hint: "code"
+  allow_degraded_verification: true
+  require_failure_reason: true
+  evidence_focus:
+    - "traceability quality"
+    - "drift classification quality"
+    - "verification command evidence"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "drift categories"
+    - "traceability summary"
+    - "repair plan"
+    - "verification evidence"
+  design_sources:
+    - "code/docs/01-scope.md"
+    - "code/docs/02-domain-rules.md"
+    - "code/docs/03-api-contract.md"
+    - "code/docs/04-error-codes.md"
+    - "code/docs/05-test-scenarios.md"
