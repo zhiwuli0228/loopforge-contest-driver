@@ -5,6 +5,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Bootstrap the LoopForge runner from the contest root.
+# Override -WorkDir or -CodeDir only when testing an explicit alternate layout.
+
 function Resolve-Python {
     $python = Get-Command python -ErrorAction SilentlyContinue
     if ($python) {
