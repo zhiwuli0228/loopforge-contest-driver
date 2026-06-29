@@ -15,6 +15,13 @@ python work/runtime/loopforge_runner.py --work-dir work --code-dir code --snapsh
 python work/runtime/loopforge_runner.py --work-dir work --code-dir code --verify --finalize
 ```
 
+Windows entrypoints:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1 -WorkDir work -CodeDir code
+powershell -ExecutionPolicy Bypass -File work/scripts/smoke-test.ps1 -WorkDir work -CodeDir code
+```
+
 If `verification.commands` is still a placeholder, `--verify` should end in `BLOCKED_WITH_REPORT`. That is expected behavior for an unadapted package.
 
 For a minimal platform acceptance check:

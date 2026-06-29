@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -32,10 +33,13 @@ REQUIRED_WORK_FILES = [
     "loopforge.config.yaml",
     "runtime/loopforge_runner.py",
     "scripts/bootstrap.sh",
+    "scripts/bootstrap.ps1",
     "scripts/smoke-test.sh",
+    "scripts/smoke-test.ps1",
     "skills/loopforge-driver/SKILL.md",
     "docs/DESIGN.md",
     "docs/ADAPTATION_GUIDE.md",
+    "docs/CROSS_PLATFORM_DESIGN.md",
     "docs/DAILY_DEV_USAGE.md",
     "profiles/README.md",
 ]
@@ -91,6 +95,17 @@ MODE_ARTIFACT_HINTS = {
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime(ISO_FORMAT)
+
+
+def detect_os() -> str:
+    system = platform.system().lower()
+    if system.startswith("windows"):
+        return "windows"
+    if system.startswith("linux"):
+        return "linux"
+    if system.startswith("darwin"):
+        return "macos"
+    return "unknown"
 
 
 def parse_scalar(value: str) -> Any:
@@ -196,6 +211,7 @@ class LoopForgeRunner:
         self.mode_artifact_summary_path = self.artifact_dir / "plan" / "mode-artifacts.md"
         self.final_report_path = self.artifact_dir / "reports" / "final-report.md"
         self.gate_events_path = self.artifact_dir / "gates" / "gate-events.md"
+        self.current_os = detect_os()
 
     def ensure_directories(self) -> None:
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -507,6 +523,8 @@ class LoopForgeRunner:
             errors.append(f"platform.work_dir resolves to {expected_work}, but runner is using {self.work_dir}")
         if expected_code != self.code_dir:
             errors.append(f"platform.code_dir resolves to {expected_code}, but runner is using {self.code_dir}")
+        if str(platform.get("official_submission_os", "")).strip() != "linux":
+            errors.append("platform.official_submission_os must be linux")
         if configured_mode not in allowed_modes:
             errors.append(f"task.mode must be one of {sorted(allowed_modes)}, got: {configured_mode or '<empty>'}")
         if execution.get("commit") is not False:
@@ -532,9 +550,10 @@ class LoopForgeRunner:
         if not verification_cwd.exists():
             warnings.append(f"verification.working_directory does not exist yet: {verification_cwd}")
 
-        commands = verification.get("commands", [])
-        if not isinstance(commands, list) or not commands:
-            errors.append("verification.commands must be a non-empty list")
+        commands_summary = self.normalize_verification_commands(verification.get("commands", []))
+        if not commands_summary["ok"]:
+            errors.extend(commands_summary["errors"])
+        warnings.extend(commands_summary["warnings"])
 
         profile_summary = self.validate_profile()
         work_package_summary = self.validate_work_package()
@@ -560,10 +579,61 @@ class LoopForgeRunner:
             },
             "verification": {
                 "working_directory": str(verification_cwd),
-                "commands_count": len(commands) if isinstance(commands, list) else 0,
+                "commands_format": commands_summary["format"],
+                "available_profiles": commands_summary["available_profiles"],
+                "selected_profile": commands_summary["selected_profile"],
+                "fallback_used": commands_summary["fallback_used"],
+                "commands_count": commands_summary["selected_count"],
             },
             "profile_summary": profile_summary,
             "work_package_summary": work_package_summary,
+        }
+
+    def normalize_verification_commands(self, raw_commands: Any) -> Dict[str, Any]:
+        errors: List[str] = []
+        warnings: List[str] = []
+        available_profiles: List[str] = []
+        selected_profile = ""
+        fallback_used = False
+        selected_commands: List[str] = []
+        command_format = "invalid"
+
+        if isinstance(raw_commands, list):
+            command_format = "legacy-list"
+            selected_commands = [str(item) for item in raw_commands if str(item).strip()]
+            available_profiles = ["default"] if selected_commands else []
+            selected_profile = "default" if selected_commands else ""
+        elif isinstance(raw_commands, dict):
+            command_format = "platform-map"
+            available_profiles = [str(key) for key, value in raw_commands.items() if isinstance(value, list) and value]
+            preferred = raw_commands.get(self.current_os)
+            if isinstance(preferred, list):
+                selected_commands = [str(item) for item in preferred if str(item).strip()]
+                if selected_commands:
+                    selected_profile = self.current_os
+            if not selected_commands:
+                default_commands = raw_commands.get("default")
+                if isinstance(default_commands, list):
+                    selected_commands = [str(item) for item in default_commands if str(item).strip()]
+                    if selected_commands:
+                        selected_profile = "default"
+                        fallback_used = self.current_os != "default"
+        else:
+            errors.append("verification.commands must be a list or a platform command map")
+
+        if not selected_commands:
+            errors.append("verification.commands does not define any runnable command for the current platform")
+
+        return {
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "format": command_format,
+            "available_profiles": available_profiles,
+            "selected_profile": selected_profile,
+            "fallback_used": fallback_used,
+            "selected_count": len(selected_commands),
+            "selected_commands": selected_commands,
         }
 
     def record_gate(self, phase: str, status: str, action: str, reason: str) -> None:
@@ -603,7 +673,7 @@ class LoopForgeRunner:
         self.save_json(self.profile_check_path, config_summary.get("profile_summary", {}))
         self.save_json(self.package_check_path, config_summary.get("work_package_summary", {}))
         verification = self.config.get("verification", {})
-        commands = verification.get("commands", [])
+        commands_summary = self.normalize_verification_commands(verification.get("commands", []))
         checks = {
             "python_version": sys.version.split()[0],
             "workspace_root": str(self.workspace_root),
@@ -612,7 +682,7 @@ class LoopForgeRunner:
             "config_exists": self.config_path.exists(),
             "artifact_dir_target": str(self.artifact_dir),
             "artifact_dir_under_code": str(self.artifact_dir).startswith(str(self.code_dir)),
-            "verification_commands_configured": isinstance(commands, list) and len(commands) > 0,
+            "verification_commands_configured": commands_summary["selected_count"] > 0,
             "verification_working_directory": verification.get("working_directory", ""),
             "runner_copied": self.runtime_copy_path.exists(),
             "config_contract_ok": config_summary.get("ok", False),
@@ -730,16 +800,16 @@ class LoopForgeRunner:
 
     def verification_context(self) -> Tuple[Path, int, List[str]]:
         verification = self.config.get("verification", {})
-        commands = verification.get("commands", [])
-        if not isinstance(commands, list) or not commands:
-            raise ValueError("verification.commands is required and must be a non-empty list")
+        normalized = self.normalize_verification_commands(verification.get("commands", []))
+        if not normalized["ok"]:
+            raise ValueError("; ".join(str(item) for item in normalized["errors"]))
         working_directory = str(verification.get("working_directory", "code"))
         timeout_seconds = int(verification.get("timeout_seconds", 300))
         if working_directory in {".", ""}:
             cwd = self.workspace_root
         else:
             cwd = (self.workspace_root / working_directory).resolve()
-        return cwd, timeout_seconds, [str(item) for item in commands]
+        return cwd, timeout_seconds, [str(item) for item in normalized["selected_commands"]]
 
     def verify(self) -> Dict[str, Any]:
         self.assert_layout()
@@ -763,6 +833,7 @@ class LoopForgeRunner:
             self.record_gate("VERIFY", "FAIL", "verification blocked", payload["reason"])
             return payload
         cwd, timeout_seconds, commands = self.verification_context()
+        commands_summary = self.normalize_verification_commands(self.config.get("verification", {}).get("commands", []))
         attempted: List[Dict[str, Any]] = []
         self.snapshot_diff("before-verify")
         state = self.load_state()
@@ -785,6 +856,9 @@ class LoopForgeRunner:
                 payload = {
                     "ok": True,
                     "status": "passed",
+                    "detected_os": self.current_os,
+                    "selected_command_profile": commands_summary["selected_profile"],
+                    "fallback_used": commands_summary["fallback_used"],
                     "working_directory": str(cwd),
                     "timeout_seconds": timeout_seconds,
                     "commands_attempted": attempted,
@@ -799,6 +873,9 @@ class LoopForgeRunner:
         payload = {
             "ok": False,
             "status": "blocked-with-report",
+            "detected_os": self.current_os,
+            "selected_command_profile": commands_summary["selected_profile"],
+            "fallback_used": commands_summary["fallback_used"],
             "working_directory": str(cwd),
             "timeout_seconds": timeout_seconds,
             "commands_attempted": attempted,
@@ -829,6 +906,9 @@ class LoopForgeRunner:
             if self.mode_artifact_summary_path.exists()
             else "No mode artifact summary was generated."
         )
+        platform_config = self.config.get("platform", {})
+        verification_config = self.config.get("verification", {})
+        verification_contract = config_summary.get("verification", {})
         result_value = "PARTIAL_DONE"
         if verification.get("ok") is True:
             result_value = "DONE"
@@ -880,6 +960,29 @@ class LoopForgeRunner:
             "## Work Package Contract",
             "",
             json.dumps(work_package_summary, indent=2, ensure_ascii=True),
+            "",
+            "## Runtime Platform",
+            "",
+            f"- Detected OS: {self.current_os}",
+            f"- Official submission OS: {platform_config.get('official_submission_os', '')}",
+            f"- Local development OS: {', '.join(platform_config.get('local_development_os', [])) if isinstance(platform_config.get('local_development_os', []), list) else platform_config.get('local_development_os', '')}",
+            f"- Runner: {self.runtime_copy_path}",
+            f"- Python version: {sys.version.split()[0]}",
+            "",
+            "## Verification Command Selection",
+            "",
+            f"- Command source: {verification_config.get('source', '')}",
+            f"- Selected command profile: {verification_contract.get('selected_profile', '')}",
+            f"- Fallback used: {verification_contract.get('fallback_used', False)}",
+            f"- Working directory: {verification_contract.get('working_directory', '')}",
+            f"- Timeout seconds: {verification_config.get('timeout_seconds', '')}",
+            "",
+            "## Cross-platform Notes",
+            "",
+            "- Windows development path: powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1 -WorkDir work -CodeDir code",
+            "- Linux submission path: bash work/scripts/bootstrap.sh --work-dir work --code-dir code",
+            f"- Git available: {'true' if shutil.which('git') else 'false'}",
+            f"- Shell used for verification: {'cmd.exe or PowerShell child shell' if self.current_os == 'windows' else '/bin/sh-compatible shell'}",
             "",
             "## Mode Artifact Summary",
             "",

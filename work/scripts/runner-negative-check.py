@@ -87,6 +87,15 @@ def scenario_missing_mode_rule(workspace: Path) -> None:
     target.unlink()
 
 
+def scenario_missing_all_verification_commands(workspace: Path) -> None:
+    config_path = workspace / "work" / "loopforge.config.yaml"
+    replace_once(
+        config_path,
+        '  commands:\n    default:\n      - "fill-by-human-before-execution"\n    linux:\n      - "fill-by-human-before-linux-submission"\n    windows:\n      - "fill-by-human-before-windows-local-test"',
+        '  commands: {}',
+    )
+
+
 SCENARIOS: List[Dict[str, object]] = [
     {
         "name": "missing-profile",
@@ -112,6 +121,11 @@ SCENARIOS: List[Dict[str, object]] = [
         "name": "missing-mode-rule",
         "mutator": scenario_missing_mode_rule,
         "expected_errors": ["work-package: missing required mode rule: rules/loopforge/modes/feature-development/04-final-report.md"],
+    },
+    {
+        "name": "missing-all-verification-commands",
+        "mutator": scenario_missing_all_verification_commands,
+        "expected_errors": ["verification.commands does not define any runnable command for the current platform"],
     },
 ]
 

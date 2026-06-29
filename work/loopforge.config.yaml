@@ -6,6 +6,10 @@ platform:
   work_dir: "work"
   code_dir: "code"
   artifact_dir: ".loopforge"
+  official_submission_os: "linux"
+  local_development_os:
+    - "windows"
+    - "linux"
 
 task:
   name: "fill-by-human"
@@ -32,7 +36,12 @@ verification:
   working_directory: "code"
   timeout_seconds: 300
   commands:
-    - "fill-by-human-before-execution"
+    default:
+      - "fill-by-human-before-execution"
+    linux:
+      - "fill-by-human-before-linux-submission"
+    windows:
+      - "fill-by-human-before-windows-local-test"
 
 outputs:
   final_report: "code/.loopforge/reports/final-report.md"

@@ -25,6 +25,23 @@ Drive an unattended LoopForge run using the human-maintained `work/` package and
 - Write runtime artifacts only under `code/.loopforge/`.
 - Stop after verification and final report generation.
 
+## Cross-platform Execution Policy
+
+Development and local testing may run on Windows. Official submission runs on Linux.
+
+The agent must follow these rules:
+
+1. Do not hard-code Windows-only paths.
+2. Do not hard-code Linux-only paths except in Linux submission scripts.
+3. Use `/` in configuration paths.
+4. Treat `work/scripts/bootstrap.sh` as the official Linux entry.
+5. Treat `work/scripts/bootstrap.ps1` as the Windows development entry.
+6. Use the Python runner for cross-platform deterministic actions.
+7. Do not modify verification commands.
+8. Select platform-specific commands from `work/loopforge.config.yaml`.
+9. If a platform-specific verification command is missing, fall back to default commands.
+10. If no command is configured, generate `BLOCKED_WITH_REPORT`.
+
 ## Rule Load Order
 
 Read the platform contract in this order:

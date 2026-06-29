@@ -18,6 +18,7 @@ LoopForge is a reusable Loop Engineering hosting platform. Contest tasks are onl
 - `rules/loopforge/modes/`: reusable flow definitions
 - `rules/loopforge/adapters/`: language and platform guidance
 - `profiles/`: configuration templates and examples
+- `docs/CROSS_PLATFORM_DESIGN.md`: Windows-development and Linux-submission compatibility contract
 
 ## Execution Model
 

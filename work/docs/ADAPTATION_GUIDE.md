@@ -13,8 +13,9 @@
 4. Point `task.profile` at the chosen profile.
 5. Update `work/loopforge.config.yaml` with task metadata and real verification commands.
 6. Confirm that `execution.allow_code_generation` matches the intended run.
-7. Execute `work/scripts/bootstrap.sh`.
-8. Run the LoopForge skill and let it operate only inside `code/`.
+7. Use `work/scripts/bootstrap.sh` for Linux submission-oriented runs.
+8. Use `work/scripts/bootstrap.ps1` for Windows local development and smoke testing.
+9. Run the LoopForge skill and let it operate only inside `code/`.
 
 ## What Must Be Human-Adapted
 
@@ -25,6 +26,7 @@
 - objective text
 - verification working directory
 - verification commands
+- platform-specific verification command profiles when Linux and Windows differ
 
 ## Profile Editing Rules
 
@@ -68,3 +70,4 @@ The runner also checks:
 - required files for the selected mode directory
 - basic profile section completeness
 - template/example inventory counts for `profiles/`
+- platform-specific verification command selection and fallback behavior
