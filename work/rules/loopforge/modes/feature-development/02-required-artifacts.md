@@ -5,3 +5,10 @@
 - design draft with interfaces, constraints, and affected areas
 - implementation plan with ordered patch steps
 - verification evidence from configured commands
+
+Recommended artifact paths under `code/.loopforge/plan/`:
+
+- `requirements.md`
+- `brainstorm.md`
+- `design-draft.md`
+- `implementation-plan.md`

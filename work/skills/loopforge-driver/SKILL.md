@@ -53,9 +53,11 @@ Read the platform contract in this order:
 7. Confirm the run is operating in a valid `work/` and `code/` sibling layout.
 8. Inspect `code/` and plan work according to the selected mode.
 9. Modify only files inside `code/`.
-10. Use `work/runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
-11. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
-12. Leave `code/.loopforge/reports/final-report.md` behind and stop.
+10. Record mode-specific planning and analysis artifacts under `code/.loopforge/plan/` while executing the selected mode.
+11. Maintain `code/.loopforge/plan/mode-artifacts.md` as the index of mode-specific artifacts produced during the run.
+12. Use `work/runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
+13. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
+14. Leave `code/.loopforge/reports/final-report.md` behind and stop.
 
 ## Mode Expectations
 
@@ -81,4 +83,17 @@ At minimum, the run should leave behind:
 - `code/.loopforge/state/loop-state.json`
 - `code/.loopforge/state/verification-summary.json` when verification is attempted
 - `code/.loopforge/gates/gate-events.md`
+- `code/.loopforge/plan/mode-artifacts.md`
 - `code/.loopforge/reports/final-report.md`
+
+## Mode Artifact Contract
+
+Mode-specific artifacts should stay lightweight and auditable. Write them under `code/.loopforge/plan/` and index them from `mode-artifacts.md`.
+
+Recommended entries:
+
+- `feature-development`: requirement summary, brainstorm decision note, design draft, implementation plan
+- `migration`: source inventory, target architecture summary, compatibility contract, migration plan
+- `defect-repair`: failure summary, root cause statement, minimal patch plan, changed-file summary
+- `consistency-check`: design summary, implementation mapping, traceability matrix, drift report
+- `skill-generation`: capability inventory, usage contract, skill draft summary, example coverage note

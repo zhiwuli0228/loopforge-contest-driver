@@ -55,6 +55,38 @@ REQUIRED_MODE_RULE_FILES = [
     "03-forbidden-actions.md",
     "04-final-report.md",
 ]
+MODE_ARTIFACT_HINTS = {
+    "feature-development": [
+        "requirements.md",
+        "brainstorm.md",
+        "design-draft.md",
+        "implementation-plan.md",
+    ],
+    "migration": [
+        "source-inventory.md",
+        "target-architecture.md",
+        "compatibility-contract.md",
+        "migration-plan.md",
+    ],
+    "defect-repair": [
+        "failure-summary.md",
+        "root-cause.md",
+        "minimal-patch-plan.md",
+        "changed-files.md",
+    ],
+    "consistency-check": [
+        "design-summary.md",
+        "implementation-mapping.md",
+        "traceability-matrix.md",
+        "drift-report.md",
+    ],
+    "skill-generation": [
+        "capability-inventory.md",
+        "usage-contract.md",
+        "skill-draft-summary.md",
+        "example-coverage.md",
+    ],
+}
 
 
 def utc_now() -> str:
@@ -161,6 +193,7 @@ class LoopForgeRunner:
         self.package_check_path = self.artifact_dir / "state" / "work-package-summary.json"
         self.detect_path = self.artifact_dir / "state" / "detect-summary.json"
         self.verify_path = self.artifact_dir / "state" / "verification-summary.json"
+        self.mode_artifact_summary_path = self.artifact_dir / "plan" / "mode-artifacts.md"
         self.final_report_path = self.artifact_dir / "reports" / "final-report.md"
         self.gate_events_path = self.artifact_dir / "gates" / "gate-events.md"
 
@@ -174,6 +207,38 @@ class LoopForgeRunner:
                 "# Gate Events\n\n| Phase | Status | Action | Reason |\n|---|---|---|---|\n",
                 encoding="utf-8",
             )
+        self.ensure_mode_artifact_summary()
+
+    def ensure_mode_artifact_summary(self) -> None:
+        if self.mode_artifact_summary_path.exists():
+            return
+        configured_mode = str(self.config.get("task", {}).get("mode", "")).strip()
+        hints = MODE_ARTIFACT_HINTS.get(configured_mode, [])
+        lines = [
+            "# Mode Artifacts",
+            "",
+            f"- mode: `{configured_mode or 'unknown'}`",
+            f"- generated_at: `{utc_now()}`",
+            "",
+            "This file indexes mode-specific planning and analysis artifacts under `code/.loopforge/plan/`.",
+            "",
+            "## Recommended Artifacts",
+            "",
+        ]
+        if hints:
+            lines.extend([f"- `{item}`" for item in hints])
+        else:
+            lines.append("- No mode-specific artifact hints available.")
+        lines.extend(
+            [
+                "",
+                "## Produced Artifacts",
+                "",
+                "- No mode-specific artifacts have been recorded yet.",
+                "",
+            ]
+        )
+        self.mode_artifact_summary_path.write_text("\n".join(lines), encoding="utf-8")
 
     def load_config(self) -> Dict[str, Any]:
         if not self.config_path.exists():
@@ -260,6 +325,7 @@ class LoopForgeRunner:
             str(self.package_check_path),
             str(self.detect_path),
             str(self.verify_path) if self.verify_path.exists() else "verification-summary.json not generated",
+            str(self.mode_artifact_summary_path) if self.mode_artifact_summary_path.exists() else "mode-artifacts.md not generated",
             str(self.final_report_path),
         ]
 
@@ -758,6 +824,11 @@ class LoopForgeRunner:
         gate_counts = self.gate_status_counts(gate_lines)
         profile_summary = config_summary.get("profile_summary", {})
         work_package_summary = config_summary.get("work_package_summary", {})
+        mode_artifact_summary = (
+            self.mode_artifact_summary_path.read_text(encoding="utf-8")
+            if self.mode_artifact_summary_path.exists()
+            else "No mode artifact summary was generated."
+        )
         result_value = "PARTIAL_DONE"
         if verification.get("ok") is True:
             result_value = "DONE"
@@ -809,6 +880,10 @@ class LoopForgeRunner:
             "## Work Package Contract",
             "",
             json.dumps(work_package_summary, indent=2, ensure_ascii=True),
+            "",
+            "## Mode Artifact Summary",
+            "",
+            mode_artifact_summary,
             "",
             "## Verification",
             "",

@@ -50,6 +50,7 @@ required_paths=(
   "$ARTIFACT_DIR/state/work-package-summary.json"
   "$ARTIFACT_DIR/state/verification-summary.json"
   "$ARTIFACT_DIR/gates/gate-events.md"
+  "$ARTIFACT_DIR/plan/mode-artifacts.md"
   "$ARTIFACT_DIR/snapshots/smoke.diff"
   "$ARTIFACT_DIR/reports/final-report.md"
 )
@@ -78,6 +79,16 @@ fi
 
 if ! grep -q "BLOCKED_WITH_REPORT" "$ARTIFACT_DIR/reports/final-report.md"; then
   echo "smoke test failed: final report did not record blocked verification" >&2
+  exit 1
+fi
+
+if ! grep -q "## Mode Artifact Summary" "$ARTIFACT_DIR/reports/final-report.md"; then
+  echo "smoke test failed: final report is missing mode artifact summary section" >&2
+  exit 1
+fi
+
+if ! grep -q "# Mode Artifacts" "$ARTIFACT_DIR/plan/mode-artifacts.md"; then
+  echo "smoke test failed: mode artifact index was not initialized" >&2
   exit 1
 fi
 

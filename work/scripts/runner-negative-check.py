@@ -133,6 +133,7 @@ def validate_scenario(repo_root: Path, scenario: Dict[str, object]) -> None:
         config_summary = read_json(artifact_root / "state" / "config-check-summary.json")
         report_text = (artifact_root / "reports" / "final-report.md").read_text(encoding="utf-8")
         verify_summary = read_json(artifact_root / "state" / "verification-summary.json")
+        mode_artifact_text = (artifact_root / "plan" / "mode-artifacts.md").read_text(encoding="utf-8")
 
         if config_summary.get("ok") is not False:
             raise AssertionError(f"{scenario['name']}: expected config-check-summary ok=false")
@@ -142,6 +143,10 @@ def validate_scenario(repo_root: Path, scenario: Dict[str, object]) -> None:
             raise AssertionError(f"{scenario['name']}: expected BLOCKED_WITH_REPORT in final report")
         if "## Contract Verdict" not in report_text or "FAIL" not in report_text:
             raise AssertionError(f"{scenario['name']}: expected contract verdict FAIL in final report")
+        if "## Mode Artifact Summary" not in report_text:
+            raise AssertionError(f"{scenario['name']}: expected mode artifact summary section in final report")
+        if "# Mode Artifacts" not in mode_artifact_text:
+            raise AssertionError(f"{scenario['name']}: expected initialized mode artifact index")
 
         errors = [str(item) for item in config_summary.get("errors", [])]
         for expected in scenario["expected_errors"]:

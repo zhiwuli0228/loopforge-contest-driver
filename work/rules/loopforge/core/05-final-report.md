@@ -14,6 +14,7 @@ Final reports must include:
 - configured profile summary
 - project detection summary
 - contract validation summary and verdict
+- mode artifact summary or explicit absence statement
 - verification summary or explicit explanation for absence
 - gate summary and gate event evidence
 - key artifact references
@@ -30,3 +31,5 @@ Final reports must include:
 ## Mode Extension
 
 Mode-specific rules may require extra report sections, but they must extend this core report rather than replace it.
+
+Mode-specific planning and analysis artifacts should be referenced from `code/.loopforge/plan/mode-artifacts.md` when they exist.
