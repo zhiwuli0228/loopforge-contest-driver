@@ -1,0 +1,40 @@
+profile:
+  name: "skill-generation-template"
+  class: "template"
+  intent: "starting point for generating a reusable business skill"
+
+task:
+  mode: "skill-generation"
+  objective: "describe the tool capability to capture"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "business skill generation"
+
+inputs:
+  required:
+    - "tool or workflow capability description"
+  optional:
+    - "cli reference"
+    - "sample sessions"
+    - "operator constraints"
+
+execution:
+  require_capability_inventory: true
+  require_usage_contract: true
+  require_examples: true
+  output_scope: "business-skill-only"
+
+verification:
+  strategy: "human-configured"
+  evidence_focus:
+    - "contract coverage"
+    - "example quality"
+  commands:
+    - "fill-by-human-before-execution"
+
+reporting:
+  highlight:
+    - "skill scope"
+    - "usage contract"
+    - "follow-up items"

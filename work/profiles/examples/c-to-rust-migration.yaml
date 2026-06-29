@@ -1,0 +1,47 @@
+profile:
+  name: "c-to-rust-migration-example"
+  class: "example"
+  intent: "illustrate a bounded compatibility-aware C to Rust migration"
+
+task:
+  name: "c-to-rust-migration-example"
+  mode: "migration"
+  objective: "migrate a bounded C component to Rust while preserving contracts"
+  language:
+    primary: "rust"
+    secondary:
+      - "c"
+  profile_role: "language migration"
+
+inputs:
+  required:
+    - "source module inventory"
+    - "behavioral compatibility expectations"
+  optional:
+    - "ffi boundary notes"
+    - "performance budget"
+    - "memory ownership risks"
+
+execution:
+  require_source_inventory: true
+  require_compatibility_contract: true
+  allow_behavior_preserving_refactor: true
+  migration_focus:
+    - "ownership boundary translation"
+    - "error model translation"
+    - "ffi surface containment"
+
+verification:
+  strategy: "human-configured"
+  working_directory_hint: "code"
+  evidence_focus:
+    - "compatibility preservation"
+    - "migration boundary safety"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "migrated surface area"
+    - "compatibility decisions"
+    - "unsafe or deferred areas"

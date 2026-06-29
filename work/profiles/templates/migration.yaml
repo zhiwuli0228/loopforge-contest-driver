@@ -1,0 +1,41 @@
+profile:
+  name: "migration-template"
+  class: "template"
+  intent: "starting point for compatibility-aware migration work"
+
+task:
+  mode: "migration"
+  objective: "describe the migration target here"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "source-to-target migration"
+
+inputs:
+  required:
+    - "source system overview"
+    - "target platform or language goal"
+  optional:
+    - "compatibility constraints"
+    - "performance budget"
+    - "dependency inventory"
+
+execution:
+  require_source_inventory: true
+  require_compatibility_contract: true
+  allow_behavior_preserving_refactor: true
+  patch_style: "migration-sliced"
+
+verification:
+  strategy: "human-configured"
+  evidence_focus:
+    - "compatibility preservation"
+    - "target architecture viability"
+  commands:
+    - "fill-by-human-before-execution"
+
+reporting:
+  highlight:
+    - "migrated surface area"
+    - "compatibility decisions"
+    - "known gaps"

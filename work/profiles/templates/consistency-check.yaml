@@ -1,0 +1,44 @@
+profile:
+  name: "consistency-check-template"
+  class: "template"
+  intent: "starting point for design-versus-implementation analysis"
+
+task:
+  mode: "consistency-check"
+  objective: "describe the design contract to compare"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "design implementation analysis"
+
+inputs:
+  required:
+    - "design source or contract"
+    - "implementation scope to inspect"
+  optional:
+    - "traceability expectations"
+    - "repair authorization"
+
+execution:
+  analysis_first: true
+  controlled_repair_default: false
+  require_traceability_matrix: true
+  drift_classification:
+    - "missing implementation"
+    - "behavior mismatch"
+    - "naming or structure drift"
+    - "design ambiguity"
+
+verification:
+  strategy: "human-configured"
+  evidence_focus:
+    - "traceability quality"
+    - "drift classification"
+  commands:
+    - "fill-by-human-before-execution"
+
+reporting:
+  highlight:
+    - "drift categories"
+    - "evidence mapping"
+    - "optional repair scope"

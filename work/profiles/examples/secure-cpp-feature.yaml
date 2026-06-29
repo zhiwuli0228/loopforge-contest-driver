@@ -1,0 +1,45 @@
+profile:
+  name: "secure-cpp-feature-example"
+  class: "example"
+  intent: "illustrate a security-oriented C++ feature profile"
+
+task:
+  name: "secure-cpp-feature-example"
+  mode: "feature-development"
+  objective: "implement a security-focused C++ feature as a profile example"
+  language:
+    primary: "cpp"
+    secondary: []
+  profile_role: "security feature delivery"
+
+inputs:
+  required:
+    - "feature request"
+    - "security constraints"
+  optional:
+    - "threat model"
+    - "protocol or file format notes"
+
+execution:
+  require_brainstorm: true
+  prefer_smallest_shippable_increment: true
+  allow_controlled_refactor: false
+  security_review_focus:
+    - "input validation"
+    - "boundary safety"
+    - "error handling"
+
+verification:
+  strategy: "human-configured"
+  working_directory_hint: "code"
+  evidence_focus:
+    - "acceptance criteria coverage"
+    - "security-relevant edge cases"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "implemented scope"
+    - "security-sensitive decisions"
+    - "remaining attack-surface risks"

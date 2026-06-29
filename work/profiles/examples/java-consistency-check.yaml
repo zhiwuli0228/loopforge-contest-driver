@@ -1,0 +1,47 @@
+profile:
+  name: "java-consistency-check-example"
+  class: "example"
+  intent: "illustrate a Java design-versus-implementation analysis profile"
+
+task:
+  name: "java-consistency-check-example"
+  mode: "consistency-check"
+  objective: "compare Java implementation behavior against a supplied design contract"
+  language:
+    primary: "java"
+    secondary: []
+  profile_role: "java contract consistency analysis"
+
+inputs:
+  required:
+    - "design document"
+    - "implementation scope"
+  optional:
+    - "api contract"
+    - "entity schema"
+    - "repair authorization"
+
+execution:
+  analysis_first: true
+  controlled_repair_default: false
+  require_traceability_matrix: true
+  drift_classification:
+    - "missing implementation"
+    - "behavior mismatch"
+    - "entity or schema drift"
+    - "design ambiguity"
+
+verification:
+  strategy: "human-configured"
+  working_directory_hint: "code"
+  evidence_focus:
+    - "traceability quality"
+    - "drift classification quality"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "drift categories"
+    - "traceability summary"
+    - "optional repair scope"

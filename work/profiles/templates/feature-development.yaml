@@ -1,0 +1,40 @@
+profile:
+  name: "feature-development-template"
+  class: "template"
+  intent: "starting point for requirement-driven feature delivery"
+
+task:
+  mode: "feature-development"
+  objective: "describe the requested feature here"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "new capability delivery"
+
+inputs:
+  required:
+    - "feature request or requirement statement"
+  optional:
+    - "acceptance criteria"
+    - "api contract"
+    - "reference design notes"
+
+execution:
+  require_brainstorm: true
+  prefer_smallest_shippable_increment: true
+  allow_controlled_refactor: true
+  patch_style: "incremental"
+
+verification:
+  strategy: "human-configured"
+  evidence_focus:
+    - "acceptance criteria coverage"
+    - "behavior verification"
+  commands:
+    - "fill-by-human-before-execution"
+
+reporting:
+  highlight:
+    - "implemented scope"
+    - "acceptance coverage"
+    - "remaining risks"

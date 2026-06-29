@@ -1,0 +1,43 @@
+profile:
+  name: "oss-defect-refactor-example"
+  class: "example"
+  intent: "illustrate a minimal-patch defect repair profile for an OSS repository"
+
+task:
+  name: "oss-defect-refactor-example"
+  mode: "defect-repair"
+  objective: "repair an open source defect with the smallest effective patch"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "minimal oss defect repair"
+
+inputs:
+  required:
+    - "bug report"
+    - "failure symptom"
+  optional:
+    - "failing test"
+    - "issue discussion"
+    - "regression history"
+
+execution:
+  require_failure_diagnosis: true
+  require_root_cause_statement: true
+  prefer_minimal_patch: true
+  allow_unrelated_refactor: false
+
+verification:
+  strategy: "human-configured"
+  working_directory_hint: "code"
+  evidence_focus:
+    - "bug reproduction addressed"
+    - "regression confidence"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "root cause"
+    - "minimal patch rationale"
+    - "unverified edge cases"

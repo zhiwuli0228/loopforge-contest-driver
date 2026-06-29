@@ -1,0 +1,40 @@
+profile:
+  name: "defect-repair-template"
+  class: "template"
+  intent: "starting point for minimal, evidence-driven bug fixing"
+
+task:
+  mode: "defect-repair"
+  objective: "describe the failing behavior here"
+  language:
+    primary: "fill-by-human"
+    secondary: []
+  profile_role: "minimal defect repair"
+
+inputs:
+  required:
+    - "bug report or failing behavior statement"
+  optional:
+    - "reproduction steps"
+    - "failing test case"
+    - "stack trace or logs"
+
+execution:
+  require_failure_diagnosis: true
+  require_root_cause_statement: true
+  prefer_minimal_patch: true
+  allow_unrelated_refactor: false
+
+verification:
+  strategy: "human-configured"
+  evidence_focus:
+    - "failure addressed"
+    - "regression confidence"
+  commands:
+    - "fill-by-human-before-execution"
+
+reporting:
+  highlight:
+    - "root cause"
+    - "minimal patch rationale"
+    - "residual risk"

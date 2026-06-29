@@ -1,0 +1,47 @@
+profile:
+  name: "android-to-harmonyos-example"
+  class: "example"
+  intent: "illustrate a mobile platform migration profile"
+
+task:
+  name: "android-to-harmonyos-example"
+  mode: "migration"
+  objective: "adapt an Android-oriented codebase to HarmonyOS as a profile example"
+  language:
+    primary: "harmonyos"
+    secondary:
+      - "android"
+  profile_role: "platform migration"
+
+inputs:
+  required:
+    - "android module inventory"
+    - "target harmonyos capability goals"
+  optional:
+    - "manifest mapping notes"
+    - "ui capability gaps"
+    - "service lifecycle assumptions"
+
+execution:
+  require_source_inventory: true
+  require_compatibility_contract: true
+  allow_behavior_preserving_refactor: true
+  migration_focus:
+    - "capability mapping"
+    - "lifecycle adaptation"
+    - "platform api gap tracking"
+
+verification:
+  strategy: "human-configured"
+  working_directory_hint: "code"
+  evidence_focus:
+    - "capability preservation"
+    - "platform adaptation viability"
+  commands:
+    - "configure-this-for-your-project"
+
+reporting:
+  highlight:
+    - "mapped capabilities"
+    - "platform gaps"
+    - "deferred migration risks"
