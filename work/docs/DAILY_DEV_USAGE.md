@@ -15,6 +15,8 @@ python work/runtime/loopforge_runner.py --work-dir work --code-dir code --snapsh
 python work/runtime/loopforge_runner.py --work-dir work --code-dir code --verify --finalize
 ```
 
+If `verification.commands` is still a placeholder, `--verify` should end in `BLOCKED_WITH_REPORT`. That is expected behavior for an unadapted package.
+
 For a minimal platform acceptance check:
 
 ```bash
@@ -27,8 +29,10 @@ Expected smoke-test outcomes:
 - `code/.loopforge/runtime/loopforge_runner.py` exists
 - `code/.loopforge/state/loop-state.json` exists
 - `code/.loopforge/state/config-check-summary.json` exists
+- `code/.loopforge/state/work-package-summary.json` exists
 - `code/.loopforge/reports/final-report.md` exists
 - final report includes contract-validation content
+- final report includes work-package contract content
 - gate log includes a `FINALIZE` event
 - no `work/.loopforge/` directory is created
 

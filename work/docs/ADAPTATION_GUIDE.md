@@ -1,6 +1,6 @@
 # Adaptation Guide
 
-## Steps
+## Adaptation Sequence
 
 1. Place the target repository under `code/`.
 2. Choose the correct mode for the task:
@@ -25,6 +25,14 @@
 - objective text
 - verification working directory
 - verification commands
+
+## Profile Editing Rules
+
+- keep profiles declarative
+- do not move core policy from `work/rules/` into profiles
+- do not encode repository-specific runner logic into profiles
+- use `templates/` as starting points and `examples/` only as reference classes
+- keep example profiles generic enough to reuse across repositories
 
 ## Mode Selection Guidance
 
@@ -52,3 +60,11 @@ The runner now checks the adapted package for basic contract validity. In practi
 - configured report and snapshot outputs must stay inside `code/`
 
 If these checks fail, LoopForge should block with report output rather than continue on guessed assumptions.
+
+The runner also checks:
+
+- required static files under `work/`
+- required core rule files
+- required files for the selected mode directory
+- basic profile section completeness
+- template/example inventory counts for `profiles/`

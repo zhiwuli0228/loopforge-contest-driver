@@ -25,6 +25,36 @@ ARTIFACT_SUBDIRS = [
     "reports",
     "plan",
 ]
+REQUIRED_WORK_FILES = [
+    "INSTRUCTION.md",
+    "README.md",
+    "SUBMISSION.md",
+    "loopforge.config.yaml",
+    "runtime/loopforge_runner.py",
+    "scripts/bootstrap.sh",
+    "scripts/smoke-test.sh",
+    "skills/loopforge-driver/SKILL.md",
+    "docs/DESIGN.md",
+    "docs/ADAPTATION_GUIDE.md",
+    "docs/DAILY_DEV_USAGE.md",
+    "profiles/README.md",
+]
+REQUIRED_CORE_RULE_FILES = [
+    "rules/loopforge/core/00-core.md",
+    "rules/loopforge/core/01-work-code-boundary.md",
+    "rules/loopforge/core/02-static-rule-ownership.md",
+    "rules/loopforge/core/03-verification-contract.md",
+    "rules/loopforge/core/04-gate-policy.md",
+    "rules/loopforge/core/05-final-report.md",
+    "rules/loopforge/core/06-code-generation-boundary.md",
+]
+REQUIRED_MODE_RULE_FILES = [
+    "00-flow.md",
+    "01-phase-policy.md",
+    "02-required-artifacts.md",
+    "03-forbidden-actions.md",
+    "04-final-report.md",
+]
 
 
 def utc_now() -> str:
@@ -128,6 +158,7 @@ class LoopForgeRunner:
         self.state_path = self.artifact_dir / "state" / "loop-state.json"
         self.config_check_path = self.artifact_dir / "state" / "config-check-summary.json"
         self.profile_check_path = self.artifact_dir / "state" / "profile-check-summary.json"
+        self.package_check_path = self.artifact_dir / "state" / "work-package-summary.json"
         self.detect_path = self.artifact_dir / "state" / "detect-summary.json"
         self.verify_path = self.artifact_dir / "state" / "verification-summary.json"
         self.final_report_path = self.artifact_dir / "reports" / "final-report.md"
@@ -200,7 +231,15 @@ class LoopForgeRunner:
         if not self.gate_events_path.exists():
             return []
         lines = self.gate_events_path.read_text(encoding="utf-8").splitlines()
-        return [line for line in lines if line.startswith("| ") and not line.startswith("|---")]
+        events: List[str] = []
+        for line in lines:
+            if not line.startswith("| ") or line.startswith("|---"):
+                continue
+            columns = [part.strip() for part in line.strip().strip("|").split("|")]
+            if len(columns) >= 2 and columns[0].lower() == "phase" and columns[1].lower() == "status":
+                continue
+            events.append(line)
+        return events
 
     def gate_status_counts(self, gate_lines: List[str]) -> Dict[str, int]:
         counts: Dict[str, int] = {"PASS": 0, "WARN": 0, "FAIL": 0, "DEGRADE": 0}
@@ -218,6 +257,7 @@ class LoopForgeRunner:
             str(self.state_path),
             str(self.config_check_path),
             str(self.profile_check_path),
+            str(self.package_check_path),
             str(self.detect_path),
             str(self.verify_path) if self.verify_path.exists() else "verification-summary.json not generated",
             str(self.final_report_path),
@@ -256,16 +296,30 @@ class LoopForgeRunner:
         profile_data = parse_simple_yaml(profile_path.read_text(encoding="utf-8"))
         profile_meta = profile_data.get("profile", {})
         profile_task = profile_data.get("task", {})
+        profile_inputs = profile_data.get("inputs", {})
+        profile_execution = profile_data.get("execution", {})
         profile_verification = profile_data.get("verification", {})
+        profile_reporting = profile_data.get("reporting", {})
 
-        for key in ["profile", "task", "verification"]:
+        for key in ["profile", "task", "inputs", "execution", "verification", "reporting"]:
             if key not in profile_data:
                 errors.append(f"profile is missing required top-level section: {key}")
 
+        profile_name = str(profile_meta.get("name", "")).strip()
+        if not profile_name:
+            errors.append("profile.name is required")
+        profile_class = str(profile_meta.get("class", "")).strip()
+        if profile_class not in {"template", "example"}:
+            errors.append(f"profile.class must be template or example, got: {profile_class or '<empty>'}")
+
         profile_mode = str(profile_task.get("mode", "")).strip()
+        if not profile_mode:
+            errors.append("profile task.mode is required")
         if configured_mode and profile_mode and configured_mode != profile_mode:
             errors.append(f"task.mode ({configured_mode}) does not match profile task.mode ({profile_mode})")
 
+        if not str(profile_task.get("objective", "")).strip():
+            warnings.append("profile task.objective is empty")
         profile_primary = str(profile_task.get("language", {}).get("primary", "")).strip()
         config_primary = str(configured_language.get("primary", "")).strip()
         placeholders = {"", "fill-by-human"}
@@ -273,19 +327,94 @@ class LoopForgeRunner:
             warnings.append(
                 f"task.language.primary ({config_primary}) differs from profile task.language.primary ({profile_primary})"
             )
+        if profile_primary == "":
+            warnings.append("profile task.language.primary is empty")
+
+        required_inputs = profile_inputs.get("required", [])
+        if not isinstance(required_inputs, list) or not required_inputs:
+            warnings.append("profile inputs.required is empty or missing")
+        if not isinstance(profile_execution, dict) or not profile_execution:
+            warnings.append("profile execution section is empty or missing")
 
         commands = profile_verification.get("commands", [])
         if not isinstance(commands, list) or not commands:
             warnings.append("profile verification.commands is empty or missing")
+        if not isinstance(profile_reporting.get("highlight", []), list) or not profile_reporting.get("highlight", []):
+            warnings.append("profile reporting.highlight is empty or missing")
 
         return {
             "ok": len(errors) == 0,
             "errors": errors,
             "warnings": warnings,
             "profile_path": str(profile_path),
-            "profile_name": profile_meta.get("name", ""),
-            "profile_class": profile_meta.get("class", ""),
+            "profile_name": profile_name,
+            "profile_class": profile_class,
             "task_mode": profile_mode,
+        }
+
+    def validate_work_package(self) -> Dict[str, Any]:
+        task = self.config.get("task", {})
+        configured_mode = str(task.get("mode", "")).strip()
+        errors: List[str] = []
+        warnings: List[str] = []
+        existing_required: List[str] = []
+        missing_required: List[str] = []
+
+        for relative_path in REQUIRED_WORK_FILES + REQUIRED_CORE_RULE_FILES:
+            candidate = self.work_dir / relative_path
+            if candidate.exists():
+                existing_required.append(relative_path)
+            else:
+                missing_required.append(relative_path)
+
+        if missing_required:
+            errors.extend([f"missing required work file: {item}" for item in missing_required])
+
+        available_modes: Dict[str, List[str]] = {}
+        modes_root = self.work_dir / "rules" / "loopforge" / "modes"
+        if modes_root.exists():
+            for child in sorted(modes_root.iterdir()):
+                if child.is_dir():
+                    available_modes[child.name] = []
+                    for relative_name in REQUIRED_MODE_RULE_FILES:
+                        if (child / relative_name).exists():
+                            available_modes[child.name].append(relative_name)
+
+        if configured_mode:
+            mode_dir = modes_root / configured_mode
+            if not mode_dir.exists():
+                errors.append(f"mode rule directory not found: rules/loopforge/modes/{configured_mode}")
+            else:
+                missing_mode_files = [
+                    relative_name for relative_name in REQUIRED_MODE_RULE_FILES if not (mode_dir / relative_name).exists()
+                ]
+                if missing_mode_files:
+                    errors.extend(
+                        [
+                            f"missing required mode rule: rules/loopforge/modes/{configured_mode}/{relative_name}"
+                            for relative_name in missing_mode_files
+                        ]
+                    )
+
+        templates_root = self.work_dir / "profiles" / "templates"
+        examples_root = self.work_dir / "profiles" / "examples"
+        template_count = len(list(templates_root.glob("*.yaml"))) if templates_root.exists() else 0
+        example_count = len(list(examples_root.glob("*.yaml"))) if examples_root.exists() else 0
+        if template_count < 5:
+            warnings.append("profiles/templates contains fewer than 5 yaml templates")
+        if example_count < 5:
+            warnings.append("profiles/examples contains fewer than 5 yaml examples")
+
+        return {
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "required_files_present": existing_required,
+            "required_files_missing": missing_required,
+            "available_modes": available_modes,
+            "configured_mode": configured_mode,
+            "template_count": template_count,
+            "example_count": example_count,
         }
 
     def validate_runtime_contract(self) -> Dict[str, Any]:
@@ -342,9 +471,13 @@ class LoopForgeRunner:
             errors.append("verification.commands must be a non-empty list")
 
         profile_summary = self.validate_profile()
+        work_package_summary = self.validate_work_package()
         if not profile_summary.get("ok"):
             errors.extend([f"profile: {item}" for item in profile_summary.get("errors", [])])
         warnings.extend([f"profile: {item}" for item in profile_summary.get("warnings", [])])
+        if not work_package_summary.get("ok"):
+            errors.extend([f"work-package: {item}" for item in work_package_summary.get("errors", [])])
+        warnings.extend([f"work-package: {item}" for item in work_package_summary.get("warnings", [])])
 
         return {
             "ok": len(errors) == 0,
@@ -364,6 +497,7 @@ class LoopForgeRunner:
                 "commands_count": len(commands) if isinstance(commands, list) else 0,
             },
             "profile_summary": profile_summary,
+            "work_package_summary": work_package_summary,
         }
 
     def record_gate(self, phase: str, status: str, action: str, reason: str) -> None:
@@ -378,6 +512,7 @@ class LoopForgeRunner:
         config_summary = self.validate_runtime_contract()
         self.save_json(self.config_check_path, config_summary)
         self.save_json(self.profile_check_path, config_summary.get("profile_summary", {}))
+        self.save_json(self.package_check_path, config_summary.get("work_package_summary", {}))
         state = self.load_state()
         state["phase"] = "BOOTSTRAP"
         self.save_state(state)
@@ -400,6 +535,7 @@ class LoopForgeRunner:
         config_summary = self.validate_runtime_contract()
         self.save_json(self.config_check_path, config_summary)
         self.save_json(self.profile_check_path, config_summary.get("profile_summary", {}))
+        self.save_json(self.package_check_path, config_summary.get("work_package_summary", {}))
         verification = self.config.get("verification", {})
         commands = verification.get("commands", [])
         checks = {
@@ -415,6 +551,7 @@ class LoopForgeRunner:
             "runner_copied": self.runtime_copy_path.exists(),
             "config_contract_ok": config_summary.get("ok", False),
             "profile_contract_ok": config_summary.get("profile_summary", {}).get("ok", False),
+            "work_package_contract_ok": config_summary.get("work_package_summary", {}).get("ok", False),
         }
         ok = all(
             [
@@ -544,6 +681,7 @@ class LoopForgeRunner:
         config_summary = self.validate_runtime_contract()
         self.save_json(self.config_check_path, config_summary)
         self.save_json(self.profile_check_path, config_summary.get("profile_summary", {}))
+        self.save_json(self.package_check_path, config_summary.get("work_package_summary", {}))
         if not config_summary.get("ok"):
             payload = {
                 "ok": False,
@@ -613,11 +751,13 @@ class LoopForgeRunner:
         config_summary = self.validate_runtime_contract()
         self.save_json(self.config_check_path, config_summary)
         self.save_json(self.profile_check_path, config_summary.get("profile_summary", {}))
+        self.save_json(self.package_check_path, config_summary.get("work_package_summary", {}))
         detect = self.load_json(self.detect_path)
         verification = self.load_json(self.verify_path)
         gate_lines = self.read_gate_events()
         gate_counts = self.gate_status_counts(gate_lines)
         profile_summary = config_summary.get("profile_summary", {})
+        work_package_summary = config_summary.get("work_package_summary", {})
         result_value = "PARTIAL_DONE"
         if verification.get("ok") is True:
             result_value = "DONE"
@@ -665,6 +805,10 @@ class LoopForgeRunner:
             "## Contract Verdict",
             "",
             "PASS" if config_summary.get("ok") else "FAIL",
+            "",
+            "## Work Package Contract",
+            "",
+            json.dumps(work_package_summary, indent=2, ensure_ascii=True),
             "",
             "## Verification",
             "",
@@ -719,19 +863,47 @@ def print_json(payload: Dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, ensure_ascii=True))
 
 
+def resolve_workspace_root(cwd: Path, work_arg: str, code_arg: str) -> Path:
+    work_path = Path(work_arg)
+    code_path = Path(code_arg)
+    if not work_path.is_absolute():
+        work_path = (cwd / work_path).resolve()
+    else:
+        work_path = work_path.resolve()
+    if not code_path.is_absolute():
+        code_path = (cwd / code_path).resolve()
+    else:
+        code_path = code_path.resolve()
+
+    if work_path == code_path:
+        raise ValueError("work_dir and code_dir must be different paths")
+
+    common_parent = Path(os.path.commonpath([str(work_path), str(code_path)]))
+    if common_parent == work_path or common_parent == code_path:
+        raise ValueError("work/ and code/ must be isolated sibling trees")
+    return common_parent
+
+
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
     if not any([args.init, args.self_check, args.detect, args.snapshot, args.verify, args.finalize]):
         print("No action provided.", file=sys.stderr)
         return 2
 
-    script_path = Path(__file__).resolve()
-    workspace_root = script_path.parents[2]
-    work_dir = (workspace_root / args.work_dir).resolve()
-    code_dir = (workspace_root / args.code_dir).resolve()
-    runner = LoopForgeRunner(workspace_root, work_dir, code_dir)
-
     try:
+        workspace_root = resolve_workspace_root(Path.cwd().resolve(), args.work_dir, args.code_dir)
+        work_dir = Path(args.work_dir)
+        code_dir = Path(args.code_dir)
+        if not work_dir.is_absolute():
+            work_dir = (Path.cwd().resolve() / work_dir).resolve()
+        else:
+            work_dir = work_dir.resolve()
+        if not code_dir.is_absolute():
+            code_dir = (Path.cwd().resolve() / code_dir).resolve()
+        else:
+            code_dir = code_dir.resolve()
+        runner = LoopForgeRunner(workspace_root, work_dir, code_dir)
+
         if args.init:
             print_json(runner.init_workspace())
         if args.self_check:

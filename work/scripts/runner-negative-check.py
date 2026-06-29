@@ -82,6 +82,11 @@ def scenario_output_outside_code(workspace: Path) -> None:
     )
 
 
+def scenario_missing_mode_rule(workspace: Path) -> None:
+    target = workspace / "work" / "rules" / "loopforge" / "modes" / "feature-development" / "04-final-report.md"
+    target.unlink()
+
+
 SCENARIOS: List[Dict[str, object]] = [
     {
         "name": "missing-profile",
@@ -102,6 +107,11 @@ SCENARIOS: List[Dict[str, object]] = [
         "name": "output-outside-code",
         "mutator": scenario_output_outside_code,
         "expected_errors": ["outputs.final_report must resolve under code/"],
+    },
+    {
+        "name": "missing-mode-rule",
+        "mutator": scenario_missing_mode_rule,
+        "expected_errors": ["work-package: missing required mode rule: rules/loopforge/modes/feature-development/04-final-report.md"],
     },
 ]
 

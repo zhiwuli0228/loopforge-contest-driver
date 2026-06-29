@@ -1,6 +1,6 @@
 # Design
 
-LoopForge uses a stable core plus configurable modes and profiles.
+LoopForge is a reusable Loop Engineering hosting platform. Contest tasks are only one use case; the platform core remains generic and stable.
 
 ## Architectural Intent
 
@@ -8,6 +8,7 @@ LoopForge uses a stable core plus configurable modes and profiles.
 - keep target code isolated under `code/`
 - keep runtime artifacts under `code/.loopforge/`
 - keep task-specific details in profiles rather than in runner logic
+- keep workflow selection in `task.mode`, not in hard-coded task packs
 
 ## Core Components
 
@@ -17,3 +18,42 @@ LoopForge uses a stable core plus configurable modes and profiles.
 - `rules/loopforge/modes/`: reusable flow definitions
 - `rules/loopforge/adapters/`: language and platform guidance
 - `profiles/`: configuration templates and examples
+
+## Execution Model
+
+LoopForge operates as:
+
+`Core + Mode + Profile`
+
+Where:
+
+- Core defines invariant platform boundaries and reporting contracts
+- Mode defines the generic workflow shape
+- Profile provides task-specific configuration only
+
+## Boundary Contract
+
+- `work/` is human-maintained and read-only during execution
+- `code/` is the only business-code mutation area
+- `code/.loopforge/` is the only runtime artifact area
+- verification commands come only from `work/loopforge.config.yaml`
+- LoopForge generates code and reports, but never commits, pushes, creates PRs, or submits results
+
+## Runner Responsibilities
+
+The runner is a deterministic executor. It is responsible for:
+
+- reading `work/loopforge.config.yaml`
+- validating the `work/` package and selected mode/profile contract
+- creating `code/.loopforge/`
+- copying its runtime into `code/.loopforge/runtime/`
+- recording state, gate events, snapshots, and verification summaries
+- executing configured `verification.commands`
+- generating `code/.loopforge/reports/final-report.md`
+
+The runner is not responsible for:
+
+- understanding repository-specific business intent
+- generating task-specific static rules
+- guessing verification commands
+- performing source-control submission actions
