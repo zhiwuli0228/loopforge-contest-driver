@@ -33,3 +33,6 @@ Runner-compatible fallback paths under `code/.loopforge/plan/`:
 - `mode-artifacts.md` must index the actual artifact paths that were produced.
 - `final-report.md` must reference the artifact directory that was used.
 - If repair is not enabled, `repair-plan.md` is still required and must state that repair stopped at planning.
+- Every stage artifact must record `executed_by_subagent`.
+- Every stage artifact must record `parent_direct_execution: false`.
+- Missing subagent execution metadata invalidates the stage artifact.

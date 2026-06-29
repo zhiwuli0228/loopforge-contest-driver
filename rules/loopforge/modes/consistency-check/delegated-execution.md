@@ -6,6 +6,8 @@ This rule prevents large-context monolithic execution during consistency-check t
 
 The consistency-check workflow must be executed through unattended staged delegated execution.
 
+Subagent execution is mandatory for every stage.
+
 ## Mandatory Behavior
 
 The orchestrator must:
@@ -19,6 +21,9 @@ The orchestrator must:
 7. validate each stage gate
 8. continue automatically when the gate allows
 9. generate final report without human intervention
+10. verify that every stage declares a subagent, output artifact, and `parent_direct_execution_allowed: false`
+11. stop with `BLOCKED_WITH_REPORT` when a required subagent is unavailable
+12. use file artifact handoff as the only cross-stage memory
 
 ## Prohibited Behavior
 
@@ -32,6 +37,8 @@ The orchestrator must not:
 6. modify static LoopForge assets
 7. modify frozen design documents
 8. execute Git operations
+9. simulate child-stage execution in the parent Build context
+10. continue when the required subagent layer is unavailable
 
 ## Repair Plan Policy
 
@@ -63,6 +70,13 @@ Allowed gate values:
 
 If a stage is blocked, the orchestrator must write a blocked report and continue to final report generation when possible.
 
+Missing-subagent policy:
+
+```text
+BLOCKED_WITH_REPORT
+reason: required subagent unavailable
+```
+
 ## Patch Coding Skill Policy
 
 The `05-patch` stage must use the configured coding skill when the stage declares a `skill` field.
@@ -82,3 +96,16 @@ The patch implementation must:
 7. preserve the stage gate contract
 
 The coding skill may be replaced in future versions without changing stage orchestration.
+
+## Stage Artifact Metadata Contract
+
+Each stage artifact must include:
+
+- `stage_id`
+- `executed_by_subagent`
+- `parent_direct_execution: false`
+- `input_files_read`
+- `output_artifact`
+- `gate`
+- `summary`
+- `next_stage`

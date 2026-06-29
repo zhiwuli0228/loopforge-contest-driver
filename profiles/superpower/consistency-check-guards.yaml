@@ -9,8 +9,12 @@ execution:
   manual_stage_prompt_allowed: false
   monolithic_execution_forbidden: true
   staged_execution_required: true
-  subagent_preferred: true
+  subagent_required: true
+  fallback_to_main_context_allowed: false
+  missing_subagent_policy: "BLOCKED_WITH_REPORT"
+  parent_direct_execution_allowed: false
   artifact_handoff_required: true
+  file_handoff_required: true
   max_repair_rounds: 2
 
 context:

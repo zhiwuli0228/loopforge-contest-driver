@@ -78,6 +78,16 @@ The primary agent must act as an orchestrator.
 
 The full workflow must not be executed in one monolithic reasoning context.
 
+The orchestrator must not simulate stage workers in the parent Build context.
+
+Subagent contract:
+
+- `subagent_required: true`
+- `fallback_to_main_context_allowed: false`
+- `missing_subagent_policy: BLOCKED_WITH_REPORT`
+- `parent_direct_execution_allowed: false`
+- `file_handoff_required: true`
+
 The orchestrator must load:
 
 - `loopforge.config.yaml`
@@ -86,14 +96,16 @@ The orchestrator must load:
 - the configured SuperPower file
 - consistency-check mode rules
 
-If explicit subagents are available, use them for individual stages.
+Each declared stage must be executed by its bound subagent.
 
-If explicit subagents are not available, emulate staged workers by:
+If the required subagent layer is unavailable, stop with:
 
-1. limiting each stage to its declared input files
-2. writing the stage output artifact
-3. reading only the previous artifact in the next stage
-4. avoiding full long-form context carryover
+```text
+BLOCKED_WITH_REPORT
+reason: required subagent unavailable
+```
+
+Do not fall back to main-context execution.
 
 No human intervention is allowed between stages.
 
@@ -129,6 +141,8 @@ The orchestrator must validate the repair plan against SuperPower write permissi
 If the repair plan only touches allowed paths and stays within scope, the patch stage must continue automatically.
 
 If the repair plan violates guardrails, the orchestrator must write a blocked report and generate the final report.
+
+If any stage is missing a declared subagent, output artifact, or `parent_direct_execution_allowed: false`, the orchestrator must stop with `BLOCKED_WITH_REPORT`.
 
 ## Coding Skill Invocation
 

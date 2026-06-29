@@ -75,6 +75,8 @@ LoopForge uses unattended delegated staged execution for `consistency-check` tas
 
 The user or contest platform only needs to start from `INSTRUCTION.md`.
 
+The main session is an orchestrator only. It must not execute stage work in a monolithic parent context.
+
 All stage contracts are stored in:
 
 - `profiles/superspec/consistency-check-stages.yaml`
@@ -86,6 +88,16 @@ Runtime artifacts are written to:
 - `code/.loopforge/consistency/`
 - `code/.loopforge/reports/final-report.md`
 
+The delegated execution contract requires:
+
+- `subagent_required: true`
+- `fallback_to_main_context_allowed: false`
+- `missing_subagent_policy: BLOCKED_WITH_REPORT`
+- `parent_direct_execution_allowed: false`
+- `file_handoff_required: true`
+
+If the required subagent layer is unavailable, the run must stop with `BLOCKED_WITH_REPORT` instead of continuing in the main Build context.
+
 ## Runner Validation
 
 Before or during execution, the runner validates:
@@ -96,6 +108,8 @@ Before or during execution, the runner validates:
 - profile mode alignment with `loopforge.config.yaml`
 - verification working-directory placement under `code/`
 - output paths staying under `code/`
+- delegated subagent contract presence for consistency-check stages
+- final report evidence requirements for subagent-executed stages
 
 Phase-6 validation should cover both:
 

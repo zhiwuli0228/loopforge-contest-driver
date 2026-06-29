@@ -4,10 +4,31 @@ superspec:
   purpose: "Define staged work packets for unattended consistency-check execution."
   artifact_root: "code/.loopforge/consistency"
   final_report: "code/.loopforge/reports/final-report.md"
+  subagent_required: true
+  fallback_to_main_context_allowed: false
+  missing_subagent_policy: "BLOCKED_WITH_REPORT"
+  parent_direct_execution_allowed: false
+  file_handoff_required: true
+
+artifact_metadata_contract:
+  required_fields:
+    - "stage_id"
+    - "executed_by_subagent"
+    - "parent_direct_execution"
+    - "input_files_read"
+    - "output_artifact"
+    - "gate"
+    - "summary"
+    - "next_stage"
+
+final_report_evidence:
+  required_section: "## Subagent Execution Evidence"
+  invalid_run_result: "INVALID_RUN_MONOLITHIC_MAIN_CONTEXT"
 
 stages:
   - id: "00-preflight"
     name: "Preflight"
+    subagent: "opencode-preflight-subagent"
     input:
       - "INSTRUCTION.md"
       - "loopforge.config.yaml"
@@ -16,54 +37,69 @@ stages:
       - "code/pom.xml"
       - "code/docs/**"
     output: "code/.loopforge/consistency/00-preflight-report.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DESIGN_READ"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "01-design-read"
     name: "Design Read"
+    subagent: "opencode-design-read-subagent"
     input:
       - "code/docs/**"
     output: "code/.loopforge/consistency/01-design-summary.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_IMPLEMENTATION_MAPPING"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "02-implementation-map"
     name: "Implementation Mapping"
+    subagent: "opencode-implementation-map-subagent"
     input:
       - "code/.loopforge/consistency/01-design-summary.md"
       - "code/gulimall-product/src/main/java/**"
       - "code/gulimall-common/src/main/java/**"
     output: "code/.loopforge/consistency/02-implementation-mapping.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DRIFT_ANALYSIS"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "03-drift-analyze"
     name: "Drift Analysis"
+    subagent: "opencode-drift-analysis-subagent"
     input:
       - "code/.loopforge/consistency/01-design-summary.md"
       - "code/.loopforge/consistency/02-implementation-mapping.md"
     output: "code/.loopforge/consistency/03-drift-report.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_REPAIR_PLAN"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "04-repair-plan"
     name: "Repair Planning"
+    subagent: "opencode-repair-plan-subagent"
     input:
       - "code/.loopforge/consistency/03-drift-report.md"
       - "code/.loopforge/consistency/02-implementation-mapping.md"
       - "loopforge.config.yaml"
       - "profiles/examples/java-consistency-check.yaml"
     output: "code/.loopforge/consistency/04-repair-plan.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_PATCH"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "05-patch"
     name: "Patch Implementation"
+    subagent: "opencode-patch-subagent"
     skill: "skills/code-implementation/SKILL.md"
     input:
       - "code/.loopforge/consistency/04-repair-plan.md"
@@ -74,26 +110,34 @@ stages:
       - "skills/code-implementation/references/minimal-patch-rules.md"
       - "skills/code-implementation/references/patch-summary-template.md"
     output: "code/.loopforge/consistency/05-patch-summary.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_VERIFICATION"
     degraded_gate: "DEGRADED_BUT_READY_FOR_VERIFICATION"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: true
 
   - id: "06-verify"
     name: "Verification"
+    subagent: "opencode-verification-subagent"
     input:
       - "loopforge.config.yaml"
       - "code/.loopforge/consistency/05-patch-summary.md"
     output: "code/.loopforge/consistency/06-verification-report.md"
+    parent_direct_execution_allowed: false
     success_gate: "READY_FOR_FINAL_REPORT"
     degraded_gate: "DEGRADED_BUT_READY_FOR_FINAL_REPORT"
+    failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
   - id: "07-final-report"
     name: "Final Report"
+    subagent: "opencode-final-report-subagent"
     input:
       - "code/.loopforge/consistency/*.md"
     output: "code/.loopforge/reports/final-report.md"
+    parent_direct_execution_allowed: false
     success_gate: "FINAL_REPORT_READY"
+    failure_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false

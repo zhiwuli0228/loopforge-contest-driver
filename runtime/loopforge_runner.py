@@ -564,6 +564,10 @@ class LoopForgeRunner:
             if not governance_summary.get("ok"):
                 errors.extend(governance_summary.get("errors", []))
             warnings.extend(governance_summary.get("warnings", []))
+            subagent_contract_summary = self.validate_subagent_contract(governance, str(task.get("profile", "")).strip())
+            if not subagent_contract_summary.get("ok"):
+                errors.extend(subagent_contract_summary.get("errors", []))
+            warnings.extend(subagent_contract_summary.get("warnings", []))
         else:
             governance_summary = {
                 "ok": True,
@@ -571,6 +575,13 @@ class LoopForgeRunner:
                 "superpower": "",
                 "mode_rules": [],
                 "delegated_staged_ready": False,
+            }
+            subagent_contract_summary = {
+                "ok": True,
+                "errors": [],
+                "warnings": [],
+                "stage_count": 0,
+                "stages": [],
             }
 
         final_report = (self.work_dir / str(outputs.get("final_report", "code/.loopforge/reports/final-report.md"))).resolve()
@@ -631,6 +642,7 @@ class LoopForgeRunner:
                 "commands_count": commands_summary["selected_count"],
             },
             "governance": governance_summary,
+            "subagent_contract": subagent_contract_summary,
             "coding_skill": coding_skill_summary,
             "outputs": {
                 "consistency_dir": str(consistency_dir),
@@ -773,6 +785,187 @@ class LoopForgeRunner:
             "mode_rules": resolved_rules,
             "delegated_staged_ready": len(errors) == 0,
         }
+
+    def strip_yaml_scalar(self, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'"', "'"}:
+            return cleaned[1:-1]
+        return cleaned
+
+    def parse_superspec_stage_contracts(self, superspec_path: Path) -> List[Dict[str, str]]:
+        stages: List[Dict[str, str]] = []
+        current: Optional[Dict[str, str]] = None
+        for raw in superspec_path.read_text(encoding="utf-8").splitlines():
+            stripped = raw.strip()
+            if stripped.startswith("- id:"):
+                if current is not None:
+                    stages.append(current)
+                current = {"id": self.strip_yaml_scalar(stripped.split(":", 1)[1])}
+                continue
+            if current is None:
+                continue
+            for key in (
+                "name",
+                "subagent",
+                "output",
+                "success_gate",
+                "degraded_gate",
+                "failure_gate",
+                "blocked_gate",
+                "parent_direct_execution_allowed",
+            ):
+                prefix = f"{key}:"
+                if stripped.startswith(prefix):
+                    current[key] = self.strip_yaml_scalar(stripped.split(":", 1)[1])
+                    break
+        if current is not None:
+            stages.append(current)
+        return stages
+
+    def validate_subagent_contract(self, governance: Dict[str, Any], profile_value: str) -> Dict[str, Any]:
+        errors: List[str] = []
+        warnings: List[str] = []
+        banned_phrases = [
+            "if subagents are available",
+            "subagent preferred",
+            "emulate staged workers",
+            "fallback to main context",
+            "continue in main context",
+        ]
+
+        instruction_text = (self.work_dir / "INSTRUCTION.md").read_text(encoding="utf-8")
+        skill_text = (self.work_dir / "skills" / "loopforge-driver" / "SKILL.md").read_text(encoding="utf-8")
+        superpower_path = (self.work_dir / str(governance.get("superpower", ""))).resolve()
+        superspec_path = (self.work_dir / str(governance.get("superspec", ""))).resolve()
+        profile_path = (self.work_dir / profile_value).resolve() if profile_value else None
+        delegated_rule_path = self.work_dir / "rules" / "loopforge" / "modes" / "consistency-check" / "delegated-execution.md"
+        artifact_rule_path = self.work_dir / "rules" / "loopforge" / "modes" / "consistency-check" / "02-required-artifacts.md"
+        final_report_rule_path = self.work_dir / "rules" / "loopforge" / "core" / "05-final-report.md"
+
+        for phrase in banned_phrases:
+            if phrase in instruction_text.lower():
+                errors.append(f"BANNED_SUBAGENT_FALLBACK: INSTRUCTION.md contains {phrase!r}")
+            if phrase in skill_text.lower():
+                errors.append(f"BANNED_SUBAGENT_FALLBACK: skills/loopforge-driver/SKILL.md contains {phrase!r}")
+
+        if "required subagent unavailable" not in instruction_text:
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: INSTRUCTION.md must block on required subagent unavailable")
+        if "required subagent unavailable" not in skill_text:
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: skills/loopforge-driver/SKILL.md must block on required subagent unavailable")
+
+        if not superpower_path.exists():
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: superpower file not found")
+            superpower_text = ""
+        else:
+            superpower_text = superpower_path.read_text(encoding="utf-8")
+        for required_literal in (
+            "subagent_required: true",
+            "fallback_to_main_context_allowed: false",
+            'missing_subagent_policy: "BLOCKED_WITH_REPORT"',
+            "parent_direct_execution_allowed: false",
+            "file_handoff_required: true",
+        ):
+            if required_literal not in superpower_text:
+                errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: superpower missing {required_literal}")
+
+        profile_text = ""
+        if profile_path is not None and profile_path.exists():
+            profile_text = profile_path.read_text(encoding="utf-8")
+            for required_literal in (
+                "subagent_required: true",
+                "fallback_to_main_context_allowed: false",
+                'missing_subagent_policy: "BLOCKED_WITH_REPORT"',
+                "parent_direct_execution_allowed: false",
+                "file_handoff_required: true",
+            ):
+                if required_literal not in profile_text:
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: profile missing {required_literal}")
+        elif profile_value:
+            warnings.append(f"profile file unavailable for subagent contract validation: {profile_value}")
+
+        if not delegated_rule_path.exists():
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: delegated execution rule not found")
+        else:
+            delegated_rule_text = delegated_rule_path.read_text(encoding="utf-8")
+            if "required subagent unavailable" not in delegated_rule_text:
+                errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: delegated execution rule must block on required subagent unavailable")
+            if "executed_by_subagent" not in delegated_rule_text:
+                errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: delegated execution rule must require stage artifact subagent metadata")
+
+        if not artifact_rule_path.exists():
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: required artifacts rule not found")
+        else:
+            artifact_rule_text = artifact_rule_path.read_text(encoding="utf-8")
+            for required_literal in ("executed_by_subagent", "parent_direct_execution: false"):
+                if required_literal not in artifact_rule_text:
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: required artifacts rule missing {required_literal}")
+
+        if not final_report_rule_path.exists():
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: final report rule not found")
+        else:
+            final_report_rule_text = final_report_rule_path.read_text(encoding="utf-8")
+            if "## Subagent Execution Evidence" not in final_report_rule_text:
+                errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: final report rule must require Subagent Execution Evidence")
+
+        stage_contracts: List[Dict[str, str]] = []
+        if not superspec_path.exists():
+            errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: superspec file not found")
+        else:
+            superspec_text = superspec_path.read_text(encoding="utf-8")
+            for required_literal in (
+                "subagent_required: true",
+                "fallback_to_main_context_allowed: false",
+                'missing_subagent_policy: "BLOCKED_WITH_REPORT"',
+                "parent_direct_execution_allowed: false",
+                "file_handoff_required: true",
+            ):
+                if required_literal not in superspec_text:
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: superspec missing {required_literal}")
+            stage_contracts = self.parse_superspec_stage_contracts(superspec_path)
+            if not stage_contracts:
+                errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: superspec must declare stages")
+            for stage in stage_contracts:
+                stage_id = stage.get("id", "<unknown>")
+                if not stage.get("subagent"):
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} missing subagent")
+                if not stage.get("output"):
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} missing output artifact")
+                if stage.get("parent_direct_execution_allowed") != "false":
+                    errors.append(
+                        f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} must set parent_direct_execution_allowed: false"
+                    )
+                if not (stage.get("failure_gate") == "BLOCKED_WITH_REPORT" or stage.get("blocked_gate") == "BLOCKED_WITH_REPORT"):
+                    errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} must block with BLOCKED_WITH_REPORT")
+
+        return {
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "stage_count": len(stage_contracts),
+            "stages": stage_contracts,
+        }
+
+    def read_stage_artifact_metadata(self, artifact_path: Path) -> Dict[str, str]:
+        metadata: Dict[str, str] = {}
+        if not artifact_path.exists():
+            return metadata
+        for raw in artifact_path.read_text(encoding="utf-8").splitlines():
+            stripped = raw.strip()
+            if ":" not in stripped:
+                continue
+            key, value = stripped.split(":", 1)
+            key = key.strip()
+            if key in {
+                "stage_id",
+                "executed_by_subagent",
+                "parent_direct_execution",
+                "output_artifact",
+                "gate",
+                "summary",
+                "next_stage",
+            }:
+                metadata[key] = self.strip_yaml_scalar(value)
+        return metadata
 
     def normalize_verification_commands(self, raw_commands: Any) -> Dict[str, Any]:
         errors: List[str] = []
@@ -1088,6 +1281,7 @@ class LoopForgeRunner:
         gate_counts = self.gate_status_counts(gate_lines)
         profile_summary = config_summary.get("profile_summary", {})
         work_package_summary = config_summary.get("work_package_summary", {})
+        subagent_contract = config_summary.get("subagent_contract", {})
         coding_skill_contract = config_summary.get("coding_skill", {})
         mode_artifact_summary = (
             self.mode_artifact_summary_path.read_text(encoding="utf-8")
@@ -1097,6 +1291,26 @@ class LoopForgeRunner:
         platform_config = self.config.get("platform", {})
         verification_config = self.config.get("verification", {})
         verification_contract = config_summary.get("verification", {})
+        stage_rows: List[str] = []
+        declared_stages = subagent_contract.get("stages", []) if isinstance(subagent_contract.get("stages", []), list) else []
+        for stage in declared_stages:
+            if not isinstance(stage, dict):
+                continue
+            artifact_path = (self.work_dir / str(stage.get("output", ""))).resolve() if stage.get("output") else None
+            metadata = self.read_stage_artifact_metadata(artifact_path) if artifact_path is not None else {}
+            if str(stage.get("id", "")) == "07-final-report":
+                artifact_display = str(self.final_report_path)
+                gate_value = "FINAL_REPORT_READY"
+                subagent_value = str(stage.get("subagent", ""))
+                parent_direct_value = "false"
+            else:
+                artifact_display = str(artifact_path) if artifact_path is not None else ""
+                gate_value = metadata.get("gate", stage.get("blocked_gate", stage.get("success_gate", "")))
+                subagent_value = metadata.get("executed_by_subagent", str(stage.get("subagent", "")))
+                parent_direct_value = metadata.get("parent_direct_execution", "MISSING")
+            stage_rows.append(
+                f"| {stage.get('id', '')} | {subagent_value} | {artifact_display} | {gate_value} | {parent_direct_value} |"
+            )
         result_value = "PARTIAL_DONE"
         if verification.get("ok") is True:
             result_value = "DONE"
@@ -1198,6 +1412,12 @@ class LoopForgeRunner:
             "## Gate Summary",
             "",
             json.dumps(gate_counts, indent=2, ensure_ascii=True),
+            "",
+            "## Subagent Execution Evidence",
+            "",
+            "| Stage | Subagent | Artifact | Gate | Parent Direct Execution |",
+            "|---|---|---|---|---|",
+            *(stage_rows if stage_rows else ["| MISSING | MISSING | MISSING | MISSING | MISSING |"]),
             "",
             "## Gate Events",
             "",

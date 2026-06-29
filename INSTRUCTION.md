@@ -103,6 +103,16 @@ For non-trivial tasks, especially `consistency-check`, the agent must not execut
 
 The agent must act as an orchestrator and execute the task through staged delegated execution.
 
+Subagent execution is mandatory for each stage.
+
+Required contract:
+
+- `subagent_required: true`
+- `fallback_to_main_context_allowed: false`
+- `missing_subagent_policy: BLOCKED_WITH_REPORT`
+- `parent_direct_execution_allowed: false`
+- `file_handoff_required: true`
+
 Required stages:
 
 1. Preflight
@@ -122,10 +132,21 @@ Each stage must:
 - avoid returning full long-form analysis to the orchestrator context
 - use file artifacts as the handoff mechanism
 - automatically continue to the next stage when the gate allows it
+- be executed by its declared subagent
+- set `parent_direct_execution_allowed: false`
 
 No manual prompt between stages is allowed.
 
 If a stage cannot continue, the agent must generate a blocked or degraded report and still produce `code/.loopforge/reports/final-report.md` when possible.
+
+If required subagents are unavailable, stop immediately with:
+
+```text
+BLOCKED_WITH_REPORT
+reason: required subagent unavailable
+```
+
+The main Build session must not simulate stage execution in its own context.
 
 ## Manual Stage Prompt Policy
 
@@ -141,6 +162,16 @@ The user or contest platform must not be required to issue separate prompts for:
 - final report generation
 
 All stage transitions must be decided by the orchestrator using file artifacts and gate statuses.
+
+The orchestrator may only:
+
+- read the entry instruction and stage contracts
+- check subagent availability
+- invoke the declared stage subagent
+- read the stage artifact gate
+- assemble the final report
+
+The orchestrator must not directly perform design analysis, implementation mapping, drift analysis, repair planning, patching, or full verification inside the parent context.
 
 ## 8. Completion Criteria
 

@@ -17,6 +17,7 @@ Final reports must include:
 - mode artifact summary or explicit absence statement
 - verification summary or explicit explanation for absence
 - gate summary and gate event evidence
+- subagent execution evidence with stage-to-subagent mapping
 - key artifact references
 - artifact location
 - boundary statement describing what was and was not modified
@@ -26,6 +27,7 @@ Final reports must include:
 - Do not claim success without verification evidence.
 - Do not omit degraded or blocked states.
 - Do not hide missing verification behind generic success language.
+- Do not claim staged execution without subagent evidence.
 - Prefer concrete execution facts over narrative filler.
 
 ## Mode Extension
@@ -33,3 +35,17 @@ Final reports must include:
 Mode-specific rules may require extra report sections, but they must extend this core report rather than replace it.
 
 Mode-specific planning and analysis artifacts should be referenced from `code/.loopforge/plan/mode-artifacts.md` when they exist.
+
+For delegated consistency-check runs, the final report must contain:
+
+```md
+## Subagent Execution Evidence
+```
+
+The section must include one row per stage with:
+
+- stage id
+- declared subagent
+- artifact path
+- gate
+- parent direct execution flag
