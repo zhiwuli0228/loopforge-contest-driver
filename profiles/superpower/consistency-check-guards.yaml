@@ -1,0 +1,77 @@
+superpower:
+  name: "consistency-check-guards"
+  version: "1.0"
+  purpose: "Guardrails for unattended delegated consistency-check execution."
+
+execution:
+  unattended: true
+  human_intervention_allowed: false
+  manual_stage_prompt_allowed: false
+  monolithic_execution_forbidden: true
+  staged_execution_required: true
+  subagent_preferred: true
+  artifact_handoff_required: true
+  max_repair_rounds: 2
+
+context:
+  return_full_analysis_to_orchestrator: false
+  use_file_artifacts_as_memory: true
+  stage_context_must_be_bounded: true
+
+read_permissions:
+  allowed:
+    - "INSTRUCTION.md"
+    - "loopforge.config.yaml"
+    - "skills/**"
+    - "rules/**"
+    - "profiles/**"
+    - "runtime/**"
+    - "scripts/**"
+    - "code/docs/**"
+    - "code/gulimall-product/**"
+    - "code/gulimall-common/**"
+    - "code/.loopforge/**"
+
+write_permissions:
+  read_only:
+    - "INSTRUCTION.md"
+    - "loopforge.config.yaml"
+    - "skills/**"
+    - "rules/**"
+    - "profiles/**"
+    - "runtime/**"
+    - "scripts/**"
+    - "code/docs/**"
+  writable:
+    - "code/gulimall-product/**"
+    - "code/gulimall-common/**"
+    - "code/.loopforge/**"
+  forbidden:
+    - "code/gulimall-order/**"
+    - "code/gulimall-ware/**"
+    - "code/gulimall-coupon/**"
+    - "code/gulimall-member/**"
+    - "code/gulimall-gateway/**"
+    - "code/gulimall-third-party/**"
+    - "renren-fast/**"
+    - "renren-generator/**"
+
+verification:
+  command_source: "loopforge.config.yaml"
+  command_guessing_forbidden: true
+  degraded_verification_allowed: true
+  require_stdout_stderr_summary: true
+  require_exit_code: true
+
+repair:
+  repair_plan_required: true
+  patch_without_plan_forbidden: true
+  modify_only_plan_listed_files: true
+  large_scale_rewrite_forbidden: true
+  unrelated_refactor_forbidden: true
+
+git:
+  add_allowed: false
+  commit_allowed: false
+  push_allowed: false
+  pr_allowed: false

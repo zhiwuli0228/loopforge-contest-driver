@@ -22,3 +22,7 @@ LoopForge does not:
 - push changes
 - open pull requests
 - upload results to a contest platform
+
+The submitted project does not require manual stage prompts.
+
+All staged execution rules are included in the repository files.

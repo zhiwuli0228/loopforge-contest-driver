@@ -69,6 +69,23 @@ Use `profiles/templates/` as starting points during adaptation and `profiles/exa
 
 LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
 
+## Execution Model
+
+LoopForge uses unattended delegated staged execution for `consistency-check` tasks.
+
+The user or contest platform only needs to start from `INSTRUCTION.md`.
+
+All stage contracts are stored in:
+
+- `profiles/superspec/consistency-check-stages.yaml`
+- `profiles/superpower/consistency-check-guards.yaml`
+- `rules/loopforge/modes/consistency-check/delegated-execution.md`
+
+Runtime artifacts are written to:
+
+- `code/.loopforge/consistency/`
+- `code/.loopforge/reports/final-report.md`
+
 ## Runner Validation
 
 Before or during execution, the runner validates:

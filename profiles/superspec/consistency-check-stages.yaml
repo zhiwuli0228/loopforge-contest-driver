@@ -1,0 +1,91 @@
+superspec:
+  name: "consistency-check-stages"
+  version: "1.0"
+  purpose: "Define staged work packets for unattended consistency-check execution."
+  artifact_root: "code/.loopforge/consistency"
+  final_report: "code/.loopforge/reports/final-report.md"
+
+stages:
+  - id: "00-preflight"
+    name: "Preflight"
+    input:
+      - "INSTRUCTION.md"
+      - "loopforge.config.yaml"
+      - "skills/loopforge-driver/SKILL.md"
+      - "profiles/examples/java-consistency-check.yaml"
+      - "code/pom.xml"
+      - "code/docs/**"
+    output: "code/.loopforge/consistency/00-preflight-report.md"
+    success_gate: "READY_FOR_DESIGN_READ"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "01-design-read"
+    name: "Design Read"
+    input:
+      - "code/docs/**"
+    output: "code/.loopforge/consistency/01-design-summary.md"
+    success_gate: "READY_FOR_IMPLEMENTATION_MAPPING"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "02-implementation-map"
+    name: "Implementation Mapping"
+    input:
+      - "code/.loopforge/consistency/01-design-summary.md"
+      - "code/gulimall-product/src/main/java/**"
+      - "code/gulimall-common/src/main/java/**"
+    output: "code/.loopforge/consistency/02-implementation-mapping.md"
+    success_gate: "READY_FOR_DRIFT_ANALYSIS"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "03-drift-analyze"
+    name: "Drift Analysis"
+    input:
+      - "code/.loopforge/consistency/01-design-summary.md"
+      - "code/.loopforge/consistency/02-implementation-mapping.md"
+    output: "code/.loopforge/consistency/03-drift-report.md"
+    success_gate: "READY_FOR_REPAIR_PLAN"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "04-repair-plan"
+    name: "Repair Planning"
+    input:
+      - "code/.loopforge/consistency/03-drift-report.md"
+      - "code/.loopforge/consistency/02-implementation-mapping.md"
+      - "loopforge.config.yaml"
+      - "profiles/examples/java-consistency-check.yaml"
+    output: "code/.loopforge/consistency/04-repair-plan.md"
+    success_gate: "READY_FOR_PATCH"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "05-patch"
+    name: "Patch Implementation"
+    input:
+      - "code/.loopforge/consistency/04-repair-plan.md"
+    output: "code/.loopforge/consistency/05-patch-summary.md"
+    success_gate: "READY_FOR_VERIFICATION"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  - id: "06-verify"
+    name: "Verification"
+    input:
+      - "loopforge.config.yaml"
+      - "code/.loopforge/consistency/05-patch-summary.md"
+    output: "code/.loopforge/consistency/06-verification-report.md"
+    success_gate: "READY_FOR_FINAL_REPORT"
+    degraded_gate: "DEGRADED_BUT_READY_FOR_FINAL_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  - id: "07-final-report"
+    name: "Final Report"
+    input:
+      - "code/.loopforge/consistency/*.md"
+    output: "code/.loopforge/reports/final-report.md"
+    success_gate: "FINAL_REPORT_READY"
+    can_modify_code: false

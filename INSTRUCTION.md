@@ -93,6 +93,55 @@ Forbidden:
 - Do not modify `code/docs/**`.
 - Do not run `git add`, `git commit`, `git push`, or create PRs.
 
+## Unattended Delegated Execution Contract
+
+This project must be executed in unattended mode.
+
+After reading this file, the agent must not wait for human confirmation between stages.
+
+For non-trivial tasks, especially `consistency-check`, the agent must not execute the whole workflow in one monolithic reasoning context.
+
+The agent must act as an orchestrator and execute the task through staged delegated execution.
+
+Required stages:
+
+1. Preflight
+2. Design Read
+3. Implementation Mapping
+4. Drift Analysis
+5. Repair Planning
+6. Patch Implementation
+7. Verification
+8. Final Report
+
+Each stage must:
+
+- read only its required input files
+- write its output artifact under `code/.loopforge/consistency/`
+- expose a machine-readable gate status
+- avoid returning full long-form analysis to the orchestrator context
+- use file artifacts as the handoff mechanism
+- automatically continue to the next stage when the gate allows it
+
+No manual prompt between stages is allowed.
+
+If a stage cannot continue, the agent must generate a blocked or degraded report and still produce `code/.loopforge/reports/final-report.md` when possible.
+
+## Manual Stage Prompt Policy
+
+Manual stage-by-stage prompting is forbidden.
+
+The user or contest platform must not be required to issue separate prompts for:
+
+- design reading
+- implementation mapping
+- repair planning
+- patch implementation
+- verification
+- final report generation
+
+All stage transitions must be decided by the orchestrator using file artifacts and gate statuses.
+
 ## 8. Completion Criteria
 
 Execution is complete when all of the following are true:

@@ -70,6 +70,66 @@ The agent must follow these rules:
 9. If a platform-specific verification command is missing, fall back to default commands.
 10. If no command is configured, generate `BLOCKED_WITH_REPORT`.
 
+## Delegated Staged Execution
+
+When `task.mode` in `loopforge.config.yaml` is `consistency-check`, this skill must use delegated staged execution.
+
+The primary agent must act as an orchestrator.
+
+The full workflow must not be executed in one monolithic reasoning context.
+
+The orchestrator must load:
+
+- `loopforge.config.yaml`
+- the configured profile
+- the configured SuperSpec file
+- the configured SuperPower file
+- consistency-check mode rules
+
+If explicit subagents are available, use them for individual stages.
+
+If explicit subagents are not available, emulate staged workers by:
+
+1. limiting each stage to its declared input files
+2. writing the stage output artifact
+3. reading only the previous artifact in the next stage
+4. avoiding full long-form context carryover
+
+No human intervention is allowed between stages.
+
+## Required Consistency Artifacts
+
+All consistency-check stage artifacts must be written under:
+
+`code/.loopforge/consistency/`
+
+Required artifacts:
+
+1. `00-preflight-report.md`
+2. `01-design-summary.md`
+3. `02-implementation-mapping.md`
+4. `03-drift-report.md`
+5. `04-repair-plan.md`
+6. `05-patch-summary.md`
+7. `06-verification-report.md`
+8. `07-final-evidence-index.md`
+
+Final report:
+
+`code/.loopforge/reports/final-report.md`
+
+## Repair Plan Policy
+
+`04-repair-plan.md` is a machine handoff artifact.
+
+It is not a human approval document.
+
+The orchestrator must validate the repair plan against SuperPower write permissions.
+
+If the repair plan only touches allowed paths and stays within scope, the patch stage must continue automatically.
+
+If the repair plan violates guardrails, the orchestrator must write a blocked report and generate the final report.
+
 ## Rule Load Order
 
 Read the platform contract in this order:

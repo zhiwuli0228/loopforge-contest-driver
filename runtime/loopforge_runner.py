@@ -25,6 +25,7 @@ ARTIFACT_SUBDIRS = [
     "snapshots",
     "reports",
     "plan",
+    "consistency",
 ]
 REQUIRED_WORK_FILES = [
     "INSTRUCTION.md",
@@ -209,6 +210,7 @@ class LoopForgeRunner:
         self.detect_path = self.artifact_dir / "state" / "detect-summary.json"
         self.verify_path = self.artifact_dir / "state" / "verification-summary.json"
         self.mode_artifact_summary_path = self.artifact_dir / "plan" / "mode-artifacts.md"
+        self.consistency_dir = self.artifact_dir / "consistency"
         self.final_report_path = self.artifact_dir / "reports" / "final-report.md"
         self.gate_events_path = self.artifact_dir / "gates" / "gate-events.md"
         self.current_os = detect_os()
@@ -510,6 +512,7 @@ class LoopForgeRunner:
         platform = self.config.get("platform", {})
         task = self.config.get("task", {})
         execution = self.config.get("execution", {})
+        governance = self.config.get("governance", {})
         outputs = self.config.get("outputs", {})
         verification = self.config.get("verification", {})
         errors: List[str] = []
@@ -543,12 +546,41 @@ class LoopForgeRunner:
         if execution.get("allow_static_rule_modification") is not False:
             errors.append("execution.allow_static_rule_modification must be false")
 
+        execution_model = str(execution.get("execution_model", "")).strip()
+        if configured_mode == "consistency-check" and execution_model:
+            if execution_model != "delegated-staged":
+                errors.append("execution.execution_model must be delegated-staged for consistency-check")
+            if execution.get("human_intervention_allowed") is not False:
+                errors.append("execution.human_intervention_allowed must be false for delegated-staged runs")
+            if execution.get("manual_stage_prompt_allowed") is not False:
+                errors.append("execution.manual_stage_prompt_allowed must be false for delegated-staged runs")
+            if execution.get("monolithic_context_forbidden") is not True:
+                errors.append("execution.monolithic_context_forbidden must be true for delegated-staged runs")
+            if execution.get("file_handoff_required") is not True:
+                errors.append("execution.file_handoff_required must be true for delegated-staged runs")
+
+            governance_summary = self.validate_governance_contract(governance)
+            if not governance_summary.get("ok"):
+                errors.extend(governance_summary.get("errors", []))
+            warnings.extend(governance_summary.get("warnings", []))
+        else:
+            governance_summary = {
+                "ok": True,
+                "superspec": "",
+                "superpower": "",
+                "mode_rules": [],
+                "delegated_staged_ready": False,
+            }
+
         final_report = (self.work_dir / str(outputs.get("final_report", "code/.loopforge/reports/final-report.md"))).resolve()
         snapshot_dir = (self.work_dir / str(outputs.get("patch_snapshot_dir", "code/.loopforge/snapshots"))).resolve()
+        consistency_dir = (self.work_dir / str(outputs.get("consistency_dir", "code/.loopforge/consistency"))).resolve()
         if self.code_dir not in final_report.parents:
             errors.append("outputs.final_report must resolve under code/")
         if self.code_dir not in snapshot_dir.parents:
             errors.append("outputs.patch_snapshot_dir must resolve under code/")
+        if self.code_dir not in consistency_dir.parents:
+            errors.append("outputs.consistency_dir must resolve under code/")
 
         working_directory = str(verification.get("working_directory", "code")).strip()
         verification_cwd = (self.work_dir / working_directory).resolve() if working_directory not in {"", "."} else self.work_dir
@@ -592,8 +624,55 @@ class LoopForgeRunner:
                 "fallback_used": commands_summary["fallback_used"],
                 "commands_count": commands_summary["selected_count"],
             },
+            "governance": governance_summary,
+            "outputs": {
+                "consistency_dir": str(consistency_dir),
+                "final_report": str(final_report),
+                "patch_snapshot_dir": str(snapshot_dir),
+            },
             "profile_summary": profile_summary,
             "work_package_summary": work_package_summary,
+        }
+
+    def validate_governance_contract(self, governance: Dict[str, Any]) -> Dict[str, Any]:
+        errors: List[str] = []
+        warnings: List[str] = []
+
+        superspec = str(governance.get("superspec", "")).strip()
+        superpower = str(governance.get("superpower", "")).strip()
+        mode_rules = governance.get("mode_rules", [])
+
+        if not superspec:
+            errors.append("BLOCKED_CONFIG_MISSING_GOVERNANCE: governance.superspec is required")
+        if not superpower:
+            errors.append("BLOCKED_CONFIG_MISSING_GOVERNANCE: governance.superpower is required")
+        if not isinstance(mode_rules, list) or not mode_rules:
+            errors.append("BLOCKED_CONFIG_MISSING_GOVERNANCE: governance.mode_rules must be a non-empty list")
+
+        resolved_rules: List[str] = []
+        for relative_path in mode_rules if isinstance(mode_rules, list) else []:
+            resolved = (self.work_dir / str(relative_path)).resolve()
+            resolved_rules.append(str(resolved))
+            if not resolved.exists():
+                errors.append(f"BLOCKED_CONFIG_MISSING_GOVERNANCE: mode rule file not found: {relative_path}")
+
+        if superspec:
+            superspec_path = (self.work_dir / superspec).resolve()
+            if not superspec_path.exists():
+                errors.append(f"BLOCKED_CONFIG_MISSING_GOVERNANCE: superspec file not found: {superspec}")
+        if superpower:
+            superpower_path = (self.work_dir / superpower).resolve()
+            if not superpower_path.exists():
+                errors.append(f"BLOCKED_CONFIG_MISSING_GOVERNANCE: superpower file not found: {superpower}")
+
+        return {
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "superspec": superspec,
+            "superpower": superpower,
+            "mode_rules": resolved_rules,
+            "delegated_staged_ready": len(errors) == 0,
         }
 
     def normalize_verification_commands(self, raw_commands: Any) -> Dict[str, Any]:
