@@ -1,39 +1,38 @@
 profile:
-  name: "c-to-rust-migration-example"
+  name: "stack-modernization-example"
   class: "example"
-  intent: "illustrate a bounded compatibility-aware C to Rust migration"
+  intent: "illustrate a bounded compatibility-aware migration"
 
 task:
-  name: "c-to-rust-migration-example"
+  name: "stack-modernization-example"
   mode: "migration"
-  objective: "migrate a bounded C component to Rust while preserving contracts"
+  objective: "modernize a bounded component while preserving observable contracts"
   language:
-    primary: "rust"
-    secondary:
-      - "c"
-  profile_role: "language migration"
+    primary: "source-root-derived"
+    secondary: []
+  profile_role: "stack migration"
 
 inputs:
   required:
     - "source module inventory"
     - "behavioral compatibility expectations"
   optional:
-    - "ffi boundary notes"
+    - "interface boundary notes"
     - "performance budget"
-    - "memory ownership risks"
+    - "risk register"
 
 execution:
   require_source_inventory: true
   require_compatibility_contract: true
   allow_behavior_preserving_refactor: true
   migration_focus:
-    - "ownership boundary translation"
-    - "error model translation"
-    - "ffi surface containment"
+    - "interface containment"
+    - "compatibility preservation"
+    - "incremental rollout"
 
 verification:
   strategy: "source-readme-or-framework-default"
-  working_directory_hint: "code"
+  working_directory_hint: "SOURCE_ROOT"
   evidence_focus:
     - "compatibility preservation"
     - "migration boundary safety"
@@ -44,4 +43,4 @@ reporting:
   highlight:
     - "migrated surface area"
     - "compatibility decisions"
-    - "unsafe or deferred areas"
+    - "deferred migration risks"

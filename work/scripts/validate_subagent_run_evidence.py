@@ -91,7 +91,7 @@ def main() -> int:
             errors.append(f"{stage_id}: parent_direct_execution must be false")
 
     if not final_report_path.exists():
-        errors.append("missing final report: code/.loopforge/reports/final-report.md")
+        errors.append("missing final report under the resolved SOURCE_ROOT artifact area")
     else:
         final_report_text = read_text(final_report_path)
         if "## Subagent Execution Evidence" not in final_report_text:

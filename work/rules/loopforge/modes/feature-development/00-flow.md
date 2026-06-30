@@ -18,6 +18,7 @@
 - `DESIGN_DRAFT`: capture interfaces, behavior, and constraints before editing code
 - `TESTCASE_DESIGN`: define how success will be checked
 - `IMPLEMENTATION_PLAN`: choose a concrete patch sequence
-- `CODE_GENERATE`: apply the implementation only inside `code/`
+- `CODE_GENERATE`: apply the implementation only inside `SOURCE_ROOT`
 - `VERIFY`: run configured commands
 - `FINAL_REPORT`: summarize scope, evidence, and remaining gaps
+

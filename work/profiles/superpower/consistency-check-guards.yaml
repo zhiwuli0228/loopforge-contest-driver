@@ -31,10 +31,8 @@ read_permissions:
     - "profiles/**"
     - "runtime/**"
     - "scripts/**"
-    - "code/docs/**"
-    - "code/gulimall-product/**"
-    - "code/gulimall-common/**"
-    - "code/.loopforge/**"
+    - "SOURCE_ROOT/**"
+    - "SOURCE_ROOT/.loopforge/**"
 
 write_permissions:
   read_only:
@@ -45,20 +43,17 @@ write_permissions:
     - "profiles/**"
     - "runtime/**"
     - "scripts/**"
-    - "code/docs/**"
   writable:
-    - "code/gulimall-product/**"
-    - "code/gulimall-common/**"
-    - "code/.loopforge/**"
+    - "SOURCE_ROOT/**"
+    - "SOURCE_ROOT/.loopforge/**"
   forbidden:
-    - "code/gulimall-order/**"
-    - "code/gulimall-ware/**"
-    - "code/gulimall-coupon/**"
-    - "code/gulimall-member/**"
-    - "code/gulimall-gateway/**"
-    - "code/gulimall-third-party/**"
-    - "renren-fast/**"
-    - "renren-generator/**"
+    - "INSTRUCTION.md"
+    - "loopforge.config.yaml"
+    - "skills/**"
+    - "rules/**"
+    - "profiles/**"
+    - "runtime/**"
+    - "scripts/**"
 
 verification:
   command_source: "loopforge.config.yaml"
@@ -82,7 +77,7 @@ coding_skill_policy:
   allowed_stage:
     - "05-patch"
   output_required:
-    - "code/.loopforge/consistency/05-patch-summary.md"
+    - "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
   patch_summary_must_include:
     - "applied skill path"
     - "modified files"
@@ -92,9 +87,8 @@ coding_skill_policy:
     - "gate status"
   write_permissions:
     allowed:
-      - "code/gulimall-product/**"
-      - "code/gulimall-common/**"
-      - "code/.loopforge/**"
+      - "SOURCE_ROOT/**"
+      - "SOURCE_ROOT/.loopforge/**"
     forbidden:
       - "INSTRUCTION.md"
       - "loopforge.config.yaml"
@@ -103,10 +97,10 @@ coding_skill_policy:
       - "profiles/**"
       - "runtime/**"
       - "scripts/**"
-      - "code/docs/**"
 
 git:
   add_allowed: false
   commit_allowed: false
   push_allowed: false
   pr_allowed: false
+

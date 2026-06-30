@@ -2,7 +2,7 @@
 
 The patch stage must write:
 
-`code/.loopforge/consistency/05-patch-summary.md`
+`SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md`
 
 Use this structure:
 
@@ -21,7 +21,7 @@ Gate: READY_FOR_VERIFICATION
 
 | File | Purpose | Repair Plan Item |
 |---|---|---|
-| path/to/File.java | ... | RP-001 |
+| path/to/file | ... | RP-001 |
 
 ## Implemented Repair Items
 

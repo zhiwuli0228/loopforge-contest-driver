@@ -1,12 +1,13 @@
 # Output
 
-- source_root: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source`
-- resolved_code_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source`
-- artifact_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\.loopforge`
+- source_root: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-6018a9da7d004e84841e994703730086\with-readme-source`
+- resolved_code_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-6018a9da7d004e84841e994703730086\with-readme-source`
+- artifact_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-6018a9da7d004e84841e994703730086\with-readme-source\.loopforge`
 - result: `BLOCKED_WITH_REPORT`
 - verification_status: `blocked-with-report`
-- selected_source_readme: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\README.md`
-- final_report: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\.loopforge\reports\final-report.md`
+- source_readme_found: `true`
+- selected_source_readme: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-6018a9da7d004e84841e994703730086\with-readme-source\README.md`
+- final_report: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-6018a9da7d004e84841e994703730086\with-readme-source\.loopforge\reports\final-report.md`
 
 ## Self Check
 
@@ -18,10 +19,10 @@
     "work_dir_exists": true,
     "code_dir_exists": true,
     "config_exists": true,
-    "artifact_dir_target": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge",
+    "artifact_dir_target": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\.loopforge",
     "artifact_dir_under_code": true,
     "verification_commands_configured": false,
-    "verification_working_directory": "code",
+    "verification_working_directory": "SOURCE_ROOT",
     "runner_copied": true,
     "config_contract_ok": true,
     "profile_contract_ok": true,
@@ -36,15 +37,15 @@
     "warnings": [],
     "platform": {
       "configured_work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
-      "configured_code_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
-      "artifact_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge"
+      "configured_code_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source",
+      "artifact_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\.loopforge"
     },
     "task": {
       "mode": "feature-development",
       "profile": "profiles/templates/feature-development.yaml"
     },
     "verification": {
-      "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
+      "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source",
       "commands_format": "platform-map",
       "available_profiles": [],
       "selected_profile": "",
@@ -75,7 +76,7 @@
       "apply_at": [
         "patch_implementation"
       ],
-      "output": "code/.loopforge/consistency/05-patch-summary.md",
+      "output": "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md",
       "ready_status": "CODING_SKILL_READY",
       "skill_exists": true,
       "references_ready": true,
@@ -83,9 +84,9 @@
       "superpower_policy_ready": false
     },
     "outputs": {
-      "consistency_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\consistency",
-      "final_report": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\reports\\final-report.md",
-      "patch_snapshot_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\snapshots"
+      "consistency_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\.loopforge\\consistency",
+      "final_report": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\.loopforge\\reports\\final-report.md",
+      "patch_snapshot_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\.loopforge\\snapshots"
     },
     "profile_summary": {
       "ok": true,
@@ -103,7 +104,6 @@
       "required_files_present": [
         "INSTRUCTION.md",
         "README.md",
-        "SUBMISSION.md",
         "loopforge.config.yaml",
         "HARNESS.md",
         "runtime/loopforge_runner.py",
@@ -194,9 +194,9 @@
   },
   "source_readme": {
     "found": true,
-    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md",
+    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\README.md",
     "candidates": [
-      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md"
+      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\README.md"
     ]
   }
 }
@@ -209,14 +209,14 @@
   "detected_os": "windows",
   "selected_command_profile": "",
   "fallback_used": false,
-  "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
+  "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source",
   "timeout_seconds": 300,
   "commands_attempted": [],
   "source_readme": {
     "found": true,
-    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md",
+    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\README.md",
     "candidates": [
-      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md"
+      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-6018a9da7d004e84841e994703730086\\with-readme-source\\README.md"
     ]
   },
   "reason": "no runnable verification commands were derived from source README or framework defaults"

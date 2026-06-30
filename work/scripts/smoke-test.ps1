@@ -34,11 +34,15 @@ Set-Content -Path (Join-Path $PositiveSource "README.md") -Value @"
 
 Task: verify the runner can discover a README from SOURCE_ROOT.
 Constraint: no manual config editing is allowed.
+Acceptance:
+- source_readme_found should be true.
+- selected_source_readme should point to this README.
 "@
 
 function Invoke-RunCase {
     param(
         [string]$SourceRoot,
+        [string]$ExpectedFound,
         [string]$ExpectedReadme,
         [string]$ExpectedIssueText
     )
@@ -66,7 +70,11 @@ function Invoke-RunCase {
 
     $OutputText = Get-Content -Raw $OutputPath
     $IssueText = Get-Content -Raw $IssuePath
+    $ExpectedFoundLine = "source_readme_found: ``$ExpectedFound``"
     $ExpectedReadmeLine = "selected_source_readme: ``$ExpectedReadme``"
+    if (-not $OutputText.Contains($ExpectedFoundLine)) {
+        throw "smoke test failed: expected source_readme_found $ExpectedFound"
+    }
     if (-not $OutputText.Contains($ExpectedReadmeLine)) {
         throw "smoke test failed: expected selected_source_readme $ExpectedReadme"
     }
@@ -76,8 +84,13 @@ function Invoke-RunCase {
 }
 
 try {
-    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedReadme "missing" -ExpectedIssueText "source README not found"
-    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedReadme (Join-Path $PositiveSource "README.md") -ExpectedIssueText "no runnable verification commands were derived from source README or framework defaults"
+    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedFound "false" -ExpectedReadme "missing" -ExpectedIssueText "source README not found"
+    $NegativeTraceText = Get-Content -Raw (Join-Path $LogDir "trace/run-summary.json")
+    if ($NegativeTraceText -notmatch '"found": false') {
+        throw "smoke test failed: negative trace does not record source_readme found=false"
+    }
+
+    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedFound "true" -ExpectedReadme (Join-Path $PositiveSource "README.md") -ExpectedIssueText "no runnable verification commands were derived from source README or framework defaults"
 
     $TraceText = Get-Content -Raw (Join-Path $LogDir "trace/run-summary.json")
     if ($TraceText -notmatch '"found": true') {

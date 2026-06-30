@@ -5,3 +5,4 @@
 - Keep generated business skills separate from the LoopForge driver skill.
 - Prefer specific operator guidance over generic prose.
 - Include examples that exercise the declared contract.
+

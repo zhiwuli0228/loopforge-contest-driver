@@ -48,15 +48,16 @@ Resolve the source root in this order:
 2. `--source-root`
 3. `SOURCE_ROOT`
 4. path extracted from natural-language task input and normalized into `SOURCE_ROOT`
-5. Linux fallback `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
+5. Linux fallback `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
 6. local fallback `code`
 
 The driver must inspect the source README and use it to infer requirements and constraints before planning work.
 
 ## Entrypoints
 
-- Linux: `SOURCE_ROOT=<path> bash work/scripts/run.sh`
-- Windows: `$env:SOURCE_ROOT=<path>; powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1`
+- Linux: `SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh`
+- Linux fallback: `bash work/scripts/run.sh`
+- Windows: `$env:SOURCE_ROOT="C:\path\to\source"; powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1`
 
 `bootstrap.sh` and `bootstrap.ps1` are compatibility wrappers over the same `SOURCE_ROOT` protocol.
 

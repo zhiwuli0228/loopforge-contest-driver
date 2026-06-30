@@ -1,4 +1,4 @@
-# Java Secure Coding Reference
+# Secure Coding Reference
 
 ## Input Validation
 
@@ -53,7 +53,7 @@ Required:
 Forbidden:
 
 1. SQL built by string concatenation with untrusted input
-2. untrusted MyBatis `${}` interpolation
+2. untrusted dynamic query interpolation
 3. dynamic table names from request parameters
 4. dynamic column names from request parameters
 5. unvalidated order-by fields
@@ -62,7 +62,7 @@ Required:
 
 1. use parameter binding
 2. validate dynamic query parameters
-3. keep mapper changes minimal
+3. keep query-layer changes minimal
 
 ## Authentication And Authorization
 

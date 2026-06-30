@@ -1,10 +1,10 @@
-# Rust Error Handling Rules
+# Error Handling Rules
 
 ## Basic Rule
 
 Avoid panics in production logic.
 
-Do not introduce `.unwrap()` or `.expect()` unless the invariant is explicit, local, and documented.
+Do not introduce crash-prone shortcuts unless the invariant is explicit, local, and documented.
 
 ## Preferred Patterns
 
@@ -37,10 +37,10 @@ Forbidden:
 
 Error messages must be useful but not leak sensitive internal state.
 
-For FFI and C2Rust tasks, preserve existing error semantics unless the repair plan explicitly changes them.
+For compatibility-sensitive migrations, preserve existing error semantics unless the repair plan explicitly changes them.
 
 ## Panic Boundaries
 
-Panics must not cross FFI boundaries.
+Process-breaking failures must not cross foreign-function or externally callable boundaries.
 
 For extern-callable functions, convert panics to controlled error behavior when needed.

@@ -27,7 +27,6 @@ def make_workspace(repo_root: Path) -> Path:
     copy_names = [
         "INSTRUCTION.md",
         "README.md",
-        "SUBMISSION.md",
         "code",
         "work",
         "result",
@@ -77,9 +76,9 @@ def scenario_missing_profile(workspace: Path) -> None:
     )
 
 
-def scenario_verification_outside_code(workspace: Path) -> None:
+def scenario_verification_outside_source_root(workspace: Path) -> None:
     config_path = workspace / "work" / "loopforge.config.yaml"
-    replace_once(config_path, '  working_directory: "code"', '  working_directory: "."')
+    replace_once(config_path, '  working_directory: "SOURCE_ROOT"', '  working_directory: "."')
 
 
 def scenario_profile_mode_mismatch(workspace: Path) -> None:
@@ -87,11 +86,11 @@ def scenario_profile_mode_mismatch(workspace: Path) -> None:
     replace_once(profile_path, '  mode: "feature-development"', '  mode: "migration"')
 
 
-def scenario_output_outside_code(workspace: Path) -> None:
+def scenario_output_outside_source_root(workspace: Path) -> None:
     config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
-        '  final_report: "code/.loopforge/reports/final-report.md"',
+        '  final_report: "SOURCE_ROOT/.loopforge/reports/final-report.md"',
         '  final_report: "reports/final-report.md"',
     )
 
@@ -117,9 +116,9 @@ SCENARIOS: List[Dict[str, object]] = [
         "expected_errors": ["profile: profile file not found"],
     },
     {
-        "name": "verification-outside-code",
-        "mutator": scenario_verification_outside_code,
-        "expected_errors": ["verification.working_directory must resolve to code/ or a descendant of code/"],
+        "name": "verification-outside-source-root",
+        "mutator": scenario_verification_outside_source_root,
+        "expected_errors": ["verification.working_directory must resolve to SOURCE_ROOT or a descendant of SOURCE_ROOT"],
     },
     {
         "name": "profile-mode-mismatch",
@@ -127,9 +126,9 @@ SCENARIOS: List[Dict[str, object]] = [
         "expected_errors": ["profile: task.mode (feature-development) does not match profile task.mode (migration)"],
     },
     {
-        "name": "output-outside-code",
-        "mutator": scenario_output_outside_code,
-        "expected_errors": ["outputs.final_report must resolve under code/"],
+        "name": "output-outside-source-root",
+        "mutator": scenario_output_outside_source_root,
+        "expected_errors": ["outputs.final_report must resolve under SOURCE_ROOT/.loopforge/"],
     },
     {
         "name": "missing-mode-rule",
@@ -209,3 +208,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

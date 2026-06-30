@@ -26,8 +26,8 @@ stage_id: "07-final-report"
 executed_by_subagent: "opencode-final-report-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "code/.loopforge/consistency/*.md"
-output_artifact: "code/.loopforge/reports/final-report.md"
+  - "SOURCE_ROOT/.loopforge/consistency/*.md"
+output_artifact: "SOURCE_ROOT/.loopforge/reports/final-report.md"
 gate: "FINAL_REPORT_READY | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "done"
@@ -39,3 +39,4 @@ next_stage: "done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
+

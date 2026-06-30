@@ -36,7 +36,6 @@ README_CANDIDATES = [
 REQUIRED_ROOT_FILES = [
     "INSTRUCTION.md",
     "README.md",
-    "SUBMISSION.md",
 ]
 REQUIRED_WORK_FILES = [
     "loopforge.config.yaml",
@@ -254,6 +253,10 @@ class LoopForgeRunner:
         normalized = configured_path.replace("\\", "/").strip()
         if normalized in {"", "."}:
             return self.workspace_root
+        if normalized == "SOURCE_ROOT":
+            return self.source_root
+        if normalized.startswith("SOURCE_ROOT/"):
+            return (self.source_root / normalized[len("SOURCE_ROOT/"):]).resolve()
         if normalized == "code":
             return self.code_dir
         if normalized.startswith("code/"):
@@ -291,7 +294,7 @@ class LoopForgeRunner:
             f"- mode: `{configured_mode or 'unknown'}`",
             f"- generated_at: `{utc_now()}`",
             "",
-            "This file indexes mode-specific planning and analysis artifacts under `code/.loopforge/plan/`.",
+            "This file indexes mode-specific planning and analysis artifacts under `SOURCE_ROOT/.loopforge/plan/`.",
             "",
             "## Recommended Artifacts",
             "",
@@ -332,7 +335,7 @@ class LoopForgeRunner:
         if platform.get("layout") != "single-root":
             raise ValueError("unsupported platform.layout; expected single-root")
         if self.artifact_dir == self.code_dir or self.code_dir not in self.artifact_dir.parents:
-            raise ValueError("artifact_dir must resolve under code/")
+            raise ValueError("artifact_dir must resolve under SOURCE_ROOT/.loopforge/")
         forbidden_roots = ["skills", "rules", "runtime", "scripts", "profiles"]
         for name in forbidden_roots:
             candidate = (self.work_dir / name).resolve()
@@ -413,7 +416,7 @@ class LoopForgeRunner:
     def detect_source_readme(self) -> Dict[str, Any]:
         candidates: List[str] = []
         for name in README_CANDIDATES:
-            candidate = self.code_dir / name
+            candidate = self.source_root / name
             candidates.append(str(candidate))
             if candidate.exists():
                 return {
@@ -671,15 +674,21 @@ class LoopForgeRunner:
                 "stages": [],
             }
 
-        final_report = self.resolve_code_relative_path(str(outputs.get("final_report", "code/.loopforge/reports/final-report.md")))
-        snapshot_dir = self.resolve_code_relative_path(str(outputs.get("patch_snapshot_dir", "code/.loopforge/snapshots")))
-        consistency_dir = self.resolve_code_relative_path(str(outputs.get("consistency_dir", "code/.loopforge/consistency")))
+        final_report = self.resolve_code_relative_path(
+            str(outputs.get("final_report", "SOURCE_ROOT/.loopforge/reports/final-report.md"))
+        )
+        snapshot_dir = self.resolve_code_relative_path(
+            str(outputs.get("patch_snapshot_dir", "SOURCE_ROOT/.loopforge/snapshots"))
+        )
+        consistency_dir = self.resolve_code_relative_path(
+            str(outputs.get("consistency_dir", "SOURCE_ROOT/.loopforge/consistency"))
+        )
         if self.code_dir not in final_report.parents:
-            errors.append("outputs.final_report must resolve under code/")
+            errors.append("outputs.final_report must resolve under SOURCE_ROOT/.loopforge/")
         if self.code_dir not in snapshot_dir.parents:
-            errors.append("outputs.patch_snapshot_dir must resolve under code/")
+            errors.append("outputs.patch_snapshot_dir must resolve under SOURCE_ROOT/.loopforge/")
         if self.code_dir not in consistency_dir.parents:
-            errors.append("outputs.consistency_dir must resolve under code/")
+            errors.append("outputs.consistency_dir must resolve under SOURCE_ROOT/.loopforge/")
 
         coding_skill_summary = self.validate_coding_skill_contract(coding_skill, governance, consistency_dir)
         if not coding_skill_summary.get("ok"):
@@ -689,7 +698,7 @@ class LoopForgeRunner:
         working_directory = str(verification.get("working_directory", "code")).strip()
         verification_cwd = self.resolve_code_relative_path(working_directory) if working_directory not in {"", "."} else self.work_dir
         if verification_cwd != self.code_dir and self.code_dir not in verification_cwd.parents:
-            errors.append("verification.working_directory must resolve to code/ or a descendant of code/")
+            errors.append("verification.working_directory must resolve to SOURCE_ROOT or a descendant of SOURCE_ROOT")
         if not verification_cwd.exists():
             warnings.append(f"verification.working_directory does not exist yet: {verification_cwd}")
 
@@ -766,8 +775,8 @@ class LoopForgeRunner:
             errors.append("coding_skill.skill must be skills/code-implementation/SKILL.md")
         if not isinstance(apply_at, list) or "patch_implementation" not in [str(item) for item in apply_at]:
             errors.append("coding_skill.apply_at must include patch_implementation")
-        if output_value != "code/.loopforge/consistency/05-patch-summary.md":
-            errors.append("coding_skill.output must be code/.loopforge/consistency/05-patch-summary.md")
+        if output_value != "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md":
+            errors.append("coding_skill.output must be SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md")
         if output_path is None:
             errors.append("coding_skill.output is required")
         elif output_path != consistency_dir / "05-patch-summary.md":
@@ -1302,6 +1311,7 @@ class LoopForgeRunner:
             f"- artifact_dir: `{self.artifact_dir}`",
             f"- result: `{finalize_payload.get('result', 'UNKNOWN')}`",
             f"- verification_status: `{verify_payload.get('status', 'not-run')}`",
+            f"- source_readme_found: `{str(detect_payload.get('source_readme', {}).get('found', False)).lower()}`",
             f"- selected_source_readme: `{detect_payload.get('source_readme', {}).get('selected_path', '') or 'missing'}`",
             f"- final_report: `{self.final_report_path}`",
             "",
@@ -1641,8 +1651,9 @@ class LoopForgeRunner:
             "## Boundaries",
             "",
             "- Static files in the LoopForge root are read-only during execution.",
-            "- Code changes are allowed only inside code/.",
-            "- Runtime artifacts are written only under code/.loopforge/.",
+            "- Code changes are allowed only inside the resolved SOURCE_ROOT.",
+            "- Runtime artifacts may be written under SOURCE_ROOT/.loopforge/.",
+            "- Evaluator-facing outputs are written under result/ and logs/.",
             "- LoopForge does not commit, push, create PRs, or submit results.",
             "",
         ]
@@ -1670,12 +1681,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--source-root", help="path to the source project root")
     parser.add_argument("--result-dir", help="path to the root-level result directory")
     parser.add_argument("--log-dir", help="path to the root-level log directory")
-    parser.add_argument("--init", action="store_true", help="initialize code/.loopforge")
+    parser.add_argument("--init", action="store_true", help="initialize SOURCE_ROOT/.loopforge")
     parser.add_argument("--self-check", action="store_true", help="validate runtime and configuration")
     parser.add_argument("--detect", action="store_true", help="detect target project shape")
-    parser.add_argument("--snapshot", metavar="NAME", help="write a git diff snapshot into code/.loopforge/snapshots")
+    parser.add_argument("--snapshot", metavar="NAME", help="write a git diff snapshot into SOURCE_ROOT/.loopforge/snapshots")
     parser.add_argument("--verify", action="store_true", help="run configured verification.commands")
-    parser.add_argument("--finalize", action="store_true", help="write code/.loopforge/reports/final-report.md")
+    parser.add_argument("--finalize", action="store_true", help="write SOURCE_ROOT/.loopforge/reports/final-report.md")
     parser.add_argument("--run", action="store_true", help="execute the entrypoint workflow and mirror outputs to result/ and logs/")
     return parser.parse_args(argv)
 
@@ -1709,7 +1720,7 @@ def resolve_workspace_root(work_path: Path) -> Path:
 def resolve_default_source_root(workspace_root: Path, code_arg: str) -> str:
     if platform.system().lower().startswith("linux"):
         linux_candidates = [
-            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB"),
+            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"),
             Path("/__CONTEST_PLATFORM_SOURCE_ROOT__"),
         ]
         for candidate in linux_candidates:

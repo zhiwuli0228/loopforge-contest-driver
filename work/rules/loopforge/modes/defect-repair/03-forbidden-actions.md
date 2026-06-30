@@ -4,3 +4,4 @@
 - no broad architectural rewrite without defect justification
 - no verification command guessing
 - no claiming root cause without code-level support
+

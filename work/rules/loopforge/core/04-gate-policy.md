@@ -8,9 +8,9 @@ LoopForge uses fail-soft reporting with explicit gate events. The platform shoul
 
 Execution should hard-block when any of the following is true:
 
-- the LoopForge root or `code/` is missing
+- the LoopForge root or resolved `SOURCE_ROOT` is missing
 - the configured layout is not `single-root`
-- the artifact path escapes `code/`
+- the artifact path escapes `SOURCE_ROOT`
 - static configuration is unusable
 - the requested action would mutate static LoopForge root assets
 
@@ -25,7 +25,7 @@ Execution may continue in degraded form when:
 
 ## Logging Contract
 
-Each meaningful phase should log a gate event in `code/.loopforge/gates/gate-events.md`.
+Each meaningful phase should log a gate event in `SOURCE_ROOT/.loopforge/gates/gate-events.md`.
 
 At minimum, log:
 
@@ -42,3 +42,4 @@ Each event should record:
 - pass, warn, fail, or degrade status
 - action taken
 - reason or constraint summary
+

@@ -6,4 +6,5 @@
 - references to design summary, implementation mapping, traceability, drift, repair, and verification-gap artifacts
 - evidence sources
 - verification or review result
-- actual artifact directory used under `code/.loopforge/`
+- actual artifact directory used under `SOURCE_ROOT/.loopforge/`
+

@@ -39,22 +39,34 @@ The framework records which README was selected. If no README is available, the 
 └── logs/    # trace outputs
 ```
 
-## Entrypoints
+## Quick Start
 
 Linux:
 
 ```bash
-SOURCE_ROOT=<path> bash work/scripts/run.sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r work/requirements.txt
+SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
+```
+
+Linux fallback mode:
+
+```bash
+bash work/scripts/run.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:SOURCE_ROOT="<path>"
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r work\requirements.txt
+$env:SOURCE_ROOT="C:\path\to\source"
 powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-If `SOURCE_ROOT` is not provided, Linux attempts `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB` first and then falls back to `code`. Windows and local development fall back to `code`.
+If `SOURCE_ROOT` is not provided, Linux first checks the platform source mount and then falls back to `code`. Windows and local development fall back to `code`.
 
 ## Notes
 

@@ -18,3 +18,4 @@
 - `EXAMPLE_GENERATION`: provide concrete usage examples
 - `QUALITY_REVIEW`: check clarity, correctness, and non-overlap with LoopForge core
 - `FINAL_REPORT`: summarize delivered skill assets and review status
+

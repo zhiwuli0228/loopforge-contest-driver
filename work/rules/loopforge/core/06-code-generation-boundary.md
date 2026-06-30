@@ -12,15 +12,15 @@ If code generation is disabled:
 
 ## Allowed Targets
 
-- source files under `code/`
-- tests under `code/`
-- runtime evidence under `code/.loopforge/`
+- source files under `SOURCE_ROOT`
+- tests under `SOURCE_ROOT`
+- runtime evidence under `SOURCE_ROOT/.loopforge/`
 
 ## Forbidden Targets
 
-- any static file in the LoopForge root outside `code/`
+- any static file in the LoopForge root outside `SOURCE_ROOT`
 - version control metadata mutations intended to commit or publish work
-- external repositories or sibling directories outside the configured `code/`
+- external repositories or sibling directories outside the configured `SOURCE_ROOT`
 
 ## Patch Policy
 
@@ -30,3 +30,4 @@ If code generation is disabled:
 - for migration, preserve compatibility goals declared by the mode and profile
 
 LoopForge generates code, records evidence, runs configured verification, writes the final report, and stops.
+

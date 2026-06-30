@@ -1,5 +1,7 @@
-# Human-maintained configuration.
-# Agent must not modify this file during execution.
+framework:
+  name: "loopforge-contest-driver"
+  input_model: "source-readme"
+  default_mode: "feature-development"
 
 platform:
   layout: "single-root"
@@ -12,8 +14,17 @@ platform:
     - "windows"
     - "linux"
 
+source:
+  root_env: "SOURCE_ROOT"
+  readme_required: true
+  readme_candidates:
+    - "README.md"
+    - "README"
+    - "readme.md"
+    - "Readme.md"
+
 task:
-  name: "source-readme-driven-development"
+  name: "source-readme-driven-execution"
   mode: "feature-development"
   source: "source-readme"
   readme_required: true
@@ -21,10 +32,11 @@ task:
   language:
     primary: "source-root-derived"
     secondary: []
-  objective: "derive task intent from SOURCE_ROOT README"
+  objective: "derive task intent from the README under SOURCE_ROOT"
 
 execution:
   unattended: true
+  allow_manual_interaction: false
   max_repair_rounds: 2
   fail_soft: true
   always_finalize: true
@@ -34,17 +46,21 @@ execution:
   push: false
   create_pr: false
 
+mode_selection:
+  source: "source-readme"
+  fallback: "feature-development"
+
 coding_skill:
   enabled: true
   required: true
   skill: "skills/code-implementation/SKILL.md"
   apply_at:
     - "patch_implementation"
-  output: "code/.loopforge/consistency/05-patch-summary.md"
+  output: "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
 
 verification:
   source: "source-readme-or-framework-default"
-  working_directory: "code"
+  working_directory: "SOURCE_ROOT"
   timeout_seconds: 300
   commands:
     default: []
@@ -53,6 +69,7 @@ outputs:
   result_report: "result/output.md"
   issue_summary: "result/issues/00-summary.md"
   trace_dir: "logs/trace"
-  consistency_dir: "code/.loopforge/consistency"
-  final_report: "code/.loopforge/reports/final-report.md"
-  patch_snapshot_dir: "code/.loopforge/snapshots"
+  interaction_log: "logs/interaction.md"
+  consistency_dir: "SOURCE_ROOT/.loopforge/consistency"
+  final_report: "SOURCE_ROOT/.loopforge/reports/final-report.md"
+  patch_snapshot_dir: "SOURCE_ROOT/.loopforge/snapshots"

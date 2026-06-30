@@ -17,6 +17,7 @@
 - `TARGET_ARCHITECTURE`: define the intended target structure before translation
 - `COMPATIBILITY_CONTRACT`: state what must remain behaviorally compatible
 - `MIGRATION_PLAN`: sequence the migration into bounded steps
-- `CODE_GENERATE`: apply migration changes under `code/`
+- `CODE_GENERATE`: apply migration changes under `SOURCE_ROOT`
 - `COMPATIBILITY_VERIFY`: run configured verification and compatibility checks
 - `FINAL_REPORT`: capture migration coverage and unresolved gaps
+

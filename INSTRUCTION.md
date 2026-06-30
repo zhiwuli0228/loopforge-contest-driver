@@ -40,7 +40,7 @@ Source path resolution priority:
 2. `--source-root <path>`
 3. `SOURCE_ROOT`
 4. Path extracted by the agent from natural-language task input and normalized into `SOURCE_ROOT`
-5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
+5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
 6. Local fallback: `code`
 
 The framework reads requirements and constraints from the source README near `SOURCE_ROOT`. Supported names:
@@ -52,24 +52,48 @@ The framework reads requirements and constraints from the source README near `SO
 
 If multiple files exist, the runner records the selected README path in the run trace.
 
-## Run
+## Python Dependency Setup
 
 Linux:
 
 ```bash
-SOURCE_ROOT=<path> bash work/scripts/run.sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r work/requirements.txt
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:SOURCE_ROOT="<path>"
+py -3.11 -m venv .venv
+. .\.venv\Scripts\Activate.ps1
+python -m pip install -r work/requirements.txt
+```
+
+## Run the Tool
+
+Linux:
+
+```bash
+SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
+```
+
+Linux fallback:
+
+```bash
+bash work/scripts/run.sh
+```
+
+Windows PowerShell:
+
+```powershell
+$env:SOURCE_ROOT="C:\path\to\source"
 powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-If no explicit source path is provided, the scripts first try `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB` on Linux and otherwise fall back to `code`.
+If no explicit source path is provided, the scripts first try the contest platform source mount on Linux and otherwise fall back to `code`.
 
-## Results
+## Result Retrieval
 
 Primary evaluator output:
 
@@ -85,8 +109,8 @@ Trace logs:
 
 The internal runtime cache remains under `SOURCE_ROOT/.loopforge/`, but it is not the primary evaluator-facing result.
 
-## Scope
+## Failure Handling
 
-- This file is an execution manual, not a business-rule document.
-- Do not require humans to edit `work/loopforge.config.yaml` for new tasks.
+- Check `result/issues/00-summary.md` for the blocked reason.
+- Check `logs/trace/run-summary.json` for selected README and verification evidence.
 - Requirements should come from `SOURCE_ROOT` and its README, not from manual placeholder filling.

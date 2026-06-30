@@ -37,8 +37,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
-  if [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB" ]]; then
-    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB"
+  if [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/source" ]]; then
+    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
+  elif [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
+    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
   else
     SOURCE_ROOT_VALUE="code"
   fi

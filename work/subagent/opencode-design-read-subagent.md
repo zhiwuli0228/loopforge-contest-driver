@@ -26,8 +26,8 @@ stage_id: "01-design-read"
 executed_by_subagent: "opencode-design-read-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "code/docs/**"
-output_artifact: "code/.loopforge/consistency/01-design-summary.md"
+  - "SOURCE_ROOT/README.md"
+output_artifact: "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
 gate: "READY_FOR_IMPLEMENTATION_MAPPING | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "02-implementation-map | done"
@@ -39,3 +39,4 @@ next_stage: "02-implementation-map | done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
+

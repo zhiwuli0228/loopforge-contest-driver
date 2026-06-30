@@ -15,7 +15,7 @@ Preserve this stable interface so LoopForge can replace or enhance the skill lat
 
 Read:
 
-1. `code/.loopforge/consistency/04-repair-plan.md`
+1. `SOURCE_ROOT/.loopforge/consistency/04-repair-plan.md`
 2. `profiles/superpower/consistency-check-guards.yaml`
 3. the target files explicitly listed in the repair plan
 
@@ -49,7 +49,7 @@ Do not modify:
 - `profiles/**`
 - `runtime/**`
 - `scripts/**`
-- `code/docs/**`
+- design documents or frozen inputs under `SOURCE_ROOT`
 
 Do not execute:
 
@@ -69,26 +69,24 @@ Do not:
 
 ## Secure Coding Baseline
 
-When modifying Java, Spring, or MyBatis code:
+When modifying implementation code:
 
 1. Validate external inputs before business processing.
 2. Prefer allowlist checks for enum-like fields.
 3. Validate numeric ranges where required by the design.
-4. Validate entity relationship consistency where required by the design.
-5. Avoid string-concatenated SQL.
-6. Avoid unsafe MyBatis `${}` usage with untrusted input.
+4. Preserve authorization and access-control checks.
+5. Avoid unsafe dynamic execution and command execution.
+6. Avoid unsafe query construction with untrusted input.
 7. Avoid logging sensitive values.
-8. Avoid returning raw exception details to API responses.
+8. Avoid returning raw exception details to callers.
 9. Avoid swallowing exceptions silently.
-10. Preserve authentication and authorization checks.
-11. Avoid hardcoded credentials or secrets.
-12. Avoid unsafe reflection, dynamic execution, and command execution.
+10. Avoid hardcoded credentials or secrets.
 
 ## Patch Summary Output
 
 After patch implementation, write:
 
-`code/.loopforge/consistency/05-patch-summary.md`
+`SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md`
 
 The patch summary must include:
 
@@ -119,4 +117,5 @@ A stronger coding skill may replace this skill later without changing LoopForge 
 2. the same output artifact path
 3. the same gate values
 4. the same write-scope restrictions
-5. the requirement to write `code/.loopforge/consistency/05-patch-summary.md`
+5. the requirement to write `SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md`
+

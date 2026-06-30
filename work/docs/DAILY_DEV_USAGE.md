@@ -1,57 +1,29 @@
 # Daily Dev Usage
 
-For local development outside a contest environment:
+## Setup
 
-1. keep this repository root under version control as the platform package
-2. place the working repository under `code/`
-3. configure `work/loopforge.config.yaml` from the repository root
-4. run the runner directly for deterministic steps
+1. Create and activate a Python environment.
+2. Install `work/requirements.txt`.
+3. Set `SOURCE_ROOT` to the source tree you want to evaluate, or use local fallback `code/`.
 
-Example:
+## Common Commands
+
+Linux:
 
 ```bash
-python work/runtime/loopforge_runner.py --work-dir work --code-dir code --init --self-check --detect
-python work/runtime/loopforge_runner.py --work-dir work --code-dir code --snapshot local-before-change
-python work/runtime/loopforge_runner.py --work-dir work --code-dir code --verify --finalize
+SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
 ```
 
-Windows entrypoints:
+Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1
-powershell -ExecutionPolicy Bypass -File work/scripts/smoke-test.ps1
+$env:SOURCE_ROOT="C:\path\to\source"
+powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-If `verification.commands` is still a placeholder, `--verify` should end in `BLOCKED_WITH_REPORT`. That is expected behavior for an unadapted package.
+## Expected Outputs
 
-For a minimal platform acceptance check:
-
-```bash
-bash work/scripts/smoke-test.sh
-```
-
-Expected smoke-test outcomes:
-
-- artifacts exist under `code/.loopforge/`
-- `code/.loopforge/runtime/loopforge_runner.py` exists
-- `code/.loopforge/state/loop-state.json` exists
-- `code/.loopforge/state/config-check-summary.json` exists
-- `code/.loopforge/state/work-package-summary.json` exists
-- `code/.loopforge/reports/final-report.md` exists
-- final report includes contract-validation content
-- final report includes work-package contract content
-- gate log includes a `FINALIZE` event
-- no `./.loopforge/` directory is created
-
-For negative-path acceptance checks:
-
-```bash
-python work/scripts/runner-negative-check.py
-```
-
-Expected negative-path outcomes:
-
-- bad config or profile scenarios still produce `code/.loopforge/`
-- verification state is `blocked-with-report`
-- final report result is `BLOCKED_WITH_REPORT`
-- contract validation contains explicit errors instead of guessed recovery
+- `result/output.md`
+- `result/issues/00-summary.md`
+- `logs/interaction.md`
+- `logs/trace/run-summary.json`

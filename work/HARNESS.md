@@ -1,86 +1,59 @@
 # LoopForge Harness
 
-## 1. Workspace layout
+## Workspace Model
 
-Repository root:
+LoopForge is a generic contest execution harness.
 
-```text
-.
-├── INSTRUCTION.md
-├── code/
-├── work/
-├── result/
-└── logs/
-```
-
-Framework assets:
+The external task input is:
 
 ```text
-work/
-├── loopforge.config.yaml
-├── runtime/
-├── scripts/
-├── subagent/
-├── rules/
-├── profiles/
-└── skills/
-    └── loopforge-driver/
-        └── SKILL.md
+SOURCE_ROOT + source README
 ```
 
-## 2. Agent entrypoint
+`SOURCE_ROOT` points to the source tree supplied by the contest platform or by a local evaluator.
+Task requirements, constraints, and acceptance context come from the README under `SOURCE_ROOT`.
+
+## Read Order
 
 Read and follow:
 
-```text
-work/skills/loopforge-driver/SKILL.md
-```
+1. `INSTRUCTION.md`
+2. `work/loopforge.config.yaml`
+3. `work/rules/loopforge/common/`
+4. `work/rules/loopforge/core/`
+5. `work/rules/loopforge/modes/{task.mode}/`
+6. `work/skills/loopforge-driver/SKILL.md`
 
-## 3. Configuration
+## Entrypoints
 
-Read framework configuration from:
-
-```text
-work/loopforge.config.yaml
-```
-
-## 4. Entrypoints
-
-Official Linux execution:
+Linux:
 
 ```bash
-SOURCE_ROOT=<path> bash work/scripts/run.sh
+SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
 ```
 
-Windows local execution:
+Linux fallback:
+
+```bash
+bash work/scripts/run.sh
+```
+
+Windows PowerShell:
 
 ```powershell
-$env:SOURCE_ROOT="<path>"; powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
+$env:SOURCE_ROOT="C:\path\to\source"
+powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-## 5. Source path resolution
+## Source Path Resolution
 
-The source project path must be resolved by the following priority:
+Resolve the source path in this order:
 
-1. Platform-provided source path.
-2. Explicit `--source-root` or `SOURCE_ROOT`, when provided.
-3. Auto-detected contest Linux source mount, when present.
-4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`, when present.
-5. Local repository fallback: `code/`.
+1. Platform-provided source path
+2. Explicit `--source-root`
+3. `SOURCE_ROOT`
+4. Contest platform source mount on Linux
+5. Local fallback `code/`
 
-The framework reads task requirements from the README located at the resolved source root.
-
-For local development, placing the source tree under `code/` is sufficient. No extra path argument is required.
-
-## 6. Required root-level records
-
-Keep these files or directories available:
-
-```text
-result/output.md
-result/issues/00-summary.md
-logs/interaction.md
-logs/trace/
-```
-
-`logs/interaction.md` may be empty if execution is fully unattended.
+Runtime evidence may be written under `SOURCE_ROOT/.loopforge/`.
+Evaluator-facing outputs must be written under `result/` and `logs/`.

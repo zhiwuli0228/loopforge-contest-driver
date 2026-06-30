@@ -27,7 +27,7 @@ executed_by_subagent: "opencode-verification-subagent"
 parent_direct_execution: false
 input_files_read:
   - "loopforge.config.yaml"
-output_artifact: "code/.loopforge/consistency/06-verification-report.md"
+output_artifact: "SOURCE_ROOT/.loopforge/consistency/06-verification-report.md"
 gate: "READY_FOR_FINAL_REPORT | DEGRADED_BUT_READY_FOR_FINAL_REPORT | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "07-final-report | done"
@@ -39,3 +39,4 @@ next_stage: "07-final-report | done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
+

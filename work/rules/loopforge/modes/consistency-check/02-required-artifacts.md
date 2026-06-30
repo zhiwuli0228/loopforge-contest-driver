@@ -9,7 +9,7 @@
 - mode artifact index
 - final report with references to produced artifacts
 
-Preferred artifact paths under `code/.loopforge/consistency/`:
+Preferred artifact paths under `SOURCE_ROOT/.loopforge/consistency/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`
@@ -18,7 +18,7 @@ Preferred artifact paths under `code/.loopforge/consistency/`:
 - `repair-plan.md`
 - `test-coverage-gap.md`
 
-Runner-compatible fallback paths under `code/.loopforge/plan/`:
+Runner-compatible fallback paths under `SOURCE_ROOT/.loopforge/plan/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`
@@ -36,3 +36,4 @@ Runner-compatible fallback paths under `code/.loopforge/plan/`:
 - Every stage artifact must record `executed_by_subagent`.
 - Every stage artifact must record `parent_direct_execution: false`.
 - Missing subagent execution metadata invalidates the stage artifact.
+

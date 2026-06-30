@@ -18,7 +18,7 @@ Execute only the delegated LoopForge stage.
 4. Write the declared stage artifact.
 5. Include the required artifact metadata.
 6. Return only a short summary to the parent context.
-7. If required inputs such as `code/FlashDB`, `code/docs`, or `code/Cargo.toml` are missing, emit `BLOCKED_WITH_REPORT`.
+7. If declared required inputs are missing, emit `BLOCKED_WITH_REPORT`.
 
 ## Required artifact metadata
 
@@ -28,7 +28,7 @@ executed_by_subagent: "opencode-preflight-subagent"
 parent_direct_execution: false
 input_files_read:
   - "INSTRUCTION.md"
-output_artifact: "code/.loopforge/consistency/00-preflight-report.md"
+output_artifact: "SOURCE_ROOT/.loopforge/consistency/00-preflight-report.md"
 gate: "READY_FOR_DESIGN_READ | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "01-design-read | done"
@@ -40,3 +40,4 @@ next_stage: "01-design-read | done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
+

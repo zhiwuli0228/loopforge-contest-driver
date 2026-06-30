@@ -1,5 +1,6 @@
 # code
 
-This directory is the target project slot for LoopForge.
+This directory is the local fallback source slot for LoopForge.
 
-During platform execution, the real project should be placed here and LoopForge runtime artifacts will be written to `code/.loopforge/`.
+During platform execution, `SOURCE_ROOT` may point here or to an external source tree.
+Internal runtime evidence may be written under `SOURCE_ROOT/.loopforge/`.
