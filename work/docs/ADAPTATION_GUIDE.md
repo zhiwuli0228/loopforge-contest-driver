@@ -12,7 +12,7 @@ The framework should read the task context from the README under `SOURCE_ROOT` i
 - Keep rules generic.
 - Do not hard-code a repository, language, or business domain into the core framework.
 - Do not require humans to fill verification commands before a run can start.
-- Keep evaluator-facing outputs under `result/` and `logs/`.
+- Keep evaluator-facing outputs under `work/result/` and `work/logs/`.
 
 ## Mode Selection Guidance
 

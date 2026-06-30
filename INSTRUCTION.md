@@ -18,7 +18,7 @@ rustc
 Run from the repository root:
 
 ```bash
-SOURCE_ROOT="E:\009workspace\codex\loopforge-contest-driver\work\code" bash work/scripts/run.sh --run
+SOURCE_ROOT="/absolute/path/to/source/project" bash work/scripts/run.sh --run
 ```
 
 `SOURCE_ROOT` must identify the evaluator-provided C project containing its README/READNE, source, and tests. The harness does not write into `SOURCE_ROOT`.
@@ -50,18 +50,26 @@ cargo test --locked -- --nocapture
 Inspect:
 
 ```text
-result/output.md
-result/issues/00-summary.md
-logs/interaction.md
-logs/trace/
-logs/trace/c-to-rust/semantic-audit-report.md
+work/result/output.md
+work/result/issues/00-summary.md
+work/logs/interaction.md
+work/logs/trace/
+work/logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
-`result/output.md` records the actual generated project path. Completion is reported as exactly one of:
+`work/result/output.md` records the actual generated project path. Completion is reported as exactly one of:
 
 ```text
 READY_FOR_EVALUATION
 BLOCKED_WITH_REPORT
+```
+
+The evaluator should read `work/result/output.md` first. When READY, it must report:
+
+```text
+rust_project: work/output/flashDB_rust
+cargo_toml: work/output/flashDB_rust/Cargo.toml
+semantic_audit_report: work/logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
 ## Windows local debugging
@@ -69,7 +77,7 @@ BLOCKED_WITH_REPORT
 Windows is a local debugging path, not the official evaluator entry. Use:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File work\scripts\run-e2e-win.ps1 -SourceRoot ".code\FlashDB"
+powershell -ExecutionPolicy Bypass -File work\scripts\run-e2e-win.ps1 -SourceRoot "work\code\FlashDB"
 ```
 
-The PowerShell runner resolves the Rust project from `result/output.md` or `logs/trace/run-summary.json`; it does not assume a root-level `flashDB_rust` directory.
+The PowerShell runner resolves the Rust project from `work/result/output.md` or `work/logs/trace/run-summary.json`; it does not assume a root-level `flashDB_rust` directory.

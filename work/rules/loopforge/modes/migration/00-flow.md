@@ -20,4 +20,3 @@
 - `CODE_GENERATE`: apply migration changes under `SOURCE_ROOT`
 - `COMPATIBILITY_VERIFY`: run configured verification and compatibility checks
 - `FINAL_REPORT`: capture migration coverage and unresolved gaps
-

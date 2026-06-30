@@ -26,8 +26,8 @@ stage_id: "02-implementation-map"
 executed_by_subagent: "opencode-implementation-map-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "logs/trace/consistency/01-design-summary.md"
-output_artifact: "logs/trace/consistency/02-implementation-mapping.md"
+  - "work/logs/trace/consistency/01-design-summary.md"
+output_artifact: "work/logs/trace/consistency/02-implementation-mapping.md"
 gate: "READY_FOR_DRIFT_ANALYSIS | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "03-drift-analyze | done"
@@ -39,4 +39,3 @@ next_stage: "03-drift-analyze | done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
-

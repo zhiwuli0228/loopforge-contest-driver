@@ -15,7 +15,7 @@ Execute one bounded generic C-to-Rust migration stage. Do not perform unrelated 
 
 Allowed:
 
-- `logs/trace/c-to-rust/**`
+- `work/logs/trace/c-to-rust/**`
 - runtime-derived Rust output project tests directory
 
 Forbidden:
@@ -26,7 +26,7 @@ Forbidden:
 
 ## Output
 
-Write stage output to the runtime-derived Rust test directory and `logs/trace/c-to-rust/04-test-mapping.md`.
+Write stage output to the runtime-derived Rust test directory and `work/logs/trace/c-to-rust/04-test-mapping.md`.
 Every generated Rust test must include assertions and must trace back to an explicit C scenario.
 
 ## Gate

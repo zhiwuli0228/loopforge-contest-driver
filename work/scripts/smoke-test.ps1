@@ -18,8 +18,8 @@ function Resolve-Python {
 
 $RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $WorkDir = Join-Path $RootDir "work"
-$ResultDir = Join-Path $RootDir "result"
-$LogDir = Join-Path $RootDir "logs"
+$ResultDir = Join-Path $WorkDir "result"
+$LogDir = Join-Path $WorkDir "logs"
 $PythonCmd = Resolve-Python
 $RunnerPath = Join-Path $WorkDir "runtime/loopforge_runner.py"
 

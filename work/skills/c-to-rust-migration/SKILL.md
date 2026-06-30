@@ -25,8 +25,8 @@ Read, in order:
 Allowed:
 
 - runtime-derived Rust output project directory
-- `result/**`
-- `logs/**`
+- `work/result/**`
+- `work/logs/**`
 
 Forbidden:
 
@@ -42,7 +42,7 @@ Forbidden:
 
 Produce:
 
-- `logs/trace/c-to-rust/01-source-inventory.md`
+- `work/logs/trace/c-to-rust/01-source-inventory.md`
 
 Must include:
 
@@ -56,7 +56,7 @@ Must include:
 
 Produce:
 
-- `logs/trace/c-to-rust/02-api-mapping.md`
+- `work/logs/trace/c-to-rust/02-api-mapping.md`
 
 Must include:
 
@@ -70,7 +70,7 @@ Must include:
 
 Produce:
 
-- `logs/trace/c-to-rust/03-migration-plan.md`
+- `work/logs/trace/c-to-rust/03-migration-plan.md`
 
 Must include:
 
@@ -112,7 +112,7 @@ Rust tests must contain assertions.
 
 Produce:
 
-- `logs/trace/c-to-rust/04-test-mapping.md`
+- `work/logs/trace/c-to-rust/04-test-mapping.md`
 
 ### 6. Verification
 
@@ -131,19 +131,19 @@ cargo test
 
 Produce:
 
-- `logs/trace/c-to-rust/06-verification-report.md`
-- `logs/trace/c-to-rust/unsafe-ratio.json`
+- `work/logs/trace/c-to-rust/06-verification-report.md`
+- `work/logs/trace/c-to-rust/unsafe-ratio.json`
 - semantic gate evidence inside the verification report
 
 ### 7. Final Reporting
 
 Produce:
 
-- `result/output.md`
-- `result/issues/00-summary.md`
-- `logs/trace/final-report.md`
+- `work/result/output.md`
+- `work/result/issues/00-summary.md`
+- `work/logs/trace/final-report.md`
 
-`result/output.md` must include:
+`work/result/output.md` must include:
 
 - final Rust project path
 - build result
@@ -152,7 +152,7 @@ Produce:
 - semantic gate result
 - test migration summary
 
-`result/issues/00-summary.md` must include:
+`work/result/issues/00-summary.md` must include:
 
 - known missing behavior
 - failed tests, if any
@@ -172,7 +172,7 @@ Return `READY_FOR_EVALUATION` only if:
 - semantic gate passes
 - semantic invariants were extracted and every required derived test passes
 - the repair loop has no unresolved semantic failures
-- `result/output.md` exists
-- `result/issues/00-summary.md` exists
+- `work/result/output.md` exists
+- `work/result/issues/00-summary.md` exists
 
 Return `BLOCKED_WITH_REPORT` if source layout cannot be resolved or required tools are missing.

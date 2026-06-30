@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${ROOT_DIR}/work"
-RESULT_DIR="${ROOT_DIR}/result"
-LOG_DIR="${ROOT_DIR}/logs"
+RESULT_DIR="${WORK_DIR}/result"
+LOG_DIR="${WORK_DIR}/logs"
 PYTHON_BIN="${PYTHON_BIN:-}"
 
 if [[ -z "$PYTHON_BIN" ]]; then

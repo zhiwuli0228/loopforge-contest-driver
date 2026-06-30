@@ -25,7 +25,7 @@ Execution may continue in degraded form when:
 
 ## Logging Contract
 
-Each meaningful phase should log a gate event in `logs/trace/gates/gate-events.md`.
+Each meaningful phase should log a gate event in `work/logs/trace/gates/gate-events.md`.
 
 At minimum, log:
 
@@ -42,4 +42,3 @@ Each event should record:
 - pass, warn, fail, or degrade status
 - action taken
 - reason or constraint summary
-

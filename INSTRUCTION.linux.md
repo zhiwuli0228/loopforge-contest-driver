@@ -39,13 +39,21 @@ cargo test --locked -- --nocapture
 ## Reports and completion
 
 ```text
-result/output.md
-result/issues/00-summary.md
-logs/interaction.md
-logs/trace/
-logs/trace/c-to-rust/semantic-audit-report.md
+work/result/output.md
+work/result/issues/00-summary.md
+work/logs/interaction.md
+work/logs/trace/
+work/logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
 Completion status is `READY_FOR_EVALUATION` or `BLOCKED_WITH_REPORT`.
 
-For Windows-only local debugging, use `work/scripts/run-e2e-win.ps1`; it derives the generated project path from `result/output.md` or `logs/trace/run-summary.json`.
+When READY, `work/result/output.md` should point to:
+
+```text
+rust_project: work/output/flashDB_rust
+cargo_toml: work/output/flashDB_rust/Cargo.toml
+semantic_audit_report: work/logs/trace/c-to-rust/semantic-audit-report.md
+```
+
+For Windows-only local debugging, use `work/scripts/run-e2e-win.ps1`; it derives the generated project path from `work/result/output.md` or `work/logs/trace/run-summary.json`.

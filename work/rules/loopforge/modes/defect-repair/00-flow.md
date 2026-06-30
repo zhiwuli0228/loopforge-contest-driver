@@ -19,4 +19,3 @@
 - `CODE_GENERATE`: implement the patch under `SOURCE_ROOT`
 - `REGRESSION_VERIFY`: run configured verification to check for breakage
 - `FINAL_REPORT`: record the fix, evidence, and residual risk
-

@@ -28,5 +28,4 @@
 - Build explicit design-to-code mappings before labeling drift.
 - Produce a repair plan before changing any code.
 - Run only `verification.commands` from `loopforge.config.yaml`.
-- Keep all execution artifacts under `logs/trace/plan/` or another runner-compatible directory referenced by the final report.
-
+- Keep all execution artifacts under `work/logs/trace/plan/` or another runner-compatible directory referenced by the final report.

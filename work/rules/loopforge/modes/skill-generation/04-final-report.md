@@ -6,4 +6,3 @@
 - references to skill-generation artifacts
 - quality review summary
 - remaining follow-up items
-

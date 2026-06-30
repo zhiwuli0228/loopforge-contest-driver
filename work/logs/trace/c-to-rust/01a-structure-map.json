@@ -1,0 +1,60 @@
+{
+  "core_files": [
+    "src/flashdb.c"
+  ],
+  "header_files": [
+    "src/flashdb.h"
+  ],
+  "test_files": [
+    "tests/test_flashdb.c"
+  ],
+  "modules": [
+    "code",
+    "FlashDB",
+    "flashdb"
+  ],
+  "public_apis": [
+    "flashdb_count",
+    "flashdb_delete",
+    "flashdb_get",
+    "flashdb_new",
+    "flashdb_set"
+  ],
+  "api_declarations": [
+    "flashdb_count",
+    "flashdb_delete",
+    "flashdb_get",
+    "flashdb_new",
+    "flashdb_set"
+  ],
+  "api_definitions": [
+    "flashdb_count",
+    "flashdb_delete",
+    "flashdb_get",
+    "flashdb_new",
+    "flashdb_set"
+  ],
+  "unresolved_declarations": [],
+  "evidence": [
+    {
+      "file": "src/flashdb.c",
+      "symbol": "flashdb_count"
+    },
+    {
+      "file": "src/flashdb.c",
+      "symbol": "flashdb_delete"
+    },
+    {
+      "file": "src/flashdb.c",
+      "symbol": "flashdb_get"
+    },
+    {
+      "file": "src/flashdb.c",
+      "symbol": "flashdb_new"
+    },
+    {
+      "file": "src/flashdb.c",
+      "symbol": "flashdb_set"
+    }
+  ]
+}

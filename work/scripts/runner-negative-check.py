@@ -90,7 +90,7 @@ def scenario_output_outside_source_root(workspace: Path) -> None:
     config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
-        '  final_report: "logs/trace/final-report.md"',
+        '  final_report: "work/logs/trace/final-report.md"',
         '  final_report: "reports/final-report.md"',
     )
 
@@ -128,7 +128,7 @@ SCENARIOS: List[Dict[str, object]] = [
     {
         "name": "output-outside-source-root",
         "mutator": scenario_output_outside_source_root,
-        "expected_errors": ["outputs.final_report must resolve under logs/trace/"],
+        "expected_errors": ["outputs.final_report must resolve under work/logs/trace/"],
     },
     {
         "name": "missing-mode-rule",
@@ -208,4 +208,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

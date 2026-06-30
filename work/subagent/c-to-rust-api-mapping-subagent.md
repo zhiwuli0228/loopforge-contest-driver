@@ -15,7 +15,7 @@ Execute one bounded generic C-to-Rust migration stage. Do not perform unrelated 
 
 Allowed:
 
-- `logs/trace/c-to-rust/**`
+- `work/logs/trace/c-to-rust/**`
 
 Forbidden:
 
@@ -25,7 +25,7 @@ Forbidden:
 
 ## Output
 
-Write the stage report to `logs/trace/c-to-rust/02-api-mapping.md`.
+Write the stage report to `work/logs/trace/c-to-rust/02-api-mapping.md`.
 The report must record the semantic mapping between the active C source project APIs and generated Rust functions or modules.
 
 ## Gate

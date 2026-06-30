@@ -1,0 +1,15 @@
+{
+  "stage": "structure",
+  "passed": true,
+  "checks": {
+    "core_c_files_present": true,
+    "public_apis_present": true,
+    "all_public_apis_defined": true,
+    "all_public_apis_have_evidence": true
+  },
+  "metrics": {
+    "public_api_count": 5,
+    "definition_count": 5
+  },
+  "failures": []
+}

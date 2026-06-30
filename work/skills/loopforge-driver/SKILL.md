@@ -9,10 +9,10 @@ Use this skill as the entry point for contest execution.
 
 ## Execution Root
 
-- Repository root contains `INSTRUCTION.md`, `work/`, `result/`, and `logs/`; local source fixtures may live under `.code/`
+- Repository root contains `INSTRUCTION.md`, `work/`, `work/result/`, and `work/logs/`; local source fixtures may live under `.code/`
 - Framework assets live under `work/`
-- Runtime evidence is written under `logs/trace/`
-- Evaluator-facing outputs are written under `result/` and `logs/`
+- Runtime evidence is written under `work/logs/trace/`
+- Evaluator-facing outputs are written under `work/result/` and `work/logs/`
 
 ## Required Inputs
 
@@ -35,9 +35,9 @@ Drive an unattended contest run from the repository root while treating `SOURCE_
 - Do not require humans to fill placeholder task name, language, objective, or verification commands.
 - Read `work/loopforge.config.yaml` as framework defaults, not as the sole source of task intent.
 - Parse the source README first and record the selected README path.
-- If no source README exists, degrade into `BLOCKED_WITH_REPORT` with explicit evidence in `result/issues/00-summary.md` and `logs/trace/`.
+- If no source README exists, degrade into `BLOCKED_WITH_REPORT` with explicit evidence in `work/result/issues/00-summary.md` and `work/logs/trace/`.
 - Do not create commits, pushes, pull requests, or submissions.
-- Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `result/`, and `logs/`.
+- Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `work/result/`, and `work/logs/`.
 - Stop after verification and report generation.
 
 ## Source Root Protocol
@@ -86,15 +86,15 @@ For non-delegated modes, continue with the normal contest run.
 6. Inspect `SOURCE_ROOT` and plan the smallest valid task flow for the selected mode.
 7. Use `work/runtime/loopforge_runner.py` with `--source-root` to initialize artifacts, detect the project, attempt verification, and finalize reports.
 8. If no runnable verification command can be derived, leave a blocked report instead of waiting for manual config edits.
-9. Ensure evaluator-facing outputs exist at `result/output.md`, `result/issues/00-summary.md`, and `logs/trace/`.
+9. Ensure evaluator-facing outputs exist at `work/result/output.md`, `work/result/issues/00-summary.md`, and `work/logs/trace/`.
 
 ## Output Expectations
 
 At minimum, the run should leave behind:
 
-- `result/output.md`
-- `result/issues/00-summary.md`
-- `logs/trace/run-summary.json`
-- `logs/trace/final-report.md`
-- `logs/trace/c-to-rust/06-verification-report.md`
-The trace report under `logs/trace/` is runtime evidence, not the primary evaluator-facing result.
+- `work/result/output.md`
+- `work/result/issues/00-summary.md`
+- `work/logs/trace/run-summary.json`
+- `work/logs/trace/final-report.md`
+- `work/logs/trace/c-to-rust/06-verification-report.md`
+The trace report under `work/logs/trace/` is runtime evidence, not the primary evaluator-facing result.

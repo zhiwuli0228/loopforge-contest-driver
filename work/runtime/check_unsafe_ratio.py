@@ -20,7 +20,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("project", help="Rust project path, for example a runtime-derived output crate")
     parser.add_argument("--max-ratio", type=float, default=0.10)
-    parser.add_argument("--output", default="logs/trace/c-to-rust/unsafe-ratio.json")
+    parser.add_argument("--output", default="work/logs/trace/c-to-rust/unsafe-ratio.json")
     args = parser.parse_args()
 
     project = Path(args.project)

@@ -8,7 +8,7 @@ LoopForge is a generic contest execution framework.
 
 - The repository root contains static framework assets.
 - `SOURCE_ROOT` is the resolved source tree.
-- `logs/trace/` is internal runtime evidence.
+- `work/logs/trace/` is internal runtime evidence.
 - `task.mode` selects the generic workflow shape.
 - `task.profile` selects declarative defaults for the current run.
 
@@ -19,7 +19,7 @@ LoopForge should:
 - read platform instructions from the repository root
 - read task context from the README under `SOURCE_ROOT`
 - inspect or modify only the resolved source tree
-- leave evaluator-facing outputs under `result/` and `logs/`
+- leave evaluator-facing outputs under `work/result/` and `work/logs/`
 
 LoopForge must not:
 
@@ -27,4 +27,3 @@ LoopForge must not:
 - require humans to fill task metadata before a run
 - hard-code a specific source project path into the framework
 - perform commit, push, PR, or submission actions
-

@@ -9,4 +9,3 @@
 - Separate confirmed drift from ambiguous design gaps.
 - Preserve traceability between each finding and its evidence source.
 - Execute configured verification commands after repair, or record a degraded verification reason when blocked by external dependencies.
-

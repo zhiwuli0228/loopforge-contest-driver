@@ -319,6 +319,7 @@ class AgentTaskPacket:
 
     def ready(self) -> bool:
         required = [
+            "source_analysis",
             "project_layout",
             "trace_artifacts",
             "cargo_build",

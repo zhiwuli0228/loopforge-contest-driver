@@ -18,7 +18,7 @@ READY gate policy:
 
 Required final files:
 
-- `result/output.md`
-- `result/issues/00-summary.md`
-- `logs/trace/c-to-rust/06-verification-report.md`
-- `logs/trace/c-to-rust/unsafe-ratio.json`
+- `work/result/output.md`
+- `work/result/issues/00-summary.md`
+- `work/logs/trace/c-to-rust/06-verification-report.md`
+- `work/logs/trace/c-to-rust/unsafe-ratio.json`

@@ -17,7 +17,7 @@ The orchestrator must:
 3. load configured SuperSpec and SuperPower files
 4. resolve stage definitions
 5. execute stages in order
-6. write each stage output to `logs/trace/consistency/`
+6. write each stage output to `work/logs/trace/consistency/`
 7. validate each stage gate
 8. continue automatically when the gate allows
 9. generate final report without human intervention
@@ -91,7 +91,7 @@ The patch implementation must:
 2. execute only within the patch stage
 3. follow the repair plan
 4. obey SuperPower write permissions
-5. write `logs/trace/consistency/05-patch-summary.md`
+5. write `work/logs/trace/consistency/05-patch-summary.md`
 6. report the applied coding skill path
 7. preserve the stage gate contract
 
@@ -109,4 +109,3 @@ Each stage artifact must include:
 - `gate`
 - `summary`
 - `next_stage`
-

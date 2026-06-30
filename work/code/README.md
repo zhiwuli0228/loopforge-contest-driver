@@ -33,8 +33,8 @@
 
 # 验证用例
 
-1. `.code/FlashDB/src` 全部转换为Rust，并且编译通过
-2. `.code/FlashDB/tests` 单元测试项完成重构，全部通过构建并测试执行成功
+1. `work/code/FlashDB/src` 全部转换为Rust，并且编译通过
+2. `work/code/FlashDB/tests` 单元测试项完成重构，全部通过构建并测试执行成功
 3. Rust unsafe比例小于10%
 
 
@@ -54,6 +54,6 @@ e. 项目应该能够执行 cargo build和cargo test
 5. unsafe 使用比例应低于10%
 
 建议同时生成执行说明报告：
-result/output.md
-result/issues/00-summary.md
+work/result/output.md
+work/result/issues/00-summary.md
 用于说明转换过程、最终Rust项目位置、测试迁移情况、已知问题和严重结果

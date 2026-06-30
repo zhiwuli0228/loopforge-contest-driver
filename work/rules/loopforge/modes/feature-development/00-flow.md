@@ -21,4 +21,3 @@
 - `CODE_GENERATE`: apply the implementation only inside `SOURCE_ROOT`
 - `VERIFY`: run configured commands
 - `FINAL_REPORT`: summarize scope, evidence, and remaining gaps
-

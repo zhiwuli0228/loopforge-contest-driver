@@ -15,7 +15,7 @@ Execute one bounded generic C-to-Rust migration stage. Do not perform unrelated 
 
 Allowed:
 
-- `logs/trace/c-to-rust/**`
+- `work/logs/trace/c-to-rust/**`
 - runtime-derived Rust output project
 
 Forbidden:
@@ -26,7 +26,7 @@ Forbidden:
 
 ## Output
 
-Write stage output to the runtime-derived Rust output project and `logs/trace/c-to-rust/05-migration-summary.md`.
+Write stage output to the runtime-derived Rust output project and `work/logs/trace/c-to-rust/05-migration-summary.md`.
 Generated Rust code must not contain `todo!()` or `unimplemented!()`.
 
 ## Gate

@@ -4,4 +4,3 @@
 - no vague examples without contract coverage
 - no commit, push, or PR automation
 - no conflating business skills with platform-core rules
-

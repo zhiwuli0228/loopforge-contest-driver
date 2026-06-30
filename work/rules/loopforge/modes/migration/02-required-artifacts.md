@@ -6,10 +6,9 @@
 - migration plan
 - compatibility verification evidence
 
-Recommended artifact paths under `logs/trace/plan/`:
+Recommended artifact paths under `work/logs/trace/plan/`:
 
 - `source-inventory.md`
 - `target-architecture.md`
 - `compatibility-contract.md`
 - `migration-plan.md`
-

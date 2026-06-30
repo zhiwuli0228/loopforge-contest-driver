@@ -1,0 +1,12 @@
+{
+  "stage": "data_model",
+  "passed": true,
+  "checks": {
+    "all_struct_fields_named": true,
+    "all_structs_have_evidence": true
+  },
+  "metrics": {
+    "struct_count": 2
+  },
+  "failures": []
+}

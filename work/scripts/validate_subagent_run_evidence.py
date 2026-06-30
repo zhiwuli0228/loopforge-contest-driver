@@ -58,7 +58,7 @@ def main() -> int:
     workspace_root = work_root.parent
     superspec_path = work_root / "profiles" / "superspec" / "consistency-check-stages.yaml"
     subagent_root = work_root / "subagent"
-    final_report_path = workspace_root / "logs" / "trace" / "final-report.md"
+    final_report_path = workspace_root / "work" / "logs" / "trace" / "final-report.md"
     errors: list[str] = []
 
     if not superspec_path.exists():

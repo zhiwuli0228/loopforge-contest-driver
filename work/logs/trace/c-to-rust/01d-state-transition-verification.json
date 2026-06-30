@@ -1,0 +1,14 @@
+{
+  "stage": "state_model",
+  "passed": true,
+  "checks": {
+    "mutation_transition_coverage_100_percent": true,
+    "all_transitions_have_evidence": true,
+    "failure_preservation_explicit": true
+  },
+  "metrics": {
+    "mutating_api_count": 3,
+    "transition_count": 3
+  },
+  "failures": []
+}

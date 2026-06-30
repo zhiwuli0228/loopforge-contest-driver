@@ -14,7 +14,7 @@ If code generation is disabled:
 
 - source files under `SOURCE_ROOT`
 - tests under `SOURCE_ROOT`
-- runtime evidence under `logs/trace/`
+- runtime evidence under `work/logs/trace/`
 
 ## Forbidden Targets
 
@@ -30,4 +30,3 @@ If code generation is disabled:
 - for migration, preserve compatibility goals declared by the mode and profile
 
 LoopForge generates code, records evidence, runs configured verification, writes the final report, and stops.
-

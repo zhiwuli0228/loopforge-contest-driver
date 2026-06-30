@@ -28,8 +28,8 @@ Requirements, constraints, and acceptance context are read from the source READM
 
 Primary run outputs are written to:
 
-- `result/output.md`
-- `result/issues/00-summary.md`
-- `logs/trace/`
+- `work/result/output.md`
+- `work/result/issues/00-summary.md`
+- `work/logs/trace/`
 
-Internal runtime evidence stays under `logs/trace/`.
+Internal runtime evidence stays under `work/logs/trace/`.

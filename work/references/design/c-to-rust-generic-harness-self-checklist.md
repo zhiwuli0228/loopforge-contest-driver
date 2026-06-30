@@ -128,7 +128,7 @@ mkdir -p logs/trace
 使用当前比赛题面本地输入时执行：
 
 ```bash
-SOURCE_ROOT=".code/FlashDB" bash work/scripts/run.sh --run
+SOURCE_ROOT="work/code/FlashDB" bash work/scripts/run.sh --run
 ```
 
 验收：

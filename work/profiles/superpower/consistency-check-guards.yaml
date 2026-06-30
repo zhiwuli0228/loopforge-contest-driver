@@ -32,7 +32,7 @@ read_permissions:
     - "runtime/**"
     - "scripts/**"
     - "SOURCE_ROOT/**"
-    - "logs/trace/**"
+    - "work/logs/trace/**"
 
 write_permissions:
   read_only:
@@ -45,7 +45,7 @@ write_permissions:
     - "scripts/**"
   writable:
     - "SOURCE_ROOT/**"
-    - "logs/trace/**"
+    - "work/logs/trace/**"
   forbidden:
     - "INSTRUCTION.md"
     - "loopforge.config.yaml"
@@ -77,7 +77,7 @@ coding_skill_policy:
   allowed_stage:
     - "05-patch"
   output_required:
-    - "logs/trace/consistency/05-patch-summary.md"
+    - "work/logs/trace/consistency/05-patch-summary.md"
   patch_summary_must_include:
     - "applied skill path"
     - "modified files"
@@ -88,7 +88,7 @@ coding_skill_policy:
   write_permissions:
     allowed:
       - "SOURCE_ROOT/**"
-      - "logs/trace/**"
+      - "work/logs/trace/**"
     forbidden:
       - "INSTRUCTION.md"
       - "loopforge.config.yaml"
@@ -103,4 +103,3 @@ git:
   commit_allowed: false
   push_allowed: false
   pr_allowed: false
-

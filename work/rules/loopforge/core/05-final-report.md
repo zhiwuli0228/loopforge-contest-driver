@@ -34,7 +34,7 @@ Final reports must include:
 
 Mode-specific rules may require extra report sections, but they must extend this core report rather than replace it.
 
-Mode-specific planning and analysis artifacts should be referenced from `logs/trace/plan/mode-artifacts.md` when they exist.
+Mode-specific planning and analysis artifacts should be referenced from `work/logs/trace/plan/mode-artifacts.md` when they exist.
 
 For delegated consistency-check runs, the final report must contain:
 
@@ -49,4 +49,3 @@ The section must include one row per stage with:
 - artifact path
 - gate
 - parent direct execution flag
-

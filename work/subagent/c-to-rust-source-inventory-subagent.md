@@ -15,7 +15,7 @@ Execute one bounded generic C-to-Rust migration stage. Do not perform unrelated 
 
 Allowed:
 
-- `logs/trace/c-to-rust/**`
+- `work/logs/trace/c-to-rust/**`
 
 Forbidden:
 
@@ -25,7 +25,7 @@ Forbidden:
 
 ## Output
 
-Write the stage report to `logs/trace/c-to-rust/01-source-inventory.md`.
+Write the stage report to `work/logs/trace/c-to-rust/01-source-inventory.md`.
 The report must declare the active README contract, resolved source project root, and whether a runtime fallback README was required.
 
 ## Gate

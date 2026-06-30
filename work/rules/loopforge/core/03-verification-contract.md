@@ -32,7 +32,7 @@ If no runnable verification command can be derived:
 
 ## Output Requirements
 
-Verification evidence must be written under `logs/trace/state/` and should include:
+Verification evidence must be written under `work/logs/trace/state/` and should include:
 
 - attempted commands
 - detected OS
@@ -49,4 +49,3 @@ Verification evidence must be written under `logs/trace/state/` and should inclu
 - `DONE` means configured verification succeeded.
 - `BLOCKED_WITH_REPORT` means execution produced a report but verification could not pass or could not run as configured.
 - `PARTIAL_DONE` is allowed only when finalization happened before verification was attempted.
-

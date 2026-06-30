@@ -26,8 +26,8 @@ stage_id: "04-repair-plan"
 executed_by_subagent: "opencode-repair-plan-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "logs/trace/consistency/03-drift-report.md"
-output_artifact: "logs/trace/consistency/04-repair-plan.md"
+  - "work/logs/trace/consistency/03-drift-report.md"
+output_artifact: "work/logs/trace/consistency/04-repair-plan.md"
 gate: "READY_FOR_PATCH | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "05-patch | done"
@@ -39,4 +39,3 @@ next_stage: "05-patch | done"
 - Do not paste full analysis into the parent context.
 - Do not continue if required inputs are missing.
 - Do not emulate other subagents.
-

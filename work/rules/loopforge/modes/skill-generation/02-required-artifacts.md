@@ -6,10 +6,9 @@
 - example set
 - quality review evidence
 
-Recommended artifact paths under `logs/trace/plan/`:
+Recommended artifact paths under `work/logs/trace/plan/`:
 
 - `capability-inventory.md`
 - `usage-contract.md`
 - `skill-draft-summary.md`
 - `example-coverage.md`
-

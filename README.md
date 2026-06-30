@@ -1,6 +1,6 @@
 # LoopForge Contest Driver
 
-This repository is a generic source-readme-driven C-to-Rust migration harness. It accepts a source tree path through `SOURCE_ROOT`, derives migration context from the source README, and writes evaluator-facing results to `result/` and `logs/`.
+This repository is a generic source-readme-driven C-to-Rust migration harness. It accepts a source tree path through `SOURCE_ROOT`, derives migration context from the source README, and writes evaluator-facing results to `work/result/` and runtime evidence to `work/logs/`.
 
 The file `work/code/README.md` is a contest requirement document and runtime fallback metadata source, not a source directory.
 
@@ -10,9 +10,9 @@ Start from [INSTRUCTION.md](./INSTRUCTION.md).
 
 Primary outputs:
 
-- [result/output.md](./result/output.md)
-- [result/issues/00-summary.md](./result/issues/00-summary.md)
-- [logs/trace/](./logs/trace/)
+- [work/result/output.md](./work/result/output.md)
+- [work/result/issues/00-summary.md](./work/result/issues/00-summary.md)
+- [work/logs/trace/](./work/logs/trace/)
 
 ## Input Model
 
@@ -36,9 +36,10 @@ The framework records which README was selected. If no README is available, the 
 .
 ├── INSTRUCTION.md
 ├── .code/   # optional local fallback source area
-├── work/    # framework assets
-├── result/  # evaluator-facing outputs
-└── logs/    # trace outputs
+└── work/
+    ├── result/  # evaluator-facing outputs
+    ├── logs/    # trace outputs
+    └── output/  # generated Rust projects
 ```
 
 ## Quick Start
@@ -73,5 +74,5 @@ If `SOURCE_ROOT` is not provided, the runner first checks platform mounts and th
 ## Notes
 
 - `work/loopforge.config.yaml` carries framework defaults, not task-specific hardcoded placeholders.
-- Runtime evidence is written under `logs/trace/`, not under `SOURCE_ROOT`.
-- The evaluator should read `result/output.md` first, not the internal final report path.
+- Runtime evidence is written under `work/logs/trace/`, not under `SOURCE_ROOT`.
+- The evaluator should read `work/result/output.md` first, not the internal final report path.

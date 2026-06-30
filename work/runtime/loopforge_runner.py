@@ -16,6 +16,7 @@ from agent_task_packet import AgentTaskPacket, RuntimePaths, resolve_runtime_con
 from c2rust_analysis import analyze_source, evaluate_semantic_equivalence
 from c2rust_project_generator import generate_project
 from c2rust_repair import run_repair_loop
+from source_analysis_verify_gate import build_and_verify_source_analysis
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -29,6 +30,7 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c2rust_repair.py",
     "work/runtime/c2rust_semantic_audit.py",
     "work/runtime/c2rust_invariant_tests.py",
+    "work/runtime/source_analysis_verify_gate.py",
 ]
 REQUIRED_ADAPTER_FILES = [
     "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
@@ -560,7 +562,7 @@ class LoopForgeRunner:
         packet.set_gate("project_layout", cargo_manifest_exists and src_exists and tests_exists, "generated Cargo.toml/src/tests layout", {})
         packet.set_gate(
             "trace_artifacts",
-            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
+            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
             "required trace artifacts exist",
             {},
         )
@@ -635,7 +637,7 @@ class LoopForgeRunner:
             "## READY Gates",
             "",
         ]
-        for gate_name in ["cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
+        for gate_name in ["source_analysis", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
             gate = packet.gates.get(gate_name)
             if gate:
                 lines.append(f"- `{gate_name}`: `{'pass' if gate.passed else 'fail'}`")
@@ -659,6 +661,7 @@ class LoopForgeRunner:
             f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
             f"- cargo_toml: `{self.display_path(packet.output_project_dir / 'Cargo.toml')}`",
             f"- semantic_audit_report: `{self.display_path(self.migration_trace_dir / 'semantic-audit-report.md')}`",
+            f"- source_analysis_gate: `{gates.get('source_analysis', {}).get('passed', False)}`",
             f"- cargo_build: `{gates.get('cargo_build', {}).get('passed', False)}`",
             f"- cargo_test: `{gates.get('cargo_test', {}).get('passed', False)}`",
             f"- unsafe_gate: `{gates.get('unsafe', {}).get('passed', False)}`",
@@ -725,8 +728,14 @@ class LoopForgeRunner:
         self.write_source_inventory(packet, analysis)
         self.record_gate_event("ANALYZE_SOURCE", analysis["ok"], f"support_level={analysis.get('support_level', 'unsupported')}")
 
+        source_gate = build_and_verify_source_analysis(packet, analysis, self.migration_trace_dir)
+        packet.set_gate("source_analysis", source_gate["passed"], "strict source analysis verify gate", source_gate)
+        self.record_gate_event("SOURCE_ANALYSIS_VERIFY", source_gate["passed"], ",".join(source_gate["failed_stages"]) or "passed")
+        if not source_gate["passed"]:
+            packet.add_issue("source_analysis_gate_failed", f"failed stages: {', '.join(source_gate['failed_stages'])}")
+
         project_payload: Optional[Dict[str, Any]] = None
-        if analysis["ok"]:
+        if analysis["ok"] and source_gate["passed"]:
             project_payload = generate_project(packet, analysis)
             packet.metadata["project_generation"] = project_payload
             self.write_api_mapping(analysis, project_payload)
@@ -769,6 +778,7 @@ class LoopForgeRunner:
                 "ready": False,
                 "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
                 "issues": packet.issues,
+                "first_blocking_point": source_gate.get("first_blocking_point") or "C_SOURCE_ANALYSIS",
             }
             self.write_json(self.verify_path, verification_payload)
             self.verification_report_md.write_text(

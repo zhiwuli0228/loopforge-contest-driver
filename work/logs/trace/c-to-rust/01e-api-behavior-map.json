@@ -1,0 +1,136 @@
+{
+  "apis": [
+    {
+      "name": "flashdb_count",
+      "signature": "size_t flashdb_count(const struct flashdb_handle *db)",
+      "kind": "count",
+      "inputs": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle *"
+        }
+      ],
+      "outputs": [
+        "size_t"
+      ],
+      "side_effects": [],
+      "failure_modes": [],
+      "evidence": [
+        {
+          "file": "src/flashdb.c",
+          "symbol": "flashdb_count"
+        }
+      ]
+    },
+    {
+      "name": "flashdb_delete",
+      "signature": "int flashdb_delete(struct flashdb_handle *db, const char *key)",
+      "kind": "delete",
+      "inputs": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle *"
+        },
+        {
+          "name": "key",
+          "type": "const char *"
+        }
+      ],
+      "outputs": [
+        "int"
+      ],
+      "side_effects": [
+        "loop_find_then_shift_delete"
+      ],
+      "failure_modes": [],
+      "evidence": [
+        {
+          "file": "src/flashdb.c",
+          "symbol": "flashdb_delete"
+        }
+      ]
+    },
+    {
+      "name": "flashdb_get",
+      "signature": "const char * flashdb_get(const struct flashdb_handle *db, const char *key)",
+      "kind": "query",
+      "inputs": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle *"
+        },
+        {
+          "name": "key",
+          "type": "const char *"
+        }
+      ],
+      "outputs": [
+        "const char *"
+      ],
+      "side_effects": [],
+      "failure_modes": [],
+      "evidence": [
+        {
+          "file": "src/flashdb.c",
+          "symbol": "flashdb_get"
+        }
+      ]
+    },
+    {
+      "name": "flashdb_new",
+      "signature": "void flashdb_new(struct flashdb_handle *db)",
+      "kind": "mutation",
+      "inputs": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle *"
+        }
+      ],
+      "outputs": [
+        "void"
+      ],
+      "side_effects": [
+        "state_mutation_then_return"
+      ],
+      "failure_modes": [],
+      "evidence": [
+        {
+          "file": "src/flashdb.c",
+          "symbol": "flashdb_new"
+        }
+      ]
+    },
+    {
+      "name": "flashdb_set",
+      "signature": "int flashdb_set(struct flashdb_handle *db, const char *key, const char *value)",
+      "kind": "mutation",
+      "inputs": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle *"
+        },
+        {
+          "name": "key",
+          "type": "const char *"
+        },
+        {
+          "name": "value",
+          "type": "const char *"
+        }
+      ],
+      "outputs": [
+        "int"
+      ],
+      "side_effects": [
+        "loop_find_then_mutate_return"
+      ],
+      "failure_modes": [],
+      "evidence": [
+        {
+          "file": "src/flashdb.c",
+          "symbol": "flashdb_set"
+        }
+      ]
+    }
+  ]
+}

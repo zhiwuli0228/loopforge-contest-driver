@@ -6,10 +6,9 @@
 - changed-file summary
 - regression verification evidence
 
-Recommended artifact paths under `logs/trace/plan/`:
+Recommended artifact paths under `work/logs/trace/plan/`:
 
 - `failure-summary.md`
 - `root-cause.md`
 - `minimal-patch-plan.md`
 - `changed-files.md`
-

@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 
 ## Expected Outputs
 
-- `result/output.md`
-- `result/issues/00-summary.md`
-- `logs/interaction.md`
-- `logs/trace/run-summary.json`
+- `work/result/output.md`
+- `work/result/issues/00-summary.md`
+- `work/logs/interaction.md`
+- `work/logs/trace/run-summary.json`

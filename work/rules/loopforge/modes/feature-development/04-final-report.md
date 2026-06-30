@@ -6,4 +6,3 @@
 - references to requirement, brainstorm, design, and implementation artifacts
 - verification outcome
 - deferred work or remaining risks
-

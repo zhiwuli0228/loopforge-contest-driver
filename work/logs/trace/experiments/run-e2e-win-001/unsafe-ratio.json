@@ -1,0 +1,31 @@
+{
+  "project": "./work/output/flashDB_rust",
+  "total_code_lines": 136,
+  "unsafe_lines": 0,
+  "unsafe_ratio": 0.0,
+  "max_ratio": 0.1,
+  "passed": true,
+  "files": [
+    {
+      "file": "./work/output/flashDB_rust/src/flashdb.rs",
+      "code_lines": 54,
+      "unsafe_lines": 0
+    },
+    {
+      "file": "./work/output/flashDB_rust/src/lib.rs",
+      "code_lines": 10,
+      "unsafe_lines": 0
+    },
+    {
+      "file": "./work/output/flashDB_rust/tests/semantic_invariants.rs",
+      "code_lines": 58,
+      "unsafe_lines": 0
+    },
+    {
+      "file": "./work/output/flashDB_rust/tests/source_migration.rs",
+      "code_lines": 14,
+      "unsafe_lines": 0
+    }
+  ],
+  "generated_at": "2026-06-30T16:32:46Z"
+}

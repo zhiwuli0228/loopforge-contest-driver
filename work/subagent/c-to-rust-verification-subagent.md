@@ -15,7 +15,7 @@ Execute one bounded generic C-to-Rust migration stage. Do not perform unrelated 
 
 Allowed:
 
-- `logs/trace/c-to-rust/**`
+- `work/logs/trace/c-to-rust/**`
 
 Forbidden:
 
@@ -25,7 +25,7 @@ Forbidden:
 
 ## Output
 
-Write the stage report to `logs/trace/c-to-rust/06-verification-report.md` and `logs/trace/c-to-rust/unsafe-ratio.json`.
+Write the stage report to `work/logs/trace/c-to-rust/06-verification-report.md` and `work/logs/trace/c-to-rust/unsafe-ratio.json`.
 The report must include cargo build, cargo test, unsafe gate, semantic gate, and repair-loop evidence.
 
 ## Gate

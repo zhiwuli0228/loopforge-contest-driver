@@ -7,14 +7,18 @@ Files in the LoopForge root outside `SOURCE_ROOT` are human-maintained static as
 This includes:
 
 - `INSTRUCTION.md`
+- `INSTRUCTION.linux.md`
 - `README.md`
-- `SUBMISSION.md`
-- `loopforge.config.yaml`
-- `rules/**`
-- `profiles/**`
-- `runtime/loopforge_runner.py`
-- `scripts/**`
-- `docs/**`
+- `work/README.md`
+- `work/HARNESS.md`
+- `work/loopforge.config.yaml`
+- `work/rules/**`
+- `work/profiles/**`
+- `work/runtime/**`
+- `work/scripts/**`
+- `work/docs/**`
+- `work/skills/**`
+- `work/subagent/**`
 
 ## Agent Policy
 
@@ -31,7 +35,6 @@ If static assets are incomplete, invalid, or contradictory:
 
 - report the issue explicitly
 - stop before making unsupported assumptions
-- preserve any already-created runtime evidence under `logs/trace/`
+- preserve any already-created runtime evidence under `work/logs/trace/`
 
 Missing or invalid static configuration is an adaptation failure, not a reason for the agent to regenerate the platform contract.
-

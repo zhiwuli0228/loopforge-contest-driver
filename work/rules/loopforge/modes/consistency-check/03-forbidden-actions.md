@@ -9,4 +9,3 @@
 - no verification command guessing beyond `loopforge.config.yaml`
 - no drift repair that expands into unrelated modules
 - no changing tests only to hide unresolved business drift
-

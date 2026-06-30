@@ -48,8 +48,8 @@ execution_contract:
   write_scope:
     allowed:
       - "<runtime-derived-output-project>/**"
-      - "result/**"
-      - "logs/**"
+      - "work/result/**"
+      - "work/logs/**"
     forbidden:
       - "SOURCE_ROOT/**"
       - "runtime artifacts inside SOURCE_ROOT"
@@ -70,14 +70,14 @@ verification_contract:
 
 reporting_contract:
   required_files:
-    - "result/output.md"
-    - "result/issues/00-summary.md"
-    - "logs/interaction.md"
-    - "logs/trace/final-report.md"
-    - "logs/trace/c-to-rust/01-source-inventory.md"
-    - "logs/trace/c-to-rust/05-migration-summary.md"
-    - "logs/trace/c-to-rust/06-verification-report.md"
-    - "logs/trace/c-to-rust/unsafe-ratio.json"
+    - "work/result/output.md"
+    - "work/result/issues/00-summary.md"
+    - "work/logs/interaction.md"
+    - "work/logs/trace/final-report.md"
+    - "work/logs/trace/c-to-rust/01-source-inventory.md"
+    - "work/logs/trace/c-to-rust/05-migration-summary.md"
+    - "work/logs/trace/c-to-rust/06-verification-report.md"
+    - "work/logs/trace/c-to-rust/unsafe-ratio.json"
   required_sections:
     - "semantic gate"
     - "repair loop"

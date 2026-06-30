@@ -9,7 +9,7 @@
 - mode artifact index
 - final report with references to produced artifacts
 
-Preferred artifact paths under `logs/trace/consistency/`:
+Preferred artifact paths under `work/logs/trace/consistency/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`
@@ -18,7 +18,7 @@ Preferred artifact paths under `logs/trace/consistency/`:
 - `repair-plan.md`
 - `test-coverage-gap.md`
 
-Runner-compatible fallback paths under `logs/trace/plan/`:
+Runner-compatible fallback paths under `work/logs/trace/plan/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`
@@ -36,4 +36,3 @@ Runner-compatible fallback paths under `logs/trace/plan/`:
 - Every stage artifact must record `executed_by_subagent`.
 - Every stage artifact must record `parent_direct_execution: false`.
 - Missing subagent execution metadata invalidates the stage artifact.
-

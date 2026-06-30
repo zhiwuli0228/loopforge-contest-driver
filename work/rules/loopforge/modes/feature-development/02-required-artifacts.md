@@ -6,10 +6,9 @@
 - implementation plan with ordered patch steps
 - verification evidence from configured commands
 
-Recommended artifact paths under `logs/trace/plan/`:
+Recommended artifact paths under `work/logs/trace/plan/`:
 
 - `requirements.md`
 - `brainstorm.md`
 - `design-draft.md`
 - `implementation-plan.md`
-

@@ -6,5 +6,4 @@
 - references to design summary, implementation mapping, traceability, drift, repair, and verification-gap artifacts
 - evidence sources
 - verification or review result
-- actual artifact directory used under `logs/trace/`
-
+- actual artifact directory used under `work/logs/trace/`
