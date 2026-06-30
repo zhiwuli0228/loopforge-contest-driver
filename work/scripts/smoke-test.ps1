@@ -1,7 +1,4 @@
-param(
-    [string]$WorkDir = (Split-Path -Parent $PSScriptRoot),
-    [string]$SourceRoot = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "code")
-)
+param()
 
 $ErrorActionPreference = "Stop"
 
@@ -19,71 +16,81 @@ function Resolve-Python {
     throw "python interpreter not found"
 }
 
-$WorkDir = (Resolve-Path $WorkDir).Path
-$RootDir = Split-Path -Parent $WorkDir
-if (-not [System.IO.Path]::IsPathRooted($SourceRoot)) {
-    $SourceRoot = Join-Path $RootDir $SourceRoot
-}
-
+$RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$WorkDir = Join-Path $RootDir "work"
+$ResultDir = Join-Path $RootDir "result"
+$LogDir = Join-Path $RootDir "logs"
 $PythonCmd = Resolve-Python
-$ArtifactDir = Join-Path $SourceRoot ".loopforge"
-$ParentArtifactDir = Join-Path $WorkDir "code/.loopforge"
-$ParentArtifactPreexisted = Test-Path $ParentArtifactDir
 $RunnerPath = Join-Path $WorkDir "runtime/loopforge_runner.py"
 
-powershell -ExecutionPolicy Bypass -File (Join-Path $WorkDir "scripts/bootstrap.ps1") -SourceRoot $SourceRoot
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --snapshot smoke"
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --verify"
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --finalize"
+$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("loopforge-smoke-" + [System.Guid]::NewGuid().ToString("N"))
+$NegativeSource = Join-Path $TempRoot "no-readme-source"
+$PositiveSource = Join-Path $TempRoot "with-readme-source"
 
-$requiredPaths = @(
-    $ArtifactDir,
-    (Join-Path $ArtifactDir "runtime/loopforge_runner.py"),
-    (Join-Path $ArtifactDir "state/loop-state.json"),
-    (Join-Path $ArtifactDir "state/config-check-summary.json"),
-    (Join-Path $ArtifactDir "state/profile-check-summary.json"),
-    (Join-Path $ArtifactDir "state/work-package-summary.json"),
-    (Join-Path $ArtifactDir "state/verification-summary.json"),
-    (Join-Path $ArtifactDir "gates/gate-events.md"),
-    (Join-Path $ArtifactDir "plan/mode-artifacts.md"),
-    (Join-Path $ArtifactDir "snapshots/smoke.diff"),
-    (Join-Path $ArtifactDir "reports/final-report.md")
-)
+New-Item -ItemType Directory -Force -Path $NegativeSource | Out-Null
+New-Item -ItemType Directory -Force -Path $PositiveSource | Out-Null
+Set-Content -Path (Join-Path $PositiveSource "README.md") -Value @"
+# Positive Smoke Source
 
-foreach ($path in $requiredPaths) {
-    if (-not (Test-Path $path)) {
-        throw "smoke test failed: missing required artifact: $path"
+Task: verify the runner can discover a README from SOURCE_ROOT.
+Constraint: no manual config editing is allowed.
+"@
+
+function Invoke-RunCase {
+    param(
+        [string]$SourceRoot,
+        [string]$ExpectedReadme,
+        [string]$ExpectedIssueText
+    )
+
+    $ArtifactDir = Join-Path $SourceRoot ".loopforge"
+    if (Test-Path $ArtifactDir) {
+        Remove-Item -Recurse -Force $ArtifactDir
+    }
+
+    $OutputPath = Join-Path $ResultDir "output.md"
+    $IssuePath = Join-Path $ResultDir "issues/00-summary.md"
+    $TracePath = Join-Path $LogDir "trace/run-summary.json"
+
+    Remove-Item -Force $OutputPath -ErrorAction SilentlyContinue
+    Remove-Item -Force $IssuePath -ErrorAction SilentlyContinue
+    Remove-Item -Force $TracePath -ErrorAction SilentlyContinue
+
+    Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --result-dir `"$ResultDir`" --log-dir `"$LogDir`" --run"
+
+    foreach ($path in @($OutputPath, $IssuePath, $TracePath)) {
+        if (-not (Test-Path $path)) {
+            throw "smoke test failed: missing required artifact: $path"
+        }
+    }
+
+    $OutputText = Get-Content -Raw $OutputPath
+    $IssueText = Get-Content -Raw $IssuePath
+    $ExpectedReadmeLine = "selected_source_readme: ``$ExpectedReadme``"
+    if (-not $OutputText.Contains($ExpectedReadmeLine)) {
+        throw "smoke test failed: expected selected_source_readme $ExpectedReadme"
+    }
+    if (-not $IssueText.Contains($ExpectedIssueText)) {
+        throw "smoke test failed: expected issue text $ExpectedIssueText"
     }
 }
 
-if (Test-Path (Join-Path $WorkDir ".loopforge")) {
-    throw "smoke test failed: runtime artifacts escaped into $WorkDir/.loopforge"
-}
+try {
+    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedReadme "missing" -ExpectedIssueText "source README not found"
+    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedReadme (Join-Path $PositiveSource "README.md") -ExpectedIssueText "no runnable verification commands were derived from source README or framework defaults"
 
-if ((-not $ParentArtifactPreexisted) -and (Test-Path $ParentArtifactDir)) {
-    throw "smoke test failed: runtime artifacts escaped into parent code artifact path"
-}
+    $TraceText = Get-Content -Raw (Join-Path $LogDir "trace/run-summary.json")
+    if ($TraceText -notmatch '"found": true') {
+        throw "smoke test failed: positive trace does not record source_readme found=true"
+    }
+    if ($TraceText -notmatch 'README.md') {
+        throw "smoke test failed: positive trace does not record README path"
+    }
 
-if (Test-Path (Join-Path $WorkDir "work")) {
-    throw "smoke test failed: unexpected nested work directory created at $WorkDir/work"
+    Write-Output "smoke test passed"
 }
-
-$reportPath = Join-Path $ArtifactDir "reports/final-report.md"
-$reportText = Get-Content -Raw $reportPath
-if ($reportText -notmatch "## Contract Validation") {
-    throw "smoke test failed: final report is missing contract validation section"
+finally {
+    if (Test-Path $TempRoot) {
+        Remove-Item -Recurse -Force $TempRoot
+    }
 }
-if ($reportText -notmatch "BLOCKED_WITH_REPORT") {
-    throw "smoke test failed: final report did not record blocked verification"
-}
-if ($reportText -notmatch "## Mode Artifact Summary") {
-    throw "smoke test failed: final report is missing mode artifact summary section"
-}
-
-$modeArtifactPath = Join-Path $ArtifactDir "plan/mode-artifacts.md"
-$modeArtifactText = Get-Content -Raw $modeArtifactPath
-if ($modeArtifactText -notmatch "# Mode Artifacts") {
-    throw "smoke test failed: mode artifact index was not initialized"
-}
-
-Write-Output "smoke test passed"

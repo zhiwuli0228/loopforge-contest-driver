@@ -1,12 +1,12 @@
 # Output
 
-- source_root: `E:\009workspace\codex\loopforge-contest-driver\code`
-- resolved_code_dir: `E:\009workspace\codex\loopforge-contest-driver\code`
-- artifact_dir: `E:\009workspace\codex\loopforge-contest-driver\code\.loopforge`
+- source_root: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source`
+- resolved_code_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source`
+- artifact_dir: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\.loopforge`
 - result: `BLOCKED_WITH_REPORT`
 - verification_status: `blocked-with-report`
-- selected_source_readme: `missing`
-- final_report: `E:\009workspace\codex\loopforge-contest-driver\code\.loopforge\reports\final-report.md`
+- selected_source_readme: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\README.md`
+- final_report: `C:\Users\18811\AppData\Local\Temp\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\with-readme-source\.loopforge\reports\final-report.md`
 
 ## Self Check
 
@@ -18,7 +18,7 @@
     "work_dir_exists": true,
     "code_dir_exists": true,
     "config_exists": true,
-    "artifact_dir_target": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge",
+    "artifact_dir_target": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge",
     "artifact_dir_under_code": true,
     "verification_commands_configured": false,
     "verification_working_directory": "code",
@@ -28,7 +28,7 @@
     "work_package_contract_ok": true,
     "coding_skill_status": "CODING_SKILL_READY",
     "coding_skill_contract_ok": true,
-    "source_readme_found": false
+    "source_readme_found": true
   },
   "contract_summary": {
     "ok": true,
@@ -36,15 +36,15 @@
     "warnings": [],
     "platform": {
       "configured_work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
-      "configured_code_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
-      "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge"
+      "configured_code_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
+      "artifact_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge"
     },
     "task": {
       "mode": "feature-development",
       "profile": "profiles/templates/feature-development.yaml"
     },
     "verification": {
-      "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+      "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
       "commands_format": "platform-map",
       "available_profiles": [],
       "selected_profile": "",
@@ -83,9 +83,9 @@
       "superpower_policy_ready": false
     },
     "outputs": {
-      "consistency_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\consistency",
-      "final_report": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\reports\\final-report.md",
-      "patch_snapshot_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\snapshots"
+      "consistency_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\consistency",
+      "final_report": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\reports\\final-report.md",
+      "patch_snapshot_dir": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\.loopforge\\snapshots"
     },
     "profile_summary": {
       "ok": true,
@@ -189,17 +189,14 @@
     "requirements.txt": false,
     "package.json": false,
     "go.mod": false,
-    "git_worktree": true,
-    "source_readme": false
+    "git_worktree": false,
+    "source_readme": true
   },
   "source_readme": {
-    "found": false,
-    "selected_path": "",
+    "found": true,
+    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md",
     "candidates": [
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
+      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md"
     ]
   }
 }
@@ -212,18 +209,15 @@
   "detected_os": "windows",
   "selected_command_profile": "",
   "fallback_used": false,
-  "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+  "working_directory": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source",
   "timeout_seconds": 300,
   "commands_attempted": [],
   "source_readme": {
-    "found": false,
-    "selected_path": "",
+    "found": true,
+    "selected_path": "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md",
     "candidates": [
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
-      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
+      "C:\\Users\\18811\\AppData\\Local\\Temp\\loopforge-smoke-e08c94d4de9b475d90d7a169d86a4e49\\with-readme-source\\README.md"
     ]
   },
-  "reason": "source README not found; no runnable verification commands were derived from source README or framework defaults"
+  "reason": "no runnable verification commands were derived from source README or framework defaults"
 }

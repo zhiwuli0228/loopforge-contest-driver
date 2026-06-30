@@ -1,22 +1,32 @@
 # Submission Notes
 
-This package is submitted as a generic Loop Engineering hosting platform.
+This package is submitted as a contest execution driver.
 
-## Delivered Artifact
+## Execution Entry
 
-- This directory is the formal submission root.
-- Root `INSTRUCTION.md` is the evaluator entrypoint.
-- `work/` contains the runnable framework assets.
-- `code/` is the local fallback target-project slot inside the submission root.
+- `INSTRUCTION.md`
 
-## Expected Output
+## Runnable Assets
 
-After execution, the platform should retrieve:
+- `work/`
 
-- the modified `code/` project tree
+## Primary Results
+
 - `result/output.md`
+- `result/issues/00-summary.md`
 - `logs/interaction.md`
-- `code/.loopforge/reports/final-report.md`
+- `logs/trace/`
+
+## Internal Evidence
+
+- `SOURCE_ROOT/.loopforge/` may contain internal runtime evidence, including `reports/final-report.md`
+- internal evidence is not the primary judge-facing output
+
+## Model
+
+- `SOURCE_ROOT` is the only external source-path input
+- task intent, constraints, and acceptance hints are read from `SOURCE_ROOT/README*`
+- the package does not require manual editing of `work/loopforge.config.yaml`
 
 ## Non-Goals
 
@@ -26,7 +36,3 @@ LoopForge does not:
 - push changes
 - open pull requests
 - upload results to a contest platform
-
-The submitted project does not require manual stage prompts.
-
-All staged execution rules are included in the repository files.
