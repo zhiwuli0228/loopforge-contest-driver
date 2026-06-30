@@ -78,6 +78,28 @@ class CProjectRootResolverTests(unittest.TestCase):
             self.assertEqual([Path(item).name for item in result["source_dirs"]], ["core"])
             self.assertEqual([Path(item).name for item in result["test_dirs"]], ["checks"])
 
+    def test_discovers_sources_without_conventional_directory_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "OddLayout"
+            (project / "engine").mkdir(parents=True)
+            (project / "qa").mkdir()
+            (project / "README").write_text("# OddLayout\n", encoding="utf-8")
+            (project / "engine" / "db.c").write_text("int db_open(void) { return 0; }\n", encoding="utf-8")
+            (project / "engine" / "db.h").write_text("int db_open(void);\n", encoding="utf-8")
+            (project / "qa" / "test_db.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
+            result = resolve_c_project_root(project)
+            self.assertEqual(result["status"], "RESOLVED")
+            self.assertEqual([Path(item).name for item in result["source_dirs"]], ["engine"])
+
+    def test_project_does_not_require_a_tests_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "Library"
+            project.mkdir()
+            (project / "README.md").write_text("# Library\n", encoding="utf-8")
+            (project / "library.c").write_text("int library_open(void) { return 0; }\n", encoding="utf-8")
+            result = resolve_c_project_root(project)
+            self.assertEqual(result["status"], "RESOLVED")
+
     def test_runner_records_input_and_resolution_trace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             temp = Path(tmp)

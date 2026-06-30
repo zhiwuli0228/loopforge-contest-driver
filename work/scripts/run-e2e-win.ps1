@@ -21,15 +21,15 @@ function Test-SourceRootLike {
     if (-not (Test-Path -LiteralPath $Path)) {
         return $false
     }
+    $hasReadme = $false
     foreach ($candidate in $ReadmeCandidates) {
-        if (Test-Path -LiteralPath (Join-Path $Path $candidate)) {
-            return $true
-        }
+        if (Test-Path -LiteralPath (Join-Path $Path $candidate)) { $hasReadme = $true; break }
     }
-    if ((Test-Path -LiteralPath (Join-Path $Path "src")) -and (Test-Path -LiteralPath (Join-Path $Path "tests"))) {
-        return $true
-    }
-    return $false
+    if (-not $hasReadme) { return $false }
+    $sourceFile = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in @('.c', '.cc', '.cpp', '.cxx') -and $_.FullName -notmatch '[\\/](?:\.git|build|dist|target|out)[\\/]' } |
+        Select-Object -First 1
+    return $null -ne $sourceFile
 }
 
 function Resolve-SourceRootCandidate {

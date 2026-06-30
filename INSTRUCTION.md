@@ -18,10 +18,14 @@ rustc
 Run from the repository root:
 
 ```bash
-SOURCE_ROOT="/absolute/path/to/source/project" bash work/scripts/run.sh --run
+SOURCE_ROOT="/absolute/path/to/source-or-input-container" bash work/scripts/run.sh --run
 ```
 
-`SOURCE_ROOT` must identify the evaluator-provided C project containing its README/READNE, source, and tests. The harness does not write into `SOURCE_ROOT`.
+`SOURCE_ROOT` may identify either the evaluator-provided C project or an input
+container whose child directory is the project. Project discovery uses the
+README/READNE and actual C/C++ translation units; it does not require `src`,
+`source`, `test`, or `tests` directory names. The harness does not write into
+`SOURCE_ROOT`.
 
 ## Generated Rust project
 
@@ -50,26 +54,26 @@ cargo test --locked -- --nocapture
 Inspect:
 
 ```text
-work/result/output.md
-work/result/issues/00-summary.md
-work/logs/interaction.md
-work/logs/trace/
-work/logs/trace/c-to-rust/semantic-audit-report.md
+result/output.md
+result/issues/00-summary.md
+logs/interaction.md
+logs/trace/
+logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
-`work/result/output.md` records the actual generated project path. Completion is reported as exactly one of:
+`result/output.md` records the actual generated project path. Completion is reported as exactly one of:
 
 ```text
 READY_FOR_EVALUATION
 BLOCKED_WITH_REPORT
 ```
 
-The evaluator should read `work/result/output.md` first. When READY, it must report:
+The evaluator should read `result/output.md` first. When READY, it must report:
 
 ```text
 rust_project: work/output/flashDB_rust
 cargo_toml: work/output/flashDB_rust/Cargo.toml
-semantic_audit_report: work/logs/trace/c-to-rust/semantic-audit-report.md
+semantic_audit_report: logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
 ## Windows local debugging
@@ -80,4 +84,4 @@ Windows is a local debugging path, not the official evaluator entry. Use:
 powershell -ExecutionPolicy Bypass -File work\scripts\run-e2e-win.ps1 -SourceRoot "work\code\FlashDB"
 ```
 
-The PowerShell runner resolves the Rust project from `work/result/output.md` or `work/logs/trace/run-summary.json`; it does not assume a root-level `flashDB_rust` directory.
+The PowerShell runner resolves the Rust project from `result/output.md` or `logs/trace/run-summary.json`; it does not assume a root-level `flashDB_rust` directory.

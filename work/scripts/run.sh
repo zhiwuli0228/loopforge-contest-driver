@@ -67,7 +67,16 @@ if [[ ! -f "${LOG_DIR}/interaction.md" ]]; then
   printf '# Interaction Log\n\nNo manual interaction.\n' > "${LOG_DIR}/interaction.md"
 fi
 
-python "${WORK_DIR}/runtime/loopforge_runner.py" \
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_CMD="python3"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_CMD="python"
+else
+  printf '[LoopForge] ERROR: Python 3 is not available.\n' >&2
+  exit 1
+fi
+
+"${PYTHON_CMD}" "${WORK_DIR}/runtime/loopforge_runner.py" \
   --work-dir "${WORK_DIR}" \
   --result-dir "${RESULT_DIR}" \
   --log-dir "${LOG_DIR}" \

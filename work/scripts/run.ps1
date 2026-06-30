@@ -33,25 +33,11 @@ function Test-SourceRootLike {
         return $false
     }
 
-    if (Test-ReadmeCandidate -Path $Path) {
-        return $true
-    }
-
-    if ((Test-Path -LiteralPath (Join-Path $Path "src")) -and (Test-Path -LiteralPath (Join-Path $Path "tests"))) {
-        return $true
-    }
-
-    foreach ($candidate in $ReadmeCandidates) {
-        $readmePath = Join-Path $Path $candidate
-        if (Test-Path -LiteralPath $readmePath) {
-            $readmeText = Get-Content -LiteralPath $readmePath -Raw -ErrorAction SilentlyContinue
-            if ($readmeText -match '(?im)^\s*(?:-|\*)?\s*(?:source|src|test|tests)\s*:\s*(.+)$') {
-                return $true
-            }
-        }
-    }
-
-    return $false
+    if (-not (Test-ReadmeCandidate -Path $Path)) { return $false }
+    $sourceFile = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in @('.c', '.cc', '.cpp', '.cxx') -and $_.FullName -notmatch '[\\/](?:\.git|build|dist|target|out)[\\/]' } |
+        Select-Object -First 1
+    return $null -ne $sourceFile
 }
 
 function Resolve-UniqueSourceChild {
