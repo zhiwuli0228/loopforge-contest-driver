@@ -162,8 +162,35 @@ def _ensure_cargo_manifest(packet: AgentTaskPacket, project_dir: Path) -> bool:
     return True
 
 
+def _repair_reset_storage(project_dir: Path) -> bool:
+    """Repair a count-only reset for a generated Vec-backed C array model."""
+    for candidate in (project_dir / "src").glob("*.rs"):
+        text = _load_text(candidate)
+        struct_match = re.search(r"pub struct\s+\w+\s*\{(?P<body>.*?)\n\}", text, re.DOTALL)
+        if not struct_match:
+            continue
+        vec_match = re.search(r"pub\s+(\w+)\s*:\s*Vec<", struct_match.group("body"))
+        count_match = re.search(r"pub\s+(\w+)\s*:\s*usize", struct_match.group("body"))
+        if not vec_match or not count_match:
+            continue
+        records, count = vec_match.group(1), count_match.group(1)
+        reset = re.compile(rf"(?P<indent>\s*)(?P<state>\w+)\.{re.escape(count)}\s*=\s*0;")
+        match = reset.search(text)
+        if not match:
+            continue
+        clear_line = f"{match.group('indent')}{match.group('state')}.{records}.clear();"
+        if clear_line.strip() in text:
+            continue
+        candidate.write_text(text[:match.start()] + clear_line + "\n" + text[match.start():], encoding="utf-8")
+        return True
+    return False
+
+
 def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: Dict[str, Any]) -> Dict[str, Any]:
     stderr_text = "\n".join(command_result.get("stderr_tail", []))
+    output_text = "\n".join(command_result.get("stdout_tail", []) + command_result.get("stderr_tail", []))
+    if "test_reset_after_mutation" in output_text and _repair_reset_storage(project_dir):
+        return {"applied": True, "detail": "synchronized_logical_storage_on_reset", "failed_test": "test_reset_after_mutation"}
     module_match = re.search(r"file not found for module `([^`]+)`", stderr_text)
     if module_match:
         module_name = module_match.group(1)
@@ -217,6 +244,12 @@ def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) ->
             lines.append(f"- repair_task_packet: `{json.dumps(attempt['repair_task_packet'], ensure_ascii=True)}`")
         lines.append("")
     md_path.write_text("\n".join(lines), encoding="utf-8")
+    for attempt in sanitized_payload["attempts"]:
+        round_lines = [f"# Repair Round {attempt['round']:02d}", "", f"- result: `{'passed' if all(command.get('ok') for command in attempt['commands']) else 'failed'}`"]
+        if attempt.get("repair_action"):
+            round_lines.append(f"- repair_action: `{attempt['repair_action']['detail']}`")
+        round_lines.append("")
+        (packet.paths.migration_trace_dir / f"repair-round-{attempt['round'] + 1:02d}.md").write_text("\n".join(round_lines), encoding="utf-8")
 
 
 def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_seconds: int) -> Dict[str, Any]:
@@ -235,7 +268,6 @@ def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_second
             if not command_result["ok"]:
                 all_ok = False
                 issue_code = "cargo_build_failed" if index == 0 else "cargo_test_failed"
-                packet.add_issue(issue_code, command_result["command"])
                 repair_action = _repair_action(packet, project_dir, command_result)
                 round_record["repair_action"] = repair_action
                 if not repair_action["applied"]:
@@ -263,6 +295,12 @@ def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_second
         "test_ok": test_ok,
         "rounds_executed": rounds + 1,
         "attempts": attempts,
+        "unresolved_failures": [] if build_ok and test_ok else [
+            {"kind": "cargo_verification_failed", "command": command["command"], "stderr_tail": command.get("stderr_tail", [])}
+            for attempt in attempts for command in attempt["commands"] if not command.get("ok")
+        ][-1:],
     }
+    if not payload["ok"]:
+        packet.add_issue("cargo_verification_failed", "build or test failure remained after the repair loop")
     _write_repair_artifacts(packet, payload)
     return payload

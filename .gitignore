@@ -1,9 +1,7 @@
-code/**
-!code/.gitkeep
 flashDB_rust/target/
+work/output/*/target/
 .venv/
 .loopforge/
-code/.loopforge/
 .agents/
 __pycache__/
 *.pyc

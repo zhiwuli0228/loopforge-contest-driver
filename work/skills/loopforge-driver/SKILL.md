@@ -9,7 +9,7 @@ Use this skill as the entry point for contest execution.
 
 ## Execution Root
 
-- Repository root contains `INSTRUCTION.md`, `code/`, `work/`, `result/`, and `logs/`
+- Repository root contains `INSTRUCTION.md`, `work/`, `result/`, and `logs/`; local source fixtures may live under `.code/`
 - Framework assets live under `work/`
 - Runtime evidence is written under `logs/trace/`
 - Evaluator-facing outputs are written under `result/` and `logs/`
@@ -49,7 +49,7 @@ Resolve the source root in this order:
 3. `SOURCE_ROOT`
 4. path extracted from natural-language task input and normalized into `SOURCE_ROOT`
 5. Linux fallback `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
-6. local fallback `code`
+6. local fallback `.code`
 
 The driver must inspect the source README and use it to infer requirements and constraints before planning work.
 

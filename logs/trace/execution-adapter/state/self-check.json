@@ -6,6 +6,8 @@
     "work/runtime/c2rust_analysis.py",
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
+    "work/runtime/c2rust_semantic_audit.py",
+    "work/runtime/c2rust_invariant_tests.py",
     "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
     "work/rules/loopforge/adapters/c-to-rust/output-contract.md",
     "work/rules/loopforge/adapters/c-to-rust/test-migration-contract.md",

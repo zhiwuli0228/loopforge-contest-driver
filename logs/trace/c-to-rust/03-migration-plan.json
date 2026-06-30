@@ -3,7 +3,8 @@
   "module_list": [
     "src/lib.rs",
     "src/flashdb.rs",
-    "tests/source_migration.rs"
+    "tests/source_migration.rs",
+    "tests/semantic_invariants.rs"
   ],
   "test_files": [
     "tests/test_flashdb.c"

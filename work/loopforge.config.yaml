@@ -41,7 +41,7 @@ objective: "derive generic C-to-Rust migration requirements from SOURCE_ROOT REA
 execution:
   unattended: true
   allow_manual_interaction: false
-  max_repair_rounds: 2
+  max_repair_rounds: 3
   fail_soft: true
   always_finalize: true
   allow_code_generation: true

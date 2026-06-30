@@ -54,7 +54,7 @@ function Resolve-SourceRootCandidate {
 }
 
 function Resolve-SourceRootFromCode {
-    $codeRoot = Join-Path $RootDir "code"
+    $codeRoot = Join-Path $RootDir ".code"
     if (-not (Test-Path -LiteralPath $codeRoot)) {
         return $null
     }
@@ -204,9 +204,10 @@ if ($resultOutput -match '(?m)^\s*-\s*rust_project:\s*`([^`]+)`\s*$') {
 } elseif ($resultOutput -match '(?m)^\s*derived_output_project:\s*`([^`]+)`\s*$') {
     $derivedOutputProject = $Matches[1]
 } else {
-    $runSummary = Read-TextIfExists -Path (Join-Path $LogDir "trace\c-to-rust\run-summary.json")
-    if ($runSummary -match '"output_project_dir"\s*:\s*"([^"]+)"') {
-        $derivedOutputProject = $Matches[1]
+    $runSummaryPath = Join-Path $LogDir "trace\run-summary.json"
+    if (Test-Path -LiteralPath $runSummaryPath) {
+        $runSummary = Get-Content -LiteralPath $runSummaryPath -Raw | ConvertFrom-Json
+        $derivedOutputProject = $runSummary.packet.output_project_dir
     }
 }
 
@@ -220,6 +221,11 @@ if (-not $derivedOutputProject) {
 }
 
 $derivedOutputProject = [IO.Path]::GetFullPath((Join-Path $RootDir $derivedOutputProject))
+$expectedOutputBase = [IO.Path]::GetFullPath((Join-Path $WorkDir "output"))
+if (-not $derivedOutputProject.StartsWith($expectedOutputBase + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+    Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "D_RUST_GENERATION" -DerivedOutputProject $derivedOutputProject
+    exit 1
+}
 if (-not (Test-Path -LiteralPath (Join-Path $derivedOutputProject "Cargo.toml"))) {
     if (($resultOutput -match 'invalid_source_root') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'selected_source_readme:\s*`?work/code/README\.md`?') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'source_root:\s*`?work/code`?')) {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "A_SOURCE_ROOT" -DerivedOutputProject $derivedOutputProject
@@ -234,12 +240,12 @@ Set-Content -LiteralPath (Join-Path $ExperimentDir "generated-files.txt") -Value
 
 Push-Location $derivedOutputProject
 try {
-    & cmd /c "cargo build > `"$($ExperimentDir)\cargo-build.log`" 2>&1"
+    & cmd /c "cargo build --locked > `"$($ExperimentDir)\cargo-build.log`" 2>&1"
     if ($LASTEXITCODE -ne 0) {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "E_CARGO_BUILD" -DerivedOutputProject $derivedOutputProject
         exit $LASTEXITCODE
     }
-    & cmd /c "cargo test > `"$($ExperimentDir)\cargo-test.log`" 2>&1"
+    & cmd /c "cargo test --locked -- --nocapture > `"$($ExperimentDir)\cargo-test.log`" 2>&1"
     if ($LASTEXITCODE -ne 0) {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "F_CARGO_TEST_OR_SEMANTIC" -DerivedOutputProject $derivedOutputProject
         exit $LASTEXITCODE

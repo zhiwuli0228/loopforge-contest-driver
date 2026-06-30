@@ -1,7 +1,7 @@
 # Mode Artifacts
 
 - mode: `migration`
-- generated_at: `2026-06-30T14:04:28Z`
+- generated_at: `2026-06-30T16:16:37Z`
 
 - `01-source-inventory.md/json`
 - `02-api-mapping.md/json`

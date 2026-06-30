@@ -202,7 +202,7 @@ grep -R "[A-Z]:\\\\\|/Users/\|/home/.*codex\|009workspace" -n result logs work |
 验收：无本地绝对路径污染。
 
 ```bash
-grep -R "SOURCE_ROOT/.loopforge\|code/.loopforge" -n work result logs || true
+grep -R "SOURCE_ROOT/.loopforge\|\.code/.loopforge" -n work result logs || true
 ```
 
 验收：无命中。过程产物必须在 `logs/trace`，结论产物必须在 `result`。

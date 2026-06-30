@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_task_packet import AgentTaskPacket, SourceLayout
+from c2rust_semantic_audit import extract_semantic_invariants, required_scenarios
 
 
 INCLUDE_RE = re.compile(r'^\s*#include\s+[<"]([^>"]+)[>"]', re.MULTILINE)
@@ -685,6 +686,7 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
         "support_level": support_level,
         "readme_excerpt": "\n".join(line.strip() for line in (_read_text(readme_path) if readme_path else "").splitlines()[:20] if line.strip()),
     }
+    analysis["semantic_invariants"] = extract_semantic_invariants(analysis)
 
     if readme_path is None:
         packet.add_issue("readme_missing", f"README candidate not found under {packet.paths.source_root}")
@@ -782,6 +784,18 @@ def evaluate_semantic_equivalence(
         }
     )
 
+    invariants = analysis.get("semantic_invariants", [])
+    invariant_file = project_dir / "tests" / "semantic_invariants.rs"
+    plan = project_payload.get("semantic_test_plan", [])
+    required = {name for name, _ in required_scenarios(invariants)}
+    covered = {item.get("scenario") for item in plan if item.get("covered")}
+    extraction_ok = bool(invariants)
+    tests_ok = invariant_file.is_file() and bool(required) and required <= covered
+    checks.append({"name": "semantic_invariant_extraction", "passed": extraction_ok, "detail": "source behavior produced semantic invariants", "invariant_count": len(invariants)})
+    checks.append({"name": "semantic_invariant_tests", "passed": tests_ok, "detail": "all required invariant-derived scenarios are present and executed by cargo test", "required": sorted(required), "covered": sorted(covered)})
+    unresolved = verification_payload.get("unresolved_failures", [])
+    checks.append({"name": "repair_loop_resolved", "passed": not unresolved, "detail": "repair loop has no unresolved failures", "unresolved_failures": unresolved})
+
     passed = all(check["passed"] for check in checks)
     failing = [check["name"] for check in checks if not check["passed"]]
     if not passed:
@@ -800,4 +814,5 @@ def evaluate_semantic_equivalence(
         "passed": passed,
         "checks": checks,
         "failing_checks": failing,
+        "unresolved_failures": unresolved,
     }

@@ -8,7 +8,8 @@
     "trace_dir": "./logs/trace",
     "artifact_dir": "./logs/trace/execution-adapter",
     "migration_trace_dir": "./logs/trace/c-to-rust",
-    "project_dir": "./flashDB_rust"
+    "output_base_dir": "./work/output",
+    "project_dir": "./work/output/flashDB_rust"
   },
   "source_layout": {
     "readme_path": "./.code/FlashDB/README.md",
@@ -28,12 +29,12 @@
     "readme.md",
     "Readme.md"
   ],
-  "max_repair_rounds": 2,
+  "max_repair_rounds": 3,
   "source_project_name": "FlashDB Local Fallback",
   "source_language": "c",
   "target_language": "rust",
   "output_project_name": "flashDB_rust",
-  "output_project_dir": "./flashDB_rust",
+  "output_project_dir": "./work/output/flashDB_rust",
   "source_dirs": [
     "source",
     "src"
@@ -58,7 +59,7 @@
     "selected_readme_path": "./.code/FlashDB/README.md",
     "fallback_readme_path": "./work/code/README.md",
     "project_generation": {
-      "project_dir": "./flashDB_rust",
+      "project_dir": "./work/output/flashDB_rust",
       "module_names": [
         "flashdb"
       ],
@@ -82,7 +83,8 @@
       "module_list": [
         "src/lib.rs",
         "src/flashdb.rs",
-        "tests/source_migration.rs"
+        "tests/source_migration.rs",
+        "tests/semantic_invariants.rs"
       ],
       "test_mapping": [
         {
@@ -99,6 +101,119 @@
           ],
           "unsupported_apis": [],
           "source_assertion_count": 1
+        }
+      ],
+      "semantic_invariants": [
+        {
+          "id": "state_reset",
+          "kind": "state_reset",
+          "api": "flashdb_new",
+          "reset_fields": [
+            "count"
+          ],
+          "requires_logical_storage_reset": true,
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "capacity_limit",
+          "kind": "capacity_limit",
+          "api": "flashdb_set",
+          "capacity": 16,
+          "overflow_return": "-1",
+          "state_preserved_on_overflow": true,
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "insert_or_update",
+          "kind": "insert_or_update",
+          "api": "flashdb_set",
+          "update_existing": true,
+          "append_new": true,
+          "duplicate_increments_count": false,
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "state_preserved_on_error",
+          "kind": "state_preserved_on_error",
+          "api": "flashdb_set",
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "lookup_not_found",
+          "kind": "lookup_not_found",
+          "api": "flashdb_get",
+          "return_value": "NULL",
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "delete_shift",
+          "kind": "delete_shift",
+          "api": "flashdb_delete",
+          "delete_existing_return": "0",
+          "remaining_items_queryable": true,
+          "count_api": "flashdb_count"
+        },
+        {
+          "id": "delete_missing",
+          "kind": "delete_missing",
+          "api": "flashdb_delete",
+          "delete_missing_return": "-1",
+          "state_preserved": true,
+          "count_api": "flashdb_count"
+        }
+      ],
+      "semantic_test_plan": [
+        {
+          "scenario": "reset_after_mutation",
+          "test": "test_reset_after_mutation",
+          "covered": true,
+          "invariants": [
+            "state_reset",
+            "insert_or_update",
+            "lookup_not_found"
+          ]
+        },
+        {
+          "scenario": "capacity_boundary",
+          "test": "test_capacity_boundary",
+          "covered": true,
+          "invariants": [
+            "capacity_limit",
+            "state_preserved_on_error"
+          ]
+        },
+        {
+          "scenario": "lookup_not_found",
+          "test": "test_lookup_not_found",
+          "covered": true,
+          "invariants": [
+            "lookup_not_found"
+          ]
+        },
+        {
+          "scenario": "delete_not_found_preserves_state",
+          "test": "test_delete_not_found_preserves_state",
+          "covered": true,
+          "invariants": [
+            "delete_missing",
+            "state_preserved_on_error"
+          ]
+        },
+        {
+          "scenario": "delete_head_middle_tail",
+          "test": "test_delete_head_middle_tail",
+          "covered": true,
+          "invariants": [
+            "delete_shift"
+          ]
+        },
+        {
+          "scenario": "update_existing_does_not_increment_count",
+          "test": "test_update_existing_does_not_increment_count",
+          "covered": true,
+          "invariants": [
+            "insert_or_update"
+          ]
         }
       ],
       "bootstrap_only": false,

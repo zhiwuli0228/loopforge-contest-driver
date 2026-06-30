@@ -246,6 +246,7 @@ class RuntimePaths:
     trace_dir: Path
     artifact_dir: Path
     migration_trace_dir: Path
+    output_base_dir: Path
     project_dir: Path
 
     def to_dict(self) -> Dict[str, str]:
@@ -258,6 +259,7 @@ class RuntimePaths:
             "trace_dir": str(self.trace_dir),
             "artifact_dir": str(self.artifact_dir),
             "migration_trace_dir": str(self.migration_trace_dir),
+            "output_base_dir": str(self.output_base_dir),
             "project_dir": str(self.project_dir),
         }
 

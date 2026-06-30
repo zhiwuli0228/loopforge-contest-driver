@@ -893,5 +893,64 @@
     "flashdb"
   ],
   "support_level": "source-driven-c",
-  "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate"
+  "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate",
+  "semantic_invariants": [
+    {
+      "id": "state_reset",
+      "kind": "state_reset",
+      "api": "flashdb_new",
+      "reset_fields": [
+        "count"
+      ],
+      "requires_logical_storage_reset": true,
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "capacity_limit",
+      "kind": "capacity_limit",
+      "api": "flashdb_set",
+      "capacity": 16,
+      "overflow_return": "-1",
+      "state_preserved_on_overflow": true,
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "insert_or_update",
+      "kind": "insert_or_update",
+      "api": "flashdb_set",
+      "update_existing": true,
+      "append_new": true,
+      "duplicate_increments_count": false,
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "state_preserved_on_error",
+      "kind": "state_preserved_on_error",
+      "api": "flashdb_set",
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "lookup_not_found",
+      "kind": "lookup_not_found",
+      "api": "flashdb_get",
+      "return_value": "NULL",
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "delete_shift",
+      "kind": "delete_shift",
+      "api": "flashdb_delete",
+      "delete_existing_return": "0",
+      "remaining_items_queryable": true,
+      "count_api": "flashdb_count"
+    },
+    {
+      "id": "delete_missing",
+      "kind": "delete_missing",
+      "api": "flashdb_delete",
+      "delete_missing_return": "-1",
+      "state_preserved": true,
+      "count_api": "flashdb_count"
+    }
+  ]
 }

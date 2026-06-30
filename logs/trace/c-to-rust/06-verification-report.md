@@ -38,30 +38,35 @@
     "passed": true,
     "detail": "unsafe gate",
     "payload": {
-      "project": "./flashDB_rust",
-      "total_code_lines": 77,
+      "project": "./work/output/flashDB_rust",
+      "total_code_lines": 136,
       "unsafe_lines": 0,
       "unsafe_ratio": 0.0,
       "max_ratio": 0.1,
       "passed": true,
       "files": [
         {
-          "file": "./flashDB_rust/src/flashdb.rs",
-          "code_lines": 53,
+          "file": "./work/output/flashDB_rust/src/flashdb.rs",
+          "code_lines": 54,
           "unsafe_lines": 0
         },
         {
-          "file": "./flashDB_rust/src/lib.rs",
+          "file": "./work/output/flashDB_rust/src/lib.rs",
           "code_lines": 10,
           "unsafe_lines": 0
         },
         {
-          "file": "./flashDB_rust/tests/source_migration.rs",
+          "file": "./work/output/flashDB_rust/tests/semantic_invariants.rs",
+          "code_lines": 58,
+          "unsafe_lines": 0
+        },
+        {
+          "file": "./work/output/flashDB_rust/tests/source_migration.rs",
           "code_lines": 14,
           "unsafe_lines": 0
         }
       ],
-      "generated_at": "2026-06-30T14:04:30Z"
+      "generated_at": "2026-06-30T16:16:38Z"
     }
   },
   "semantic": {
@@ -90,7 +95,7 @@
           "name": "assertive_tests",
           "passed": true,
           "detail": "each Rust test file contains assertions",
-          "assert_count": 8
+          "assert_count": 30
         },
         {
           "name": "api_mapping",
@@ -111,7 +116,7 @@
           "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
           "mapped_source_tests": 1,
           "source_test_count": 1,
-          "rust_test_functions": 1
+          "rust_test_functions": 7
         },
         {
           "name": "semantic_claim_gate",
@@ -123,9 +128,43 @@
           "name": "verification_dependency",
           "passed": true,
           "detail": "semantic gate requires successful cargo build and cargo test first"
+        },
+        {
+          "name": "semantic_invariant_extraction",
+          "passed": true,
+          "detail": "source behavior produced semantic invariants",
+          "invariant_count": 7
+        },
+        {
+          "name": "semantic_invariant_tests",
+          "passed": true,
+          "detail": "all required invariant-derived scenarios are present and executed by cargo test",
+          "required": [
+            "capacity_boundary",
+            "delete_head_middle_tail",
+            "delete_not_found_preserves_state",
+            "lookup_not_found",
+            "reset_after_mutation",
+            "update_existing_does_not_increment_count"
+          ],
+          "covered": [
+            "capacity_boundary",
+            "delete_head_middle_tail",
+            "delete_not_found_preserves_state",
+            "lookup_not_found",
+            "reset_after_mutation",
+            "update_existing_does_not_increment_count"
+          ]
+        },
+        {
+          "name": "repair_loop_resolved",
+          "passed": true,
+          "detail": "repair loop has no unresolved failures",
+          "unresolved_failures": []
         }
       ],
-      "failing_checks": []
+      "failing_checks": [],
+      "unresolved_failures": []
     }
   },
   "test_mapping": {
@@ -178,8 +217,8 @@
           "returncode": 0,
           "stdout_tail": [],
           "stderr_tail": [
-            "Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
-            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s"
+            "Compiling flashdb_rust v0.1.0 (./work/output/flashDB_rust)",
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s"
           ],
           "ok": true,
           "error": ""
@@ -193,6 +232,17 @@
             "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
             "",
             "",
+            "running 6 tests",
+            "test test_capacity_boundary ... ok",
+            "test test_delete_head_middle_tail ... ok",
+            "test test_update_existing_does_not_increment_count ... ok",
+            "test test_lookup_not_found ... ok",
+            "test test_delete_not_found_preserves_state ... ok",
+            "test test_reset_after_mutation ... ok",
+            "",
+            "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+            "",
+            "",
             "running 1 test",
             "test test_flashdb ... ok",
             "",
@@ -204,9 +254,10 @@
             "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
           ],
           "stderr_tail": [
-            "Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
-            "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s",
+            "Compiling flashdb_rust v0.1.0 (./work/output/flashDB_rust)",
+            "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.58s",
             "     Running unittests src/lib.rs (target/debug/deps/flashdb_rust-bbd0a51323736fe7.exe)",
+            "     Running tests/semantic_invariants.rs (target/debug/deps/semantic_invariants-2d3529478d914770.exe)",
             "     Running tests/source_migration.rs (target/debug/deps/source_migration-26c741a006633bbd.exe)",
             "   Doc-tests flashdb_rust"
           ],
@@ -217,7 +268,8 @@
       "repair_action": null,
       "repair_task_packet": null
     }
-  ]
+  ],
+  "unresolved_failures": []
 }
 
 ## Semantic
@@ -244,7 +296,7 @@
       "name": "assertive_tests",
       "passed": true,
       "detail": "each Rust test file contains assertions",
-      "assert_count": 8
+      "assert_count": 30
     },
     {
       "name": "api_mapping",
@@ -265,7 +317,7 @@
       "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
       "mapped_source_tests": 1,
       "source_test_count": 1,
-      "rust_test_functions": 1
+      "rust_test_functions": 7
     },
     {
       "name": "semantic_claim_gate",
@@ -277,9 +329,43 @@
       "name": "verification_dependency",
       "passed": true,
       "detail": "semantic gate requires successful cargo build and cargo test first"
+    },
+    {
+      "name": "semantic_invariant_extraction",
+      "passed": true,
+      "detail": "source behavior produced semantic invariants",
+      "invariant_count": 7
+    },
+    {
+      "name": "semantic_invariant_tests",
+      "passed": true,
+      "detail": "all required invariant-derived scenarios are present and executed by cargo test",
+      "required": [
+        "capacity_boundary",
+        "delete_head_middle_tail",
+        "delete_not_found_preserves_state",
+        "lookup_not_found",
+        "reset_after_mutation",
+        "update_existing_does_not_increment_count"
+      ],
+      "covered": [
+        "capacity_boundary",
+        "delete_head_middle_tail",
+        "delete_not_found_preserves_state",
+        "lookup_not_found",
+        "reset_after_mutation",
+        "update_existing_does_not_increment_count"
+      ]
+    },
+    {
+      "name": "repair_loop_resolved",
+      "passed": true,
+      "detail": "repair loop has no unresolved failures",
+      "unresolved_failures": []
     }
   ],
-  "failing_checks": []
+  "failing_checks": [],
+  "unresolved_failures": []
 }
 
 ## Issues

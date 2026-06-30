@@ -27,6 +27,8 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c2rust_analysis.py",
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
+    "work/runtime/c2rust_semantic_audit.py",
+    "work/runtime/c2rust_invariant_tests.py",
 ]
 REQUIRED_ADAPTER_FILES = [
     "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
@@ -210,7 +212,8 @@ class LoopForgeRunner:
             list(self.config.get("source", {}).get("readme_candidates", README_CANDIDATES)),
             self.profile,
         )
-        self.project_dir = self.workspace_root / sanitize_dirname(self.runtime_contract["output_project_name"])
+        self.output_base_dir = self.work_dir / "output"
+        self.project_dir = self.output_base_dir / sanitize_dirname(self.runtime_contract["output_project_name"])
         self.result_output_path = self.result_dir / "output.md"
         self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
         self.interaction_log_path = self.log_dir / "interaction.md"
@@ -262,6 +265,7 @@ class LoopForgeRunner:
                 trace_dir=self.trace_dir,
                 artifact_dir=self.artifact_dir,
                 migration_trace_dir=self.migration_trace_dir,
+                output_base_dir=self.output_base_dir,
                 project_dir=self.project_dir,
             ),
             config=self.config,
@@ -548,12 +552,13 @@ class LoopForgeRunner:
         self.write_json(self.unsafe_ratio_json, unsafe_payload)
 
         test_mapping_payload = json.loads(self.test_mapping_json.read_text(encoding="utf-8"))
-        test_mapping_gate = bool(test_mapping_payload.get("test_mapping"))
+        mappings = test_mapping_payload.get("test_mapping", [])
+        test_mapping_gate = bool(mappings) and all(item.get("coverage_level") == "semantic_mapped" for item in mappings)
 
         packet.set_gate("project_layout", cargo_manifest_exists and src_exists and tests_exists, "generated Cargo.toml/src/tests layout", {})
         packet.set_gate(
             "trace_artifacts",
-            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "repair-rounds.json"]),
+            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
             "required trace artifacts exist",
             {},
         )
@@ -577,6 +582,7 @@ class LoopForgeRunner:
             "status": "READY_FOR_EVALUATION" if packet.ready() else "BLOCKED_WITH_REPORT",
             "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
             "issues": packet.issues,
+            "first_blocking_point": None if packet.ready() else "F_CARGO_TEST_OR_SEMANTIC",
         }
         self.write_json(self.verify_path, verification_payload)
         lines = [
@@ -711,6 +717,7 @@ class LoopForgeRunner:
         packet = self.create_agent_task_packet()
         self_check_payload = self.self_check(packet)
         analysis = analyze_source(packet)
+        self.write_json(self.migration_trace_dir / "semantic-invariants.json", {"invariants": analysis.get("semantic_invariants", [])})
         self.write_source_inventory(packet, analysis)
         self.record_gate_event("ANALYZE_SOURCE", analysis["ok"], f"support_level={analysis.get('support_level', 'unsupported')}")
 
@@ -721,6 +728,7 @@ class LoopForgeRunner:
             self.write_api_mapping(analysis, project_payload)
             self.write_migration_plan(packet, analysis, project_payload)
             self.write_test_mapping(project_payload)
+            self.write_json(self.migration_trace_dir / "semantic-test-plan.json", {"scenarios": project_payload.get("semantic_test_plan", [])})
             self.write_migration_summary(packet, analysis, project_payload)
             self.record_gate_event("GENERATE_PROJECT", True, project_payload.get("semantic_equivalence_claim", "generated"))
         else:
@@ -737,6 +745,8 @@ class LoopForgeRunner:
             repair_payload = run_repair_loop(packet, commands, int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600))
             self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
             semantic_payload = evaluate_semantic_equivalence(packet, analysis, packet.output_project_dir, project_payload, repair_payload)
+            audit_lines = ["# Semantic Audit Report", "", f"- passed: `{semantic_payload['passed']}`", "", "```json", json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True), "```", ""]
+            (self.migration_trace_dir / "semantic-audit-report.md").write_text("\n".join(audit_lines), encoding="utf-8")
             self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
             verification_payload = self.verify_generated(packet, project_payload, repair_payload, semantic_payload)
         else:
@@ -817,7 +827,7 @@ def _candidate_source_roots(workspace_root: Path) -> List[Path]:
             candidates.append(candidate)
             if candidate.is_dir():
                 candidates.extend(path for path in candidate.iterdir() if path.is_dir())
-    for base in [workspace_root / ".code", workspace_root / "work" / "code", workspace_root / "code"]:
+    for base in [workspace_root / ".code", workspace_root / "work" / "code"]:
         candidates.append(base)
         if base.is_dir():
             candidates.extend(path for path in base.iterdir() if path.is_dir())

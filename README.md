@@ -36,7 +36,6 @@ The framework records which README was selected. If no README is available, the 
 .
 ├── INSTRUCTION.md
 ├── .code/   # optional local fallback source area
-├── code/    # optional legacy workspace area
 ├── work/    # framework assets
 ├── result/  # evaluator-facing outputs
 └── logs/    # trace outputs

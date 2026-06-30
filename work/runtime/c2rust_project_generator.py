@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from agent_task_packet import AgentTaskPacket
+from c2rust_invariant_tests import render_invariant_tests
 
 
 def _write(path: Path, content: str) -> None:
@@ -290,6 +291,15 @@ def _render_direct_body(function: Dict[str, Any], rust_return: str, type_index: 
     if body_kind in {"assignment_then_return", "state_mutation_then_return"}:
         lines = []
         for assignment in body_value.get("assignments", []):
+            if assignment.get("value") == "0":
+                vector_field = _vector_field_from_function(function, type_index)
+                count_field = _count_field_from_function(function, type_index)
+                struct_param = _find_primary_struct_param(function, type_index)
+                expected = f"{struct_param['name']}.{count_field['name']}" if struct_param and count_field else ""
+                if vector_field and assignment.get("target") == expected:
+                    state = _sanitize_ident(struct_param["name"], "state")
+                    records = _sanitize_ident(vector_field["name"], "items")
+                    lines.append(f"{state}.{records}.clear();")
             lines.append(f"{_rust_expr(assignment['target'], function, type_index)} {assignment['operator']} {_rust_expr(assignment['value'], function, type_index, clone_strings=True)};")
         if body_value.get("return_expr") is not None:
             lines.append(_rust_expr(body_value["return_expr"], function, type_index))
@@ -667,7 +677,13 @@ def _render_tests(
 
 
 def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[str, Any]:
-    project_dir = packet.output_project_dir
+    output_base = packet.paths.output_base_dir.resolve()
+    project_dir = packet.output_project_dir.resolve()
+    if project_dir.parent != output_base:
+        raise ValueError(f"output project must be an immediate child of {output_base}")
+    if project_dir == packet.paths.source_root.resolve() or packet.paths.source_root.resolve() in project_dir.parents:
+        raise ValueError("output project must not be written inside SOURCE_ROOT")
+    output_base.mkdir(parents=True, exist_ok=True)
     project_dir.mkdir(parents=True, exist_ok=True)
     for path in [project_dir / "src", project_dir / "tests"]:
         if path.exists():
@@ -722,6 +738,11 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         type_index,
     )
     _write(project_dir / "tests" / "source_migration.rs", tests_rs)
+    invariant_tests, semantic_test_plan = render_invariant_tests(
+        _sanitize_ident(packet.output_project_name, "c_to_rust_output"), analysis, analysis.get("semantic_invariants", [])
+    )
+    if invariant_tests:
+        _write(project_dir / "tests" / "semantic_invariants.rs", invariant_tests)
 
     mapped_names = [item[0] for item in exported_functions]
     referenced_apis = _dedupe([api for test in analysis.get("tests", []) for api in test.get("referenced_apis", [])])
@@ -738,6 +759,8 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         for name in unsupported_apis
     }
     module_list = ["src/lib.rs"] + [f"src/{module_name}.rs" for module_name in module_names] + ["tests/source_migration.rs"]
+    if invariant_tests:
+        module_list.append("tests/semantic_invariants.rs")
     source_coverage = {
         "source_file_count": len(analysis.get("source_files", [])),
         "test_file_count": len(analysis.get("tests", [])),
@@ -767,6 +790,8 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         "source_coverage": source_coverage,
         "module_list": module_list,
         "test_mapping": test_mapping,
+        "semantic_invariants": analysis.get("semantic_invariants", []),
+        "semantic_test_plan": semantic_test_plan,
         "bootstrap_only": not claimable,
         "semantic_equivalence_claim": "positive_semantic_claim" if claimable else "not_claimed",
         "crate_name": package_name,

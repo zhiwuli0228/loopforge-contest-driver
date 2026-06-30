@@ -1,9 +1,9 @@
 # LoopForge Final Report
 
 - status: `READY_FOR_EVALUATION`
-- generated_at: `2026-06-30T14:04:30Z`
+- generated_at: `2026-06-30T16:16:38Z`
 - source_root: `.code/FlashDB`
-- output_project_dir: `flashDB_rust`
+- output_project_dir: `work/output/flashDB_rust`
 
 ## READY Gates
 

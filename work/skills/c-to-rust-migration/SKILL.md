@@ -116,6 +116,12 @@ Produce:
 
 ### 6. Verification
 
+## Semantic Self-Audit Requirement
+
+Do not claim semantic equivalence only because the generated Rust project builds and existing tests pass. Derive semantic invariants from C source and source tests, including reset behavior, capacity, lookup not-found, insert/update, deletion, and state preservation after errors when applicable.
+
+Generate and execute invariant-derived tests for normal, boundary, error, reset-after-mutation, failed-operation preservation, and head/middle/tail deletion paths. Missing required invariant tests is a blocking failure. If a semantic test fails, repair the implementation, record the repair round, and rerun verification. Never weaken or delete a derived test to make verification pass.
+
 Run inside the runtime-derived Rust output project:
 
 ```bash
@@ -164,6 +170,8 @@ Return `READY_FOR_EVALUATION` only if:
 - `cargo test` passes
 - unsafe ratio is lower than 10%
 - semantic gate passes
+- semantic invariants were extracted and every required derived test passes
+- the repair loop has no unresolved semantic failures
 - `result/output.md` exists
 - `result/issues/00-summary.md` exists
 

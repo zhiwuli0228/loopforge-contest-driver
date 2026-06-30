@@ -6,6 +6,6 @@ LoopForge supports Windows local development and Linux contest execution through
 
 - Linux is the official submission environment.
 - Windows is a supported local development environment.
-- `SOURCE_ROOT` may resolve to a contest source mount or to local fallback `code/`.
+- `SOURCE_ROOT` may resolve to a contest source mount or to local fallback `.code/`.
 - Evaluator-facing outputs stay under `result/` and `logs/`.
 - Internal runtime evidence stays under `logs/trace/`.

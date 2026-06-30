@@ -45,8 +45,6 @@ if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
     SOURCE_ROOT_VALUE="${ROOT_DIR}/.code/source-project"
   elif [[ -d "${ROOT_DIR}/work/code/source-project" ]]; then
     SOURCE_ROOT_VALUE="${ROOT_DIR}/work/code/source-project"
-  elif [[ -d "${ROOT_DIR}/code/source-project" ]]; then
-    SOURCE_ROOT_VALUE="${ROOT_DIR}/code/source-project"
   else
     SOURCE_ROOT_VALUE=""
   fi

@@ -53,7 +53,7 @@ Resolve the source path in this order:
 2. Explicit `--source-root`
 3. `SOURCE_ROOT`
 4. Contest platform source mount on Linux
-5. Local fallback `code/`
+5. Local fallback `.code/`
 
 Runtime evidence must be written under `logs/trace/`. The source tree under `SOURCE_ROOT` is read-only and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
 Evaluator-facing outputs must be written under `result/` and `logs/`.

@@ -16,6 +16,7 @@ pub struct FlashdbHandle {
 
 pub fn flashdb_new(db: &mut FlashdbHandle) {
     // Derived from src/flashdb.c
+    db.records.clear();
     db.count = 0;
 }
 

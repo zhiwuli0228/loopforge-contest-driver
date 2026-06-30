@@ -97,20 +97,11 @@ function Resolve-SourceRoot {
         return $resolved
     }
 
-    $uniqueFromCode = Resolve-UniqueSourceChild -BasePath (Join-Path $RootDir "code")
-    if ($uniqueFromCode) {
-        return $uniqueFromCode
-    }
-
     if ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
         return (Resolve-SourceRoot -ExplicitSourceRoot $env:SOURCE_ROOT.Trim())
     }
 
-    if (Test-SourceRootLike -Path (Join-Path $RootDir "code")) {
-        return (Resolve-Path -LiteralPath (Join-Path $RootDir "code")).Path
-    }
-
-    Write-LoopForgeError "SOURCE_ROOT not found: code"
+    Write-LoopForgeError "SOURCE_ROOT not provided and no valid source project was resolved."
     exit 1
 }
 
