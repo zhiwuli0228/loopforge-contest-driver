@@ -198,7 +198,7 @@ class LoopForgeRunner:
         self.unsafe_ratio_json = self.migration_trace_dir / "unsafe-ratio.json"
         self.gate_events: List[Dict[str, str]] = []
 
-    def create_packet(self) -> AgentTaskPacket:
+    def create_agent_task_packet(self) -> AgentTaskPacket:
         packet = AgentTaskPacket(
             paths=RuntimePaths(
                 workspace_root=self.workspace_root,
@@ -218,6 +218,9 @@ class LoopForgeRunner:
         )
         packet.metadata["source_root_resolution"] = str(self.source_root)
         return packet
+
+    def create_packet(self) -> AgentTaskPacket:
+        return self.create_agent_task_packet()
 
     def ensure_outputs(self) -> None:
         self.result_dir.mkdir(parents=True, exist_ok=True)
@@ -523,7 +526,7 @@ class LoopForgeRunner:
         self.verification_report_md.write_text("\n".join(lines), encoding="utf-8")
         return verification_payload
 
-    def finalize(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def finalize_generated(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
         final_status = verification_payload.get("status", "BLOCKED_WITH_REPORT")
         report = {
             "generated_at": utc_now(),
@@ -565,6 +568,9 @@ class LoopForgeRunner:
         self.final_report_path.write_text("\n".join(lines), encoding="utf-8")
         self.record_gate_event("FINALIZE", True, final_status)
         return {"ok": True, "status": final_status, "report": str(self.final_report_path)}
+
+    def finalize(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self.finalize_generated(packet, self_check_payload, analysis, project_payload, verification_payload)
 
     def write_entrypoint_result(self, packet: AgentTaskPacket, analysis: Dict[str, Any], verification_payload: Dict[str, Any], finalize_payload: Dict[str, Any]) -> Dict[str, Any]:
         gates = verification_payload.get("gates", {})
@@ -624,7 +630,7 @@ class LoopForgeRunner:
 
     def run_entrypoint(self) -> Dict[str, Any]:
         self.ensure_outputs()
-        packet = self.create_packet()
+        packet = self.create_agent_task_packet()
         self_check_payload = self.self_check(packet)
         analysis = analyze_source(packet)
         self.write_source_inventory(analysis)
@@ -680,7 +686,7 @@ class LoopForgeRunner:
                 encoding="utf-8",
             )
 
-        finalize_payload = self.finalize(packet, self_check_payload, analysis, project_payload, verification_payload)
+        finalize_payload = self.finalize_generated(packet, self_check_payload, analysis, project_payload, verification_payload)
         run_summary = self.write_entrypoint_result(packet, analysis, verification_payload, finalize_payload)
         return {
             "ok": finalize_payload["status"] in {"READY_FOR_EVALUATION", "BLOCKED_WITH_REPORT"},
@@ -694,7 +700,7 @@ class LoopForgeRunner:
 
     def detect_project(self) -> Dict[str, Any]:
         self.ensure_outputs()
-        packet = self.create_packet()
+        packet = self.create_agent_task_packet()
         self.self_check(packet)
         analysis = analyze_source(packet)
         self.write_source_inventory(analysis)
@@ -779,7 +785,7 @@ def main(argv: List[str]) -> int:
             runner.write_templates()
             print_json({"ok": True, "status": "initialized", "source_root": str(source_root)})
         if args.self_check:
-            packet = runner.create_packet()
+            packet = runner.create_agent_task_packet()
             runner.ensure_outputs()
             print_json(runner.self_check(packet))
         if args.detect:

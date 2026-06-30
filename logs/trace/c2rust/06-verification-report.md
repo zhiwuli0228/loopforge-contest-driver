@@ -49,7 +49,7 @@
           "unsafe_lines": 0
         }
       ],
-      "generated_at": "2026-06-30T12:04:09Z"
+      "generated_at": "2026-06-30T12:11:49Z"
     }
   },
   "semantic": {
@@ -159,7 +159,7 @@
           "stdout_tail": [],
           "stderr_tail": [
             "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s"
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s"
           ],
           "ok": true,
           "error": ""
@@ -174,9 +174,9 @@
             "",
             "",
             "running 3 tests",
+            "test stores_and_reads_values ... ok",
             "test deleting_a_key_removes_it_from_the_store ... ok",
             "test replacing_a_key_returns_the_previous_value ... ok",
-            "test stores_and_reads_values ... ok",
             "",
             "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
             "",
@@ -187,7 +187,7 @@
           ],
           "stderr_tail": [
             "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-            "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.50s",
+            "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s",
             "     Running unittests src\\lib.rs (target\\debug\\deps\\flashdb_rust-bbd0a51323736fe7.exe)",
             "     Running tests\\flashdb_semantics.rs (target\\debug\\deps\\flashdb_semantics-cd5109fe428454d4.exe)",
             "   Doc-tests flashdb_rust"
