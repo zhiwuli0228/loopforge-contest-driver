@@ -9,18 +9,20 @@
     ],
     "mapped_apis": [
       "flashdb_new",
-      "flashdb_count",
       "flashdb_set",
-      "flashdb_delete"
+      "flashdb_get",
+      "flashdb_delete",
+      "flashdb_count"
     ],
     "unsupported_apis": [],
     "source_coverage": {
       "source_file_count": 2,
       "test_file_count": 1,
-      "mapped_api_count": 4,
+      "mapped_api_count": 5,
       "unsupported_api_count": 0,
-      "translated_definition_count": 0,
-      "definition_count": 2
+      "translated_definition_count": 5,
+      "definition_count": 5,
+      "unsupported_reasons": {}
     },
     "module_list": [
       "src/lib.rs",
@@ -31,12 +33,21 @@
       {
         "source_test": "tests/test_flashdb.c",
         "rust_test_file": "tests/source_migration.rs",
-        "mapping": "inventory-backed source mapping",
-        "coverage_level": "structural_only"
+        "mapping": "source API calls with translated assertions",
+        "coverage_level": "semantic_mapped",
+        "mapped_apis": [
+          "flashdb_new",
+          "flashdb_set",
+          "flashdb_count",
+          "flashdb_get",
+          "flashdb_delete"
+        ],
+        "unsupported_apis": [],
+        "source_assertion_count": 1
       }
     ],
-    "bootstrap_only": true,
-    "semantic_equivalence_claim": "not_claimed",
+    "bootstrap_only": false,
+    "semantic_equivalence_claim": "positive_semantic_claim",
     "crate_name": "flashdb_rust"
   },
   "repair_loop": {
@@ -53,46 +64,8 @@
             "returncode": 0,
             "stdout_tail": [],
             "stderr_tail": [
-              "   = note: `#[warn(unused_variables)]` on by default",
-              "",
-              "warning: unused variable: `db`",
-              "  --> src/flashdb.rs:19:22",
-              "   |",
-              "19 | pub fn flashdb_count(db: usize) -> usize {",
-              "   |                      ^^ help: if this is intentional, prefix it with an underscore: `_db`",
-              "",
-              "warning: unused variable: `db`",
-              "  --> src/flashdb.rs:24:20",
-              "   |",
-              "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
-              "   |                    ^^ help: if this is intentional, prefix it with an underscore: `_db`",
-              "",
-              "warning: unused variable: `key`",
-              "  --> src/flashdb.rs:24:31",
-              "   |",
-              "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
-              "   |                               ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
-              "",
-              "warning: unused variable: `value`",
-              "  --> src/flashdb.rs:24:43",
-              "   |",
-              "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
-              "   |                                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`",
-              "",
-              "warning: unused variable: `db`",
-              "  --> src/flashdb.rs:29:23",
-              "   |",
-              "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
-              "   |                       ^^ help: if this is intentional, prefix it with an underscore: `_db`",
-              "",
-              "warning: unused variable: `key`",
-              "  --> src/flashdb.rs:29:34",
-              "   |",
-              "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
-              "   |                                  ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
-              "",
-              "warning: `flashdb_rust` (lib) generated 7 warnings",
-              "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s"
+              "Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
+              "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s"
             ],
             "ok": true,
             "error": ""
@@ -106,11 +79,10 @@
               "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
               "",
               "",
-              "running 2 tests",
-              "test crate_has_generated_modules ... ok",
+              "running 1 test",
               "test test_flashdb ... ok",
               "",
-              "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+              "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
               "",
               "",
               "running 0 tests",
@@ -118,43 +90,8 @@
               "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
             ],
             "stderr_tail": [
-              "warning: unused variable: `key`",
-              "  --> src/flashdb.rs:24:31",
-              "   |",
-              "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
-              "   |                               ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
-              "",
-              "warning: unused variable: `value`",
-              "  --> src/flashdb.rs:24:43",
-              "   |",
-              "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
-              "   |                                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`",
-              "",
-              "warning: unused variable: `db`",
-              "  --> src/flashdb.rs:29:23",
-              "   |",
-              "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
-              "   |                       ^^ help: if this is intentional, prefix it with an underscore: `_db`",
-              "",
-              "warning: unused variable: `key`",
-              "  --> src/flashdb.rs:29:34",
-              "   |",
-              "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
-              "   |                                  ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
-              "",
-              "warning: `flashdb_rust` (lib) generated 7 warnings",
-              "   Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
-              "warning: unused imports: `flashdb_count`, `flashdb_delete`, `flashdb_new`, and `flashdb_set`",
-              " --> tests/source_migration.rs:2:20",
-              "  |",
-              "2 | use flashdb_rust::{flashdb_new, flashdb_count, flashdb_set, flashdb_delete};",
-              "  |                    ^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^^^^",
-              "  |",
-              "  = note: `#[warn(unused_imports)]` on by default",
-              "",
-              "warning: `flashdb_rust` (lib test) generated 7 warnings (7 duplicates)",
-              "warning: `flashdb_rust` (test \"source_migration\") generated 1 warning (run `cargo fix --test \"source_migration\"` to apply 1 suggestion)",
-              "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.84s",
+              "Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
+              "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s",
               "     Running unittests src/lib.rs (target/debug/deps/flashdb_rust-bbd0a51323736fe7.exe)",
               "     Running tests/source_migration.rs (target/debug/deps/source_migration-26c741a006633bbd.exe)",
               "   Doc-tests flashdb_rust"
@@ -170,7 +107,7 @@
   },
   "unsafe": {
     "project": "./flashDB_rust",
-    "total_code_lines": 41,
+    "total_code_lines": 77,
     "unsafe_lines": 0,
     "unsafe_ratio": 0.0,
     "max_ratio": 0.1,
@@ -178,24 +115,24 @@
     "files": [
       {
         "file": "./flashDB_rust/src/flashdb.rs",
-        "code_lines": 21,
+        "code_lines": 53,
         "unsafe_lines": 0
       },
       {
         "file": "./flashDB_rust/src/lib.rs",
-        "code_lines": 9,
+        "code_lines": 10,
         "unsafe_lines": 0
       },
       {
         "file": "./flashDB_rust/tests/source_migration.rs",
-        "code_lines": 11,
+        "code_lines": 14,
         "unsafe_lines": 0
       }
     ],
-    "generated_at": "2026-06-30T12:57:04Z"
+    "generated_at": "2026-06-30T14:04:30Z"
   },
   "semantic": {
-    "passed": false,
+    "passed": true,
     "checks": [
       {
         "name": "cargo_manifest",
@@ -216,17 +153,18 @@
         "name": "assertive_tests",
         "passed": true,
         "detail": "each Rust test file contains assertions",
-        "assert_count": 3
+        "assert_count": 8
       },
       {
         "name": "api_mapping",
         "passed": true,
-        "detail": "source APIs are represented in generated Rust modules",
+        "detail": "every mapped source API is called by generated Rust tests",
         "mapped_apis": [
           "flashdb_new",
-          "flashdb_count",
           "flashdb_set",
-          "flashdb_delete"
+          "flashdb_get",
+          "flashdb_delete",
+          "flashdb_count"
         ],
         "unsupported_apis": []
       },
@@ -236,13 +174,13 @@
         "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
         "mapped_source_tests": 1,
         "source_test_count": 1,
-        "rust_test_functions": 2
+        "rust_test_functions": 1
       },
       {
         "name": "semantic_claim_gate",
-        "passed": false,
+        "passed": true,
         "detail": "semantic equivalence requires an explicit positive claim backed by generated evidence",
-        "semantic_equivalence_claim": "not_claimed"
+        "semantic_equivalence_claim": "positive_semantic_claim"
       },
       {
         "name": "verification_dependency",
@@ -250,13 +188,11 @@
         "detail": "semantic gate requires successful cargo build and cargo test first"
       }
     ],
-    "failing_checks": [
-      "semantic_claim_gate"
-    ]
+    "failing_checks": []
   },
   "test_mapping_gate": true,
-  "ready": false,
-  "status": "BLOCKED_WITH_REPORT",
+  "ready": true,
+  "status": "READY_FOR_EVALUATION",
   "gates": {
     "project_layout": {
       "name": "project_layout",
@@ -292,7 +228,7 @@
       "detail": "unsafe gate",
       "payload": {
         "project": "./flashDB_rust",
-        "total_code_lines": 41,
+        "total_code_lines": 77,
         "unsafe_lines": 0,
         "unsafe_ratio": 0.0,
         "max_ratio": 0.1,
@@ -300,29 +236,29 @@
         "files": [
           {
             "file": "./flashDB_rust/src/flashdb.rs",
-            "code_lines": 21,
+            "code_lines": 53,
             "unsafe_lines": 0
           },
           {
             "file": "./flashDB_rust/src/lib.rs",
-            "code_lines": 9,
+            "code_lines": 10,
             "unsafe_lines": 0
           },
           {
             "file": "./flashDB_rust/tests/source_migration.rs",
-            "code_lines": 11,
+            "code_lines": 14,
             "unsafe_lines": 0
           }
         ],
-        "generated_at": "2026-06-30T12:57:04Z"
+        "generated_at": "2026-06-30T14:04:30Z"
       }
     },
     "semantic": {
       "name": "semantic",
-      "passed": false,
+      "passed": true,
       "detail": "semantic gate",
       "payload": {
-        "passed": false,
+        "passed": true,
         "checks": [
           {
             "name": "cargo_manifest",
@@ -343,17 +279,18 @@
             "name": "assertive_tests",
             "passed": true,
             "detail": "each Rust test file contains assertions",
-            "assert_count": 3
+            "assert_count": 8
           },
           {
             "name": "api_mapping",
             "passed": true,
-            "detail": "source APIs are represented in generated Rust modules",
+            "detail": "every mapped source API is called by generated Rust tests",
             "mapped_apis": [
               "flashdb_new",
-              "flashdb_count",
               "flashdb_set",
-              "flashdb_delete"
+              "flashdb_get",
+              "flashdb_delete",
+              "flashdb_count"
             ],
             "unsupported_apis": []
           },
@@ -363,13 +300,13 @@
             "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
             "mapped_source_tests": 1,
             "source_test_count": 1,
-            "rust_test_functions": 2
+            "rust_test_functions": 1
           },
           {
             "name": "semantic_claim_gate",
-            "passed": false,
+            "passed": true,
             "detail": "semantic equivalence requires an explicit positive claim backed by generated evidence",
-            "semantic_equivalence_claim": "not_claimed"
+            "semantic_equivalence_claim": "positive_semantic_claim"
           },
           {
             "name": "verification_dependency",
@@ -377,9 +314,7 @@
             "detail": "semantic gate requires successful cargo build and cargo test first"
           }
         ],
-        "failing_checks": [
-          "semantic_claim_gate"
-        ]
+        "failing_checks": []
       }
     },
     "test_mapping": {
@@ -391,8 +326,17 @@
           {
             "source_test": "tests/test_flashdb.c",
             "rust_test_file": "tests/source_migration.rs",
-            "mapping": "inventory-backed source mapping",
-            "coverage_level": "structural_only"
+            "mapping": "source API calls with translated assertions",
+            "coverage_level": "semantic_mapped",
+            "mapped_apis": [
+              "flashdb_new",
+              "flashdb_set",
+              "flashdb_count",
+              "flashdb_get",
+              "flashdb_delete"
+            ],
+            "unsupported_apis": [],
+            "source_assertion_count": 1
           }
         ]
       }
@@ -406,10 +350,5 @@
       }
     }
   },
-  "issues": [
-    {
-      "code": "semantic_gate_failed",
-      "detail": "semantic checks failed: semantic_claim_gate"
-    }
-  ]
+  "issues": []
 }

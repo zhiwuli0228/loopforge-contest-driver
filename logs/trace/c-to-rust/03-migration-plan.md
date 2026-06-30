@@ -2,7 +2,7 @@
 
 - support_level: `source-driven-c`
 - output_project_dir: `flashDB_rust`
-- semantic_equivalence_claim: `not_claimed`
+- semantic_equivalence_claim: `positive_semantic_claim`
 
 ## Crate Layout
 
@@ -16,4 +16,4 @@
 
 ## Unsupported Or Degraded Behaviors
 
-- Semantic equivalence is not claimed. The generated crate is source-driven but requires additional manual migration.
+- none

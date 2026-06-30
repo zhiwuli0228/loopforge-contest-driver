@@ -1,4 +1,0 @@
-<3>WSL (8) ERROR: CreateProcessParseCommon:754: getpwuid(0) failed 2
-<3>WSL (8) ERROR: CreateProcessEntryCommon:331: getpwuid(0) failed 2
-<3>WSL (8) ERROR: CreateProcessEntryCommon:502: execvpe /bin/bash failed 2
-<3>WSL (8) ERROR: CreateProcessEntryCommon:505: Create process not expected to return

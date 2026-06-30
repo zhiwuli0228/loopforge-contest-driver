@@ -19,6 +19,7 @@
 
 - `flashdb_count`
 - `flashdb_delete`
+- `flashdb_get`
 - `flashdb_new`
 - `flashdb_set`
 
