@@ -1,5 +1,7 @@
 .loopforge/
 code/.loopforge/
+!code/
+!code/.gitkeep
 .agents/
 __pycache__/
 *.pyc
