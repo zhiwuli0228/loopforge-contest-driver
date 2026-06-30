@@ -17,6 +17,8 @@
 8. Use `work/scripts/bootstrap.ps1` for Windows local development and smoke testing from the repository root.
 9. Run the LoopForge skill and let it operate only inside `code/`.
 
+For local runs, do not add extra source-path parameters unless the source tree is outside `code/`.
+
 ## What Must Be Human-Adapted
 
 - task name

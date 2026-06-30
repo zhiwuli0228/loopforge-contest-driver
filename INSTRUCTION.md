@@ -17,8 +17,9 @@ Do not treat `INSTRUCTION.md` as the full workflow. It only routes the agent to 
 Resolve the source project path in the following order:
 
 1. Use the source path provided by the contest platform when invoking this instruction.
-2. If no platform path is provided on Linux, try the configured absolute path in `work/loopforge.config.yaml`.
-3. If still unresolved, use `code/` under this repository root as the local fallback path.
+2. If `--source-root` or `SOURCE_ROOT` is explicitly provided, use that value.
+3. If no explicit path is provided and a contest Linux source mount exists, use it automatically.
+4. Otherwise use `code/` under this repository root as the local fallback path.
 
 ## 3. Execute framework
 
@@ -35,3 +36,4 @@ When execution completes, ensure these paths exist:
 - `logs/trace/`
 
 Do not require human interaction during automated execution.
+Local development should work with no extra path input when the source tree is placed under `code/`.

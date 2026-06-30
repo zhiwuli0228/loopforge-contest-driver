@@ -1625,21 +1625,49 @@ def print_json(payload: Dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, ensure_ascii=True))
 
 
-def resolve_workspace_root(cwd: Path, work_arg: str, code_arg: str) -> Path:
+def resolve_path_from_workspace(workspace_root: Path, path_arg: str) -> Path:
+    candidate = Path(path_arg)
+    if not candidate.is_absolute():
+        candidate = (workspace_root / candidate).resolve()
+    else:
+        candidate = candidate.resolve()
+    return candidate
+
+
+def resolve_work_dir(cwd: Path, work_arg: str) -> Path:
     work_path = Path(work_arg)
-    code_path = Path(code_arg)
     if not work_path.is_absolute():
         work_path = (cwd / work_path).resolve()
     else:
         work_path = work_path.resolve()
-    if not code_path.is_absolute():
-        code_path = (work_path.parent / code_path).resolve()
-    else:
-        code_path = code_path.resolve()
+    return work_path
 
-    if work_path == code_path:
-        raise ValueError("work_dir and code_dir must be different paths")
+
+def resolve_workspace_root(work_path: Path) -> Path:
     return work_path.parent
+
+
+def resolve_default_source_root(workspace_root: Path, code_arg: str) -> str:
+    if platform.system().lower().startswith("linux"):
+        linux_candidates = [
+            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB"),
+            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__"),
+        ]
+        for candidate in linux_candidates:
+            if candidate.exists():
+                return str(candidate)
+    return code_arg
+
+
+def resolve_effective_source_arg(workspace_root: Path, code_arg: str, source_arg: Optional[str]) -> str:
+    if source_arg and source_arg.strip():
+        return source_arg.strip()
+
+    env_source_root = os.environ.get("SOURCE_ROOT", "").strip()
+    if env_source_root:
+        return env_source_root
+
+    return resolve_default_source_root(workspace_root, code_arg)
 
 
 def main(argv: List[str]) -> int:
@@ -1649,32 +1677,16 @@ def main(argv: List[str]) -> int:
         return 2
 
     try:
-        effective_code_arg = args.source_root if args.source_root else args.code_dir
-        workspace_root = resolve_workspace_root(Path.cwd().resolve(), args.work_dir, effective_code_arg)
-        work_dir = Path(args.work_dir)
-        if not work_dir.is_absolute():
-            work_dir = (Path.cwd().resolve() / work_dir).resolve()
-        else:
-            work_dir = work_dir.resolve()
-        code_dir = Path(effective_code_arg)
-        if not code_dir.is_absolute():
-            code_dir = (workspace_root / code_dir).resolve()
-        else:
-            code_dir = code_dir.resolve()
+        work_dir = resolve_work_dir(Path.cwd().resolve(), args.work_dir)
+        workspace_root = resolve_workspace_root(work_dir)
+        effective_source_arg = resolve_effective_source_arg(workspace_root, args.code_dir, args.source_root)
+        code_dir = resolve_path_from_workspace(workspace_root, effective_source_arg)
         result_dir = None
         if args.result_dir:
-            result_dir = Path(args.result_dir)
-            if not result_dir.is_absolute():
-                result_dir = (Path.cwd().resolve() / result_dir).resolve()
-            else:
-                result_dir = result_dir.resolve()
+            result_dir = resolve_path_from_workspace(Path.cwd().resolve(), args.result_dir)
         log_dir = None
         if args.log_dir:
-            log_dir = Path(args.log_dir)
-            if not log_dir.is_absolute():
-                log_dir = (Path.cwd().resolve() / log_dir).resolve()
-            else:
-                log_dir = log_dir.resolve()
+            log_dir = resolve_path_from_workspace(Path.cwd().resolve(), args.log_dir)
         runner = LoopForgeRunner(workspace_root, work_dir, code_dir, code_dir, result_dir, log_dir)
 
         if args.init:

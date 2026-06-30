@@ -8,6 +8,8 @@ For execution and reproduction, start from [INSTRUCTION.md](E:/009workspace/code
 
 The expected root-level execution summary is written to [result/output.md](E:/009workspace/codex/loopforge-contest-driver/result/output.md).
 
+For local use, put the target source tree under `code/` and start from `INSTRUCTION.md`. Extra source-path input is optional unless the platform provides a different mount path.
+
 ## Platform Model
 
 ```text
@@ -79,6 +81,12 @@ Use `work/profiles/templates/` as starting points during adaptation and `work/pr
 ## Verification Model
 
 LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `work/loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
+
+Source path input is intentionally minimal:
+
+- local default: `code/`
+- explicit override: `--source-root` or `SOURCE_ROOT`
+- Linux contest auto-detect: use the mounted platform source path only when it actually exists
 
 ## Execution Model
 

@@ -63,8 +63,11 @@ powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1
 The source project path must be resolved by the following priority:
 
 1. Platform-provided source path.
-2. Linux configured absolute fallback path.
-3. Local repository fallback: `code/`.
+2. Explicit `--source-root` or `SOURCE_ROOT`, when provided.
+3. Auto-detected contest Linux source mount, when present.
+4. Local repository fallback: `code/`.
+
+For local development, placing the source tree under `code/` is sufficient. No extra path argument is required.
 
 ## 6. Required root-level records
 
