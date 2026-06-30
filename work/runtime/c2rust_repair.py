@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shlex
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -186,7 +190,85 @@ def _repair_reset_storage(project_dir: Path) -> bool:
     return False
 
 
-def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: Dict[str, Any]) -> Dict[str, Any]:
+def _external_repair_command(packet: AgentTaskPacket) -> Any:
+    """Return the configured agent/repair executor command, if available."""
+    provider = packet.config.get("execution", {}).get("repair_provider", {}) or {}
+    if provider.get("enabled", "auto") is False:
+        return None
+    override = os.environ.get("LOOPFORGE_REPAIR_COMMAND")
+    if override:
+        return override
+    if provider.get("command"):
+        return provider["command"]
+    if provider.get("enabled", "auto") in {True, "auto"} and not os.environ.get("LOOPFORGE_CODEX_REPAIR_ACTIVE"):
+        if any(shutil.which(name) for name in ("codex", "codex.exe", "codex.ps1")):
+            adapter = Path(__file__).with_name("codex_repair_provider.py")
+            if adapter.is_file():
+                return [sys.executable, str(adapter)]
+    return None
+
+
+def _run_external_repair_provider(
+    packet: AgentTaskPacket,
+    project_dir: Path,
+    command_result: Dict[str, Any],
+    round_number: int,
+    timeout_seconds: int,
+) -> Dict[str, Any]:
+    task = {
+        "round": round_number,
+        "project_dir": str(project_dir.resolve()),
+        "failed_command": command_result.get("command", ""),
+        "returncode": command_result.get("returncode"),
+        "stdout_tail": command_result.get("stdout_tail", []),
+        "stderr_tail": command_result.get("stderr_tail", []),
+        "instructions": "Modify the project in place to fix the failure; do not remove tests or bypass verification.",
+    }
+    return invoke_external_repair_provider(packet, project_dir, task, "repair", round_number, timeout_seconds)
+
+
+def invoke_external_repair_provider(packet: AgentTaskPacket, project_dir: Path, task: Dict[str, Any],
+                                    trace_prefix: str, round_number: int, timeout_seconds: int) -> Dict[str, Any]:
+    """Invoke the configured provider with a caller-defined, auditable task packet."""
+    command = _external_repair_command(packet)
+    if not command:
+        return {"applied": False, "detail": "repair_provider_unavailable"}
+    task_path = packet.paths.migration_trace_dir / f"{trace_prefix}-task-{round_number + 1:02d}.json"
+    task_path.write_text(json.dumps(task, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+
+    replacements = {"{task_packet}": str(task_path), "{project_dir}": str(project_dir)}
+    if isinstance(command, list):
+        argv = [str(item) for item in command]
+    else:
+        argv = shlex.split(str(command), posix=os.name != "nt")
+    argv = [next((value for token, value in replacements.items() if item == token), item) for item in argv]
+    env = os.environ.copy()
+    env.update({
+        "LOOPFORGE_REPAIR_TASK": str(task_path),
+        "LOOPFORGE_PROJECT_DIR": str(project_dir),
+        "LOOPFORGE_FAILED_COMMAND": str(task.get("failed_command", "")),
+    })
+    try:
+        completed = subprocess.run(argv, cwd=str(project_dir), capture_output=True, text=True,
+                                   timeout=timeout_seconds, check=False, env=env)
+        provider_result = {
+            "command": argv,
+            "returncode": completed.returncode,
+            "stdout_tail": completed.stdout.strip().splitlines()[-40:],
+            "stderr_tail": completed.stderr.strip().splitlines()[-40:],
+        }
+        (packet.paths.migration_trace_dir / f"{trace_prefix}-provider-{round_number + 1:02d}.json").write_text(
+            json.dumps(provider_result, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        return {"applied": completed.returncode == 0,
+                "detail": "external_repair_provider_completed" if completed.returncode == 0 else "external_repair_provider_failed",
+                "task_packet": str(task_path), "provider": provider_result}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"applied": False, "detail": "external_repair_provider_error",
+                "task_packet": str(task_path), "error": str(exc)}
+
+
+def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: Dict[str, Any],
+                   round_number: int, timeout_seconds: int) -> Dict[str, Any]:
     stderr_text = "\n".join(command_result.get("stderr_tail", []))
     output_text = "\n".join(command_result.get("stdout_tail", []) + command_result.get("stderr_tail", []))
     if "test_reset_after_mutation" in output_text and _repair_reset_storage(project_dir):
@@ -217,7 +299,7 @@ def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: D
     if missing_manifest and _ensure_cargo_manifest(packet, project_dir):
         return {"applied": True, "detail": "created_missing_cargo_manifest"}
 
-    return {"applied": False, "detail": "manual_repair_required"}
+    return _run_external_repair_provider(packet, project_dir, command_result, round_number, timeout_seconds)
 
 
 def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) -> None:
@@ -268,7 +350,7 @@ def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_second
             if not command_result["ok"]:
                 all_ok = False
                 issue_code = "cargo_build_failed" if index == 0 else "cargo_test_failed"
-                repair_action = _repair_action(packet, project_dir, command_result)
+                repair_action = _repair_action(packet, project_dir, command_result, rounds, timeout_seconds)
                 round_record["repair_action"] = repair_action
                 if not repair_action["applied"]:
                     round_record["repair_task_packet"] = {

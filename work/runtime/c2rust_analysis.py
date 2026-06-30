@@ -12,8 +12,8 @@ INCLUDE_RE = re.compile(r'^\s*#include\s+[<"]([^>"]+)[>"]', re.MULTILINE)
 MACRO_RE = re.compile(r"^\s*#define\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 STRUCT_DEFINITION_RE = re.compile(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{([^{}]*)\}\s*;", re.DOTALL)
 TYPEDEF_RE = re.compile(r"\btypedef\s+.+?\s+([A-Za-z_][A-Za-z0-9_]*)\s*;", re.DOTALL)
-PROTOTYPE_RE = re.compile(r"(?m)^[ \t]*([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)[ \t]*;")
-DEFINITION_HEADER_RE = re.compile(r"(?m)^[ \t]*([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)[ \t]*\{")
+PROTOTYPE_RE = re.compile(r"(?m)^[ \t]*(?!#)([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)[ \t]*;")
+DEFINITION_HEADER_RE = re.compile(r"(?m)^[ \t]*(?!#)([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)\s*\{")
 ASSERT_RE = re.compile(r"\b((?:assert|ASSERT|TEST_ASSERT)(?:_[A-Za-z0-9_]+)?)\s*\(([^;\n]*)\)")
 TEST_NAME_RE = re.compile(r"(?m)^\s*(?:void|int)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 CONTROL_KEYWORDS = {"if", "for", "while", "switch", "return", "sizeof"}
@@ -61,8 +61,57 @@ def _collect_files(directories: List[Path], suffixes: Tuple[str, ...]) -> List[P
 
 
 def _strip_comments(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
-    return re.sub(r"//[^\n]*", " ", text)
+    output: List[str] = []
+    index = 0
+    quote: Optional[str] = None
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        following = text[index + 1] if index + 1 < len(text) else ""
+        if quote:
+            output.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            index += 1
+            continue
+        if char in {'"', "'"}:
+            quote = char
+            output.append(char)
+            index += 1
+            continue
+        if char == "/" and following == "/":
+            output.extend("  ")
+            index += 2
+            while index < len(text) and text[index] not in "\r\n":
+                output.append(" ")
+                index += 1
+            continue
+        if char == "/" and following == "*":
+            output.extend("  ")
+            index += 2
+            while index < len(text):
+                if index + 1 < len(text) and text[index:index + 2] == "*/":
+                    output.extend("  ")
+                    index += 2
+                    break
+                output.append("\n" if text[index] == "\n" else " ")
+                index += 1
+            continue
+        output.append(char)
+        index += 1
+    return "".join(output)
+
+
+def _parseable_c(text: str) -> str:
+    """Remove constructs that make the lightweight declaration parser ambiguous."""
+    code = _strip_comments(text)
+    # A macro continuation can look like a declaration or function body. Preserve
+    # newlines so line-anchored parsing remains deterministic.
+    return re.sub(r"(?m)^[ \t]*#.*(?:\\\r?\n.*)*$", "", code)
 
 
 def _normalize_path(expr: str) -> str:
@@ -133,7 +182,7 @@ def _split_signature(prefix: str) -> Optional[Tuple[str, str]]:
         return None
     return_type = match.group(1).strip()
     name = match.group(2)
-    if not return_type or return_type.split()[0] in CONTROL_KEYWORDS or "=" in return_type:
+    if not return_type or return_type.split()[0] in CONTROL_KEYWORDS | {"typedef"} or "=" in return_type or "#" in return_type:
         return None
     return (return_type, name)
 
@@ -533,6 +582,7 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
 
     for path in src_files + test_files:
         text = _read_text(path)
+        parseable_text = _parseable_c(text)
         rel = _sanitize_rel(path, project_base)
         include_graph.append({"file": rel, "includes": _dedupe(INCLUDE_RE.findall(text))})
         for macro in MACRO_RE.findall(text):
@@ -542,37 +592,40 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
         for typedef_name in TYPEDEF_RE.findall(text):
             types.append({"name": typedef_name, "kind": "typedef", "file": rel})
         if path in src_files:
-            for signature_text, params_text in PROTOTYPE_RE.findall(text):
-                signature = _split_signature(signature_text)
-                if not signature:
-                    continue
-                return_type, name = signature
-                key = (rel, name, params_text.strip(), "prototype")
-                if key in seen_function_keys:
-                    continue
-                seen_function_keys.add(key)
-                params = _parse_params(params_text)
-                functions.append(
-                    {
-                        "name": name,
-                        "return_type": " ".join(return_type.split()),
-                        "params": params,
-                        "params_text": params_text.strip(),
-                        "file": rel,
-                        "decl_kind": "prototype",
-                        "body_kind": "prototype_only",
-                        "body_value": None,
-                        "raw_body": "",
-                        "normalized_body": "",
-                        "semantic_hints": [],
-                        "translation_status": "declaration_only",
-                        "unsupported_reason": None,
-                        "module_hint": Path(rel).stem,
-                    }
-                )
-                public_api_names.append(name)
+            # Only header declarations define the public surface. Parsing call-like
+            # statements in .c files as prototypes polluted the API list.
+            if path.suffix.lower() == ".h":
+                for signature_text, params_text in PROTOTYPE_RE.findall(parseable_text):
+                    signature = _split_signature(signature_text)
+                    if not signature:
+                        continue
+                    return_type, name = signature
+                    key = (rel, name, params_text.strip(), "prototype")
+                    if key in seen_function_keys:
+                        continue
+                    seen_function_keys.add(key)
+                    params = _parse_params(params_text)
+                    functions.append(
+                        {
+                            "name": name,
+                            "return_type": " ".join(return_type.split()),
+                            "params": params,
+                            "params_text": params_text.strip(),
+                            "file": rel,
+                            "decl_kind": "prototype",
+                            "body_kind": "prototype_only",
+                            "body_value": None,
+                            "raw_body": "",
+                            "normalized_body": "",
+                            "semantic_hints": [],
+                            "translation_status": "declaration_only",
+                            "unsupported_reason": None,
+                            "module_hint": Path(rel).stem,
+                        }
+                    )
+                    public_api_names.append(name)
 
-            for return_type, name, params_text, body in _iter_definitions(text):
+            for return_type, name, params_text, body in _iter_definitions(parseable_text):
                 if name in CONTROL_KEYWORDS:
                     continue
                 params = _parse_params(params_text)
@@ -599,7 +652,8 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                         "module_hint": Path(rel).stem,
                     }
                 )
-                public_api_names.append(name)
+                # Header declarations, rather than private/static implementation
+                # helpers, determine which definitions must satisfy the gate.
 
     hinted_api_names = [name for name in packet.api_name_hints if any(item["name"] == name for item in functions)]
     if hinted_api_names:

@@ -42,6 +42,13 @@ execution:
   unattended: true
   allow_manual_interaction: false
   max_repair_rounds: 3
+  max_semantic_repair_rounds: 2
+  # Optional unattended agent/fixer executable. It receives the task JSON path
+  # as argv and through LOOPFORGE_REPAIR_TASK; env LOOPFORGE_REPAIR_COMMAND
+  # overrides this setting on both Windows and Linux.
+  repair_provider:
+    enabled: "auto"
+    command: null
   fail_soft: true
   always_finalize: true
   allow_code_generation: true

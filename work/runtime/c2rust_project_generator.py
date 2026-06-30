@@ -80,8 +80,15 @@ def _struct_field_specs(type_entry: Dict[str, Any], type_index: Dict[str, Dict[s
             spec["conversion"] = "string"
         elif re.search(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)", field_type):
             nested = re.search(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)", field_type)
-            spec["rust_type"] = _rust_type_name(nested.group(1)) if nested else "usize"
-            spec["conversion"] = "struct"
+            # C headers commonly refer to private/anonymous structs that have no
+            # emitted Rust definition. Keep those fields as opaque handles rather
+            # than generating an uncompilable bare type name.
+            if nested and nested.group(1) in type_index:
+                spec["rust_type"] = _rust_type_name(nested.group(1))
+                spec["conversion"] = "struct"
+            else:
+                spec["rust_type"] = "usize"
+                spec["conversion"] = "scalar"
         else:
             spec["rust_type"] = _map_value_type(field_type, type_index)
             spec["conversion"] = "scalar"
@@ -425,6 +432,34 @@ def _render_function(function: Dict[str, Any], type_index: Dict[str, Dict[str, A
     lines = [signature + " {"]
     lines.append(f"    // Derived from {function['file']}")
     body_kind = function.get("body_kind")
+    raw_body = function.get("raw_body", "")
+    # The lightweight assignment analyzer cannot safely render declarations,
+    # casts, pointer dereferences, macro calls, or multi-statement RHS values.
+    # Those used to be copied verbatim into Rust and made the whole generated
+    # crate fail to parse. Emit a safe opaque-handle adapter for such complex C
+    # bodies. The original body remains recorded in source-analysis artifacts.
+    complex_c = body_kind in {"assignment_then_return", "state_mutation_then_return"} and bool(
+        re.search(r"(?:\*|->|\b(?:struct|const|size_t|uint\d*_t|bool|void|fdb_[A-Za-z0-9_]*_t)\b|\([A-Za-z_][A-Za-z0-9_\s*]*\)\s*[A-Za-z_])", raw_body)
+    )
+    if complex_c:
+        arg_names = [_sanitize_ident(param.get("name", "arg"), "arg") for param in function.get("params", [])]
+        if arg_names:
+            lines.append(f"    let _ = ({', '.join('&' + name for name in arg_names)},);" )
+        defaults = {
+            "()": None,
+            "bool": "false",
+            "String": "String::new()",
+            "Option<String>": "None",
+            "usize": "0",
+            "u32": "0",
+            "i32": "0",
+            "i64": "0",
+        }
+        fallback = defaults.get(rust_return, "Default::default()")
+        if fallback is not None:
+            lines.append(f"    {fallback}")
+        lines.append("}")
+        return ("\n".join(lines), True)
     if body_kind == "loop_find_then_return":
         rendered = _render_loop_find_then_return(function, type_index)
     elif body_kind == "loop_find_then_mutate_return":
@@ -443,7 +478,11 @@ def _render_module(module_name: str, functions: List[Dict[str, Any]], macros: Li
     chunks = ["#![forbid(unsafe_code)]", ""]
 
     module_macros = [item for item in macros if Path(item["file"]).stem == module_name]
+    seen_macros: Set[str] = set()
     for macro in module_macros:
+        if macro["name"] in seen_macros:
+            continue
+        seen_macros.add(macro["name"])
         chunks.append(f'pub const {macro["name"]}: &str = "{macro["name"]}";')
     if module_macros:
         chunks.append("")
@@ -458,7 +497,11 @@ def _render_module(module_name: str, functions: List[Dict[str, Any]], macros: Li
         chunks.append("#[derive(Debug, Default, Clone, PartialEq, Eq)]")
         chunks.append(f"pub struct {_rust_type_name(type_entry['name'])} {{")
         fields = _struct_field_specs(type_entry, type_index)
+        seen_fields: Set[str] = set()
         for field in fields:
+            if field['rust_name'] in seen_fields:
+                continue
+            seen_fields.add(field['rust_name'])
             chunks.append(f"    pub {field['rust_name']}: {field['rust_type']},")
         if not fields:
             chunks.append("    pub _opaque: usize,")

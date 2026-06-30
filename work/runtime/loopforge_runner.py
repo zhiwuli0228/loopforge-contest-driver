@@ -17,6 +17,7 @@ from c2rust_analysis import analyze_source, evaluate_semantic_equivalence
 from c_project_root_resolver import resolve_c_project_root, write_resolution_trace
 from c2rust_project_generator import generate_project
 from c2rust_repair import run_repair_loop
+from c2rust_semantic_repair import run_semantic_repair_loop
 from source_analysis_verify_gate import build_and_verify_source_analysis
 
 
@@ -30,6 +31,8 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c_project_root_resolver.py",
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
+    "work/runtime/codex_repair_provider.py",
+    "work/runtime/c2rust_semantic_repair.py",
     "work/runtime/c2rust_semantic_audit.py",
     "work/runtime/c2rust_invariant_tests.py",
     "work/runtime/source_analysis_verify_gate.py",
@@ -778,6 +781,13 @@ class LoopForgeRunner:
             repair_payload = run_repair_loop(packet, commands, int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600))
             self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
             semantic_payload = evaluate_semantic_equivalence(packet, analysis, packet.output_project_dir, project_payload, repair_payload)
+            if not semantic_payload["passed"]:
+                semantic_repair = run_semantic_repair_loop(
+                    packet, analysis, project_payload, semantic_payload, commands,
+                    int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600),
+                )
+                semantic_payload = semantic_repair["semantic"]
+                packet.metadata["semantic_repair"] = semantic_repair
             audit_lines = ["# Semantic Audit Report", "", f"- passed: `{semantic_payload['passed']}`", "", "```json", json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True), "```", ""]
             (self.migration_trace_dir / "semantic-audit-report.md").write_text("\n".join(audit_lines), encoding="utf-8")
             self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
