@@ -1,115 +1,216 @@
-# Contest Execution Instruction
+# INSTRUCTION.md — Windows Local Debug Entry
 
-This repository is a generic source-readme-driven C-to-Rust migration harness.
+> This file is the temporary root `INSTRUCTION.md` for local Windows debugging.
+> The official Linux evaluator version is provided separately as `INSTRUCTION.linux.md`.
+> Before final contest packaging, copy the Linux version back to root `INSTRUCTION.md` if the evaluator requires Linux-only execution.
 
-The only required external input is the source tree root, exposed as `SOURCE_ROOT` or passed by `--source-root`.
+## 1. Purpose
 
-## Expected Source Layout
+This repository contains a source-readme-driven C-to-Rust migration harness.
 
-The runner reads the task requirements from the README near `SOURCE_ROOT`.
+During local Windows debugging, this entry uses the PowerShell wrapper:
 
-Supported requirement file names:
+```powershell
+work\scripts\run.ps1
+```
 
-- `${SOURCE_ROOT}/README.md`
-- `${SOURCE_ROOT}/README`
-- `${SOURCE_ROOT}/READNE.md`
-- `${SOURCE_ROOT}/readme.md`
-- `${SOURCE_ROOT}/Readme.md`
+The harness reads the C source project path from `SOURCE_ROOT` or the `-SourceRoot` argument, derives migration requirements from the source README/READNE and the bundled task requirement file, then runs the migration pipeline.
 
-The source project must provide:
+## 2. Local Windows Environment Requirements
 
-- source directories such as `${SOURCE_ROOT}/src` or another README-derived source directory
-- test directories such as `${SOURCE_ROOT}/tests` or another README-derived test directory
+Use Windows PowerShell or PowerShell 7.
 
-## Expected Output
+Required tools must be available in `PATH`:
 
-After execution, the driver must generate a Rust project in a runtime-derived output directory:
+```powershell
+python --version
+cargo --version
+rustc --version
+```
+
+Do not use `bash work/scripts/run.sh` in plain Windows PowerShell unless Bash is installed and available. For this Windows debug instruction, use `run.ps1`.
+
+## 3. Source Root
+
+The source root must point to the real C source project root.
+
+Recommended local layout:
 
 ```text
-<runtime-derived-output-project>/
+<repo-root>\
+├── .code\
+│   └── FlashDB\
+│       ├── README.md / READNE.md
+│       ├── src\
+│       └── tests\
+├── work\
+├── result\
+└── logs\
+```
+
+The local task requirement file is:
+
+```text
+work/code/README.md
+```
+
+It is only the bundled contest requirement document. It is not the source project root.
+
+## 4. Execute on Windows
+
+From repository root:
+
+```powershell
+$env:SOURCE_ROOT = ".code\FlashDB"
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1
+```
+
+Equivalent explicit argument form:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1 -SourceRoot ".code\FlashDB"
+```
+
+The current `run.ps1` calls:
+
+```text
+work/runtime/loopforge_runner.py
+```
+
+and passes:
+
+```text
+--work-dir work
+--result-dir result
+--log-dir logs
+--source-root <resolved-source-root>
+--run
+```
+
+## 5. Clean Local Artifacts Before a New Debug Run
+
+Use this before collecting a fresh run:
+
+```powershell
+Remove-Item -Recurse -Force flashDB_rust -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\trace\c2rust -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\trace\c-to-rust -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\trace\experiments\run-001 -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force result\issues | Out-Null
+New-Item -ItemType Directory -Force logs\trace | Out-Null
+```
+
+Then run:
+
+```powershell
+$env:SOURCE_ROOT = ".code\FlashDB"
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1
+```
+
+## 6. Expected Runtime Outputs
+
+The harness must write:
+
+```text
+result/output.md
+result/issues/00-summary.md
+logs/interaction.md
+logs/trace/
+```
+
+For the current contest task, the generated Rust project is expected to be:
+
+```text
+flashDB_rust/
 ├── Cargo.toml
 ├── src/
 └── tests/
 ```
 
-The generated project must pass:
-
-```bash
-cd <runtime-derived-output-project>
-cargo build
-cargo test
-```
-
-The unsafe usage ratio must be lower than 10%.
-
-## Environment
-
-Required tools:
-
-- Python 3
-- Rust toolchain with `cargo`
-- bash on Linux or PowerShell on Windows
-
-## Source Root Resolution
-
-Resolution priority:
-
-1. contest platform explicit source path
-2. `--source-root <path>`
-3. `SOURCE_ROOT`
-4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
-5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__`
-6. local fallback: generic source candidate under `.code/`, `work/code/`, or `code/`
-
-## Run
-
-Linux:
-
-```bash
-SOURCE_ROOT="/path/to/source-project" bash work/scripts/run.sh
-```
-
-Linux with explicit argument:
-
-```bash
-bash work/scripts/run.sh --source-root "/path/to/source-project"
-```
-
-Windows PowerShell:
+The generated Rust project should be verifiable by:
 
 ```powershell
-$env:SOURCE_ROOT="C:\path\to\source-project"
-powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
+cd flashDB_rust
+cargo build
+cargo test
+cd ..
 ```
 
-## Results
+The unsafe ratio must be lower than 10%.
 
-Primary evaluator output:
+## 7. Completion Status
 
-- `result/output.md`
+The run is complete when `result/output.md` exists and reports one of:
 
-Issue summary:
+```text
+READY_FOR_EVALUATION
+BLOCKED_WITH_REPORT
+```
 
-- `result/issues/00-summary.md`
+If the status is `BLOCKED_WITH_REPORT`, the first blocking reason must be recorded in:
 
-Trace logs:
+```text
+result/issues/00-summary.md
+```
 
-- `logs/trace/`
-- `logs/trace/c-to-rust/`
+## 8. Local Failure Classification
 
-Interaction log:
+If PowerShell starts successfully but the harness fails later, classify by the first blocking point:
 
-- `logs/interaction.md`
+```text
+A: source root / README discovery failed
+B: task requirement parsing failed
+C: C source analysis failed
+D: Rust project generation failed
+E: cargo build failed
+F: cargo test / semantic equivalence failed
+G: launcher / reporting / environment failure
+```
 
-No manual interaction is required during execution.
+If `flashDB_rust/Cargo.toml` is not generated, do not analyze Cargo or semantic gates first. Check launcher, source root, requirement parsing, and generation logs first.
 
-## Forbidden Runtime Behavior
+## 9. Forbidden Runtime Behavior
 
-The driver must not:
+The harness must not:
 
-- require manual interaction
-- modify platform-provided C source or tests
+- require manual interaction during `--run`
+- modify evaluator-provided source files or tests
 - write runtime artifacts into the source tree
-- rely on prebuilt Rust binaries instead of source
-- finish without generating an output `Cargo.toml`
-- treat `work/code/README.md` as the source root
+- rely on prebuilt Rust binaries instead of generated Rust source
+- report `READY_FOR_EVALUATION` without generating the required Rust project
+- report semantic equivalence based only on structural smoke tests
+
+## 10. Files to Inspect After Failure
+
+Inspect these files first:
+
+```text
+result/output.md
+result/issues/00-summary.md
+logs/trace/
+logs/interaction.md
+```
+
+If present, also inspect:
+
+```text
+logs/trace/c2rust/01-source-inventory.json
+logs/trace/c2rust/02-api-mapping.json
+logs/trace/c2rust/04-test-mapping.json
+logs/trace/c2rust/06-verification-report.md
+logs/trace/c2rust/repair-rounds.json
+```
+
+or, after generic trace migration:
+
+```text
+logs/trace/c-to-rust/01-source-inventory.json
+logs/trace/c-to-rust/02-api-mapping.json
+logs/trace/c-to-rust/04-test-mapping.json
+logs/trace/c-to-rust/06-verification-report.md
+logs/trace/c-to-rust/repair-rounds.json
+```
+
+## 11. Final Packaging Note
+
+This file is for Windows local debugging. For Linux contest submission, use `INSTRUCTION.linux.md` as the root `INSTRUCTION.md`.
