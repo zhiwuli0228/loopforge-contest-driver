@@ -1,10 +1,26 @@
 {
   "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-  "total_code_lines": 0,
-  "unsafe_lines": 0,
-  "unsafe_ratio": 0.0,
+  "total_code_lines": 71,
+  "unsafe_lines": 2,
+  "unsafe_ratio": 0.028169014084507043,
   "max_ratio": 0.1,
-  "passed": false,
-  "files": [],
-  "generated_at": "2026-06-30T10:43:18Z"
+  "passed": true,
+  "files": [
+    {
+      "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\flashdb.rs",
+      "code_lines": 38,
+      "unsafe_lines": 1
+    },
+    {
+      "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\lib.rs",
+      "code_lines": 8,
+      "unsafe_lines": 1
+    },
+    {
+      "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\tests\\flashdb_semantics.rs",
+      "code_lines": 25,
+      "unsafe_lines": 0
+    }
+  ],
+  "generated_at": "2026-06-30T11:52:40Z"
 }

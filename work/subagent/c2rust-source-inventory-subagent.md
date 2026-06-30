@@ -26,6 +26,7 @@ Forbidden:
 ## Output
 
 Write the stage report to `logs/trace/c2rust/01-source-inventory.md`.
+The report must declare whether the source root is a real submission source or the local `.code/FlashDB` fallback.
 
 ## Gate
 

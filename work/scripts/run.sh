@@ -43,12 +43,21 @@ if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB"
   elif [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
+  elif [[ -d "${ROOT_DIR}/.code/FlashDB" ]]; then
+    SOURCE_ROOT_VALUE="${ROOT_DIR}/.code/FlashDB"
   else
-    SOURCE_ROOT_VALUE="code"
+    SOURCE_ROOT_VALUE=""
   fi
 fi
 
+if [[ -n "$SOURCE_ROOT_VALUE" ]]; then
 export SOURCE_ROOT="$SOURCE_ROOT_VALUE"
+fi
+
+RUNNER_SOURCE_ARGS=()
+if [[ -n "$SOURCE_ROOT_VALUE" ]]; then
+  RUNNER_SOURCE_ARGS=(--source-root "${SOURCE_ROOT_VALUE}")
+fi
 
 if [[ "$HAS_ACTION" == "false" && ! " ${EXTRA_ARGS[*]} " =~ " --help " && ! " ${EXTRA_ARGS[*]} " =~ " -h " ]]; then
   EXTRA_ARGS+=("--run")
@@ -63,5 +72,5 @@ python "${WORK_DIR}/runtime/loopforge_runner.py" \
   --work-dir "${WORK_DIR}" \
   --result-dir "${RESULT_DIR}" \
   --log-dir "${LOG_DIR}" \
-  --source-root "${SOURCE_ROOT_VALUE}" \
+  "${RUNNER_SOURCE_ARGS[@]}" \
   "${EXTRA_ARGS[@]}"

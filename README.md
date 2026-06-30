@@ -2,6 +2,8 @@
 
 This repository is a contest submission driver. It accepts a source tree path through `SOURCE_ROOT`, reads the source README to build task context, and writes evaluator-facing results to `result/` and `logs/`.
 
+Local development fallback resolves to `.code/FlashDB`. The file `work/code/README.md` is a contest requirement document, not a source directory.
+
 ## Reproduce
 
 Start from [INSTRUCTION.md](./INSTRUCTION.md).
@@ -33,7 +35,8 @@ The framework records which README was selected. If no README is available, the 
 ```text
 .
 ├── INSTRUCTION.md
-├── code/    # local fallback source tree
+├── .code/   # local fallback source tree
+├── code/    # legacy workspace area, not the FlashDB fallback source
 ├── work/    # framework assets
 ├── result/  # evaluator-facing outputs
 └── logs/    # trace outputs

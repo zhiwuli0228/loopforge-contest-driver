@@ -8,22 +8,30 @@
     "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge"
   },
   "task": {
-    "mode": "feature-development",
-    "profile": "profiles/templates/feature-development.yaml"
+    "mode": "migration",
+    "profile": "profiles/examples/c2rust-flashdb-migration.yaml"
   },
   "verification": {
-    "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+    "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
     "commands_format": "platform-map",
-    "available_profiles": [],
+    "available_profiles": [
+      "default"
+    ],
     "selected_profile": "",
     "fallback_used": false,
-    "commands_count": 0
+    "commands_count": 2
   },
   "governance": {
     "ok": true,
     "superspec": "",
     "superpower": "",
-    "mode_rules": [],
+    "mode_rules": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ],
     "delegated_staged_ready": false
   },
   "subagent_contract": {
@@ -39,11 +47,16 @@
     "warnings": [],
     "enabled": true,
     "required": true,
-    "skill": "skills/code-implementation/SKILL.md",
+    "skill": "skills/c2rust-flashdb-migration/SKILL.md",
     "apply_at": [
-      "patch_implementation"
+      "source_inventory",
+      "api_mapping",
+      "migration_plan",
+      "rust_project_generation",
+      "test_migration",
+      "verification"
     ],
-    "output": "code/.loopforge/consistency/05-patch-summary.md",
+    "output": "logs/trace/c2rust/05-migration-summary.md",
     "ready_status": "CODING_SKILL_READY",
     "skill_exists": true,
     "references_ready": true,
@@ -59,10 +72,10 @@
     "ok": true,
     "errors": [],
     "warnings": [],
-    "profile_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\profiles\\templates\\feature-development.yaml",
-    "profile_name": "feature-development-template",
-    "profile_class": "template",
-    "task_mode": "feature-development"
+    "profile_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\profiles\\examples\\c2rust-flashdb-migration.yaml",
+    "profile_name": "c2rust-flashdb-migration",
+    "profile_class": "",
+    "task_mode": ""
   },
   "work_package_summary": {
     "ok": true,
@@ -72,34 +85,23 @@
       "INSTRUCTION.md",
       "README.md",
       "SUBMISSION.md",
-      "loopforge.config.yaml",
-      "HARNESS.md",
-      "runtime/loopforge_runner.py",
-      "scripts/bootstrap.sh",
-      "scripts/bootstrap.ps1",
-      "scripts/smoke-test.sh",
-      "scripts/smoke-test.ps1",
-      "skills/loopforge-driver/SKILL.md",
-      "docs/DESIGN.md",
-      "docs/ADAPTATION_GUIDE.md",
-      "docs/CROSS_PLATFORM_DESIGN.md",
-      "docs/DAILY_DEV_USAGE.md",
-      "profiles/README.md",
-      "subagent/opencode-preflight-subagent.md",
-      "subagent/opencode-design-read-subagent.md",
-      "subagent/opencode-implementation-map-subagent.md",
-      "subagent/opencode-drift-analysis-subagent.md",
-      "subagent/opencode-repair-plan-subagent.md",
-      "subagent/opencode-patch-subagent.md",
-      "subagent/opencode-verification-subagent.md",
-      "subagent/opencode-final-report-subagent.md",
-      "rules/loopforge/core/00-core.md",
-      "rules/loopforge/core/01-work-code-boundary.md",
-      "rules/loopforge/core/02-static-rule-ownership.md",
-      "rules/loopforge/core/03-verification-contract.md",
-      "rules/loopforge/core/04-gate-policy.md",
-      "rules/loopforge/core/05-final-report.md",
-      "rules/loopforge/core/06-code-generation-boundary.md"
+      "work/loopforge.config.yaml",
+      "work/HARNESS.md",
+      "work/runtime/loopforge_runner.py",
+      "work/runtime/check_unsafe_ratio.py",
+      "work/scripts/bootstrap.sh",
+      "work/scripts/bootstrap.ps1",
+      "work/scripts/run.sh",
+      "work/scripts/run.ps1",
+      "work/scripts/smoke-test.sh",
+      "work/scripts/smoke-test.ps1",
+      "work/skills/loopforge-driver/SKILL.md",
+      "work/skills/c2rust-flashdb-migration/SKILL.md",
+      "work/docs/DESIGN.md",
+      "work/docs/ADAPTATION_GUIDE.md",
+      "work/docs/CROSS_PLATFORM_DESIGN.md",
+      "work/docs/DAILY_DEV_USAGE.md",
+      "work/profiles/README.md"
     ],
     "required_files_missing": [],
     "available_modes": {
@@ -108,7 +110,9 @@
         "01-phase-policy.md",
         "02-required-artifacts.md",
         "03-forbidden-actions.md",
-        "04-final-report.md"
+        "04-final-report.md",
+        "05-controlled-repair-policy.md",
+        "delegated-execution.md"
       ],
       "defect-repair": [
         "00-flow.md",
@@ -139,8 +143,8 @@
         "04-final-report.md"
       ]
     },
-    "configured_mode": "feature-development",
+    "configured_mode": "migration",
     "template_count": 5,
-    "example_count": 5
+    "example_count": 6
   }
 }

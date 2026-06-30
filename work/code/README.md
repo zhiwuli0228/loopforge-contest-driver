@@ -1,3 +1,7 @@
+# 比赛说明文档
+
+`work/code/README.md` 是仓库内保存的题面说明，不是 `SOURCE_ROOT`，也不是 FlashDB 源码目录。
+
 # 题目名称
 
 将FlashDB用Rust重写

@@ -26,31 +26,46 @@ $RunnerPath = Join-Path $WorkDir "runtime/loopforge_runner.py"
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("loopforge-smoke-" + [System.Guid]::NewGuid().ToString("N"))
 $NegativeSource = Join-Path $TempRoot "no-readme-source"
 $PositiveSource = Join-Path $TempRoot "with-readme-source"
+$ValidSource = Join-Path $TempRoot "valid-source"
 
 New-Item -ItemType Directory -Force -Path $NegativeSource | Out-Null
 New-Item -ItemType Directory -Force -Path $PositiveSource | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $ValidSource "src") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $ValidSource "tests") | Out-Null
 Set-Content -Path (Join-Path $PositiveSource "README.md") -Value @"
 # Positive Smoke Source
 
-Task: verify the runner can discover a README from SOURCE_ROOT.
-Constraint: no manual config editing is allowed.
-Acceptance:
-- source_readme_found should be true.
-- selected_source_readme should point to this README.
+Task: verify README-only input is insufficient without the FlashDB source layout.
+"@
+Set-Content -Path (Join-Path $ValidSource "README.md") -Value @"
+# Valid Fallback Source
+
+Task: migrate this FlashDB subset into Rust and pass all READY gates.
+"@
+Set-Content -Path (Join-Path $ValidSource "src\flashdb.h") -Value @"
+void flashdb_new(void);
+int flashdb_set(void);
+const char *flashdb_get(void);
+int flashdb_delete(void);
+int flashdb_count(void);
+"@
+Set-Content -Path (Join-Path $ValidSource "src\flashdb.c") -Value @"
+void flashdb_new(void) {}
+int flashdb_set(void) { return 0; }
+const char *flashdb_get(void) { return 0; }
+int flashdb_delete(void) { return 0; }
+int flashdb_count(void) { return 0; }
+"@
+Set-Content -Path (Join-Path $ValidSource "tests\test_flashdb.c") -Value @"
+/* create, set/get, overwrite, delete */
 "@
 
 function Invoke-RunCase {
     param(
         [string]$SourceRoot,
-        [string]$ExpectedFound,
-        [string]$ExpectedReadme,
-        [string]$ExpectedIssueText
+        [string]$ExpectedStatus,
+        [string[]]$ExpectedIssueCodes
     )
-
-    $ArtifactDir = Join-Path $SourceRoot ".loopforge"
-    if (Test-Path $ArtifactDir) {
-        Remove-Item -Recurse -Force $ArtifactDir
-    }
 
     $OutputPath = Join-Path $ResultDir "output.md"
     $IssuePath = Join-Path $ResultDir "issues/00-summary.md"
@@ -70,35 +85,20 @@ function Invoke-RunCase {
 
     $OutputText = Get-Content -Raw $OutputPath
     $IssueText = Get-Content -Raw $IssuePath
-    $ExpectedFoundLine = "source_readme_found: ``$ExpectedFound``"
-    $ExpectedReadmeLine = "selected_source_readme: ``$ExpectedReadme``"
-    if (-not $OutputText.Contains($ExpectedFoundLine)) {
-        throw "smoke test failed: expected source_readme_found $ExpectedFound"
+    if (-not $OutputText.Contains("status: ``$ExpectedStatus``")) {
+        throw "smoke test failed: expected status $ExpectedStatus"
     }
-    if (-not $OutputText.Contains($ExpectedReadmeLine)) {
-        throw "smoke test failed: expected selected_source_readme $ExpectedReadme"
-    }
-    if (-not $IssueText.Contains($ExpectedIssueText)) {
-        throw "smoke test failed: expected issue text $ExpectedIssueText"
+    foreach ($IssueCode in $ExpectedIssueCodes) {
+        if (-not $IssueText.Contains($IssueCode)) {
+            throw "smoke test failed: expected issue code $IssueCode"
+        }
     }
 }
 
 try {
-    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedFound "false" -ExpectedReadme "missing" -ExpectedIssueText "source README not found"
-    $NegativeTraceText = Get-Content -Raw (Join-Path $LogDir "trace/run-summary.json")
-    if ($NegativeTraceText -notmatch '"found": false') {
-        throw "smoke test failed: negative trace does not record source_readme found=false"
-    }
-
-    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedFound "true" -ExpectedReadme (Join-Path $PositiveSource "README.md") -ExpectedIssueText "no runnable verification commands were derived from source README or framework defaults"
-
-    $TraceText = Get-Content -Raw (Join-Path $LogDir "trace/run-summary.json")
-    if ($TraceText -notmatch '"found": true') {
-        throw "smoke test failed: positive trace does not record source_readme found=true"
-    }
-    if ($TraceText -notmatch 'README.md') {
-        throw "smoke test failed: positive trace does not record README path"
-    }
+    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("readme_missing", "flashdb_layout_missing")
+    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("flashdb_layout_missing")
+    Invoke-RunCase -SourceRoot $ValidSource -ExpectedStatus "READY_FOR_EVALUATION" -ExpectedIssueCodes @("no_blocking_issues")
 
     Write-Output "smoke test passed"
 }

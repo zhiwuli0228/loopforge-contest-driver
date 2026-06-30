@@ -27,6 +27,7 @@ Forbidden:
 ## Output
 
 Write stage output to `result/output.md` and `result/issues/00-summary.md`.
+`READY_FOR_EVALUATION` is valid only when cargo build, cargo test, unsafe gate, and semantic gate all pass.
 
 ## Gate
 

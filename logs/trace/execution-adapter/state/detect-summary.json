@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "source_layout": {
+    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
+    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "src_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\src",
+    "tests_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\tests"
+  },
+  "analysis": {
+    "ok": true,
+    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
+    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "src_files": [
+      "src/flashdb.c",
+      "src/flashdb.h"
+    ],
+    "test_files": [
+      "tests/test_flashdb.c"
+    ],
+    "public_apis": [
+      "flashdb_count",
+      "flashdb_delete",
+      "flashdb_get",
+      "flashdb_new",
+      "flashdb_set"
+    ],
+    "structs": [
+      "flashdb_handle",
+      "flashdb_record"
+    ],
+    "macros": [
+      "FLASHDB_H"
+    ],
+    "io_boundaries": [
+      "flashdb_count",
+      "flashdb_delete",
+      "flashdb_get",
+      "flashdb_new",
+      "flashdb_set"
+    ],
+    "support_level": "flashdb-kv-template",
+    "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate"
+  },
+  "issues": []
+}

@@ -1,14 +1,10 @@
 {
   "project_type": "unknown",
   "indicators": {
-    "pom.xml": false,
-    "mvnw": false,
-    "pyproject.toml": false,
-    "requirements.txt": false,
-    "package.json": false,
-    "go.mod": false,
     "git_worktree": true,
-    "source_readme": false
+    "source_readme": false,
+    "flashdb_layout": false,
+    "generated_rust_project": false
   },
   "source_readme": {
     "found": false,
@@ -16,8 +12,10 @@
     "candidates": [
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\READNE.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
     ]
-  }
+  },
+  "flashdb_root": ""
 }

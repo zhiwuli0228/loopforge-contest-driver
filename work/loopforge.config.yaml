@@ -6,8 +6,8 @@ framework:
 platform:
   layout: "single-root"
   work_dir: "work"
-  code_dir: "code"
-  local_fallback_source_dir: "code"
+  code_dir: ".code"
+  local_fallback_source_dir: ".code/FlashDB"
   artifact_dir: "logs/trace"
   official_submission_os: "linux"
   local_development_os:

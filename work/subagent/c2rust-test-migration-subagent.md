@@ -27,6 +27,7 @@ Forbidden:
 ## Output
 
 Write stage output to `flashDB_rust/tests/**` and `logs/trace/c2rust/04-test-mapping.md`.
+Every generated Rust test must include assertions and must trace back to an explicit C scenario.
 
 ## Gate
 

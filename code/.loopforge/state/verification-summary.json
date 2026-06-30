@@ -4,8 +4,8 @@
   "detected_os": "windows",
   "selected_command_profile": "",
   "fallback_used": false,
-  "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
-  "timeout_seconds": 300,
+  "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
+  "timeout_seconds": 600,
   "commands_attempted": [],
   "source_readme": {
     "found": false,
@@ -13,6 +13,7 @@
     "candidates": [
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\READNE.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
       "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
     ]

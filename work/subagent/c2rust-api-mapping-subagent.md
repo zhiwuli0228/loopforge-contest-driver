@@ -26,6 +26,7 @@ Forbidden:
 ## Output
 
 Write the stage report to `logs/trace/c2rust/02-api-mapping.md`.
+The report must record the semantic mapping between C APIs and generated Rust functions or modules.
 
 ## Gate
 

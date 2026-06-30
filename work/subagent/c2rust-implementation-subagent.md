@@ -27,6 +27,7 @@ Forbidden:
 ## Output
 
 Write stage output to `flashDB_rust/**` and `logs/trace/c2rust/05-migration-summary.md`.
+Generated Rust code must not contain `todo!()` or `unimplemented!()`.
 
 ## Gate
 

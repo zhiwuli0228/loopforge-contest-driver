@@ -26,7 +26,12 @@ if ($SourceRoot -and $SourceRoot.Trim() -ne "") {
 } elseif ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
     $RunnerArgs = @("--source-root", $env:SOURCE_ROOT)
 } else {
-    $RunnerArgs = @("--source-root", (Join-Path $RootDir "code"))
+    $FallbackRoot = Join-Path $RootDir ".code\FlashDB"
+    if (Test-Path $FallbackRoot) {
+        $RunnerArgs = @("--source-root", $FallbackRoot)
+    } else {
+        $RunnerArgs = @()
+    }
 }
 
 & python (Join-Path $WorkDir "runtime\loopforge_runner.py") `

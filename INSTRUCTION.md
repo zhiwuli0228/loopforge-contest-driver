@@ -60,7 +60,7 @@ Resolution priority:
 4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
 5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
 6. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__`
-7. local fallback: `code`
+7. local fallback: `.code/FlashDB`
 
 ## Run
 
@@ -113,3 +113,4 @@ The driver must not:
 - write runtime artifacts into the source tree
 - rely on prebuilt Rust binaries instead of source
 - finish without generating `flashDB_rust/Cargo.toml`
+- treat `work/code/README.md` as the source root

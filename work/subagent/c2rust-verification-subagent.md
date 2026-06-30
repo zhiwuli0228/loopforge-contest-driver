@@ -26,6 +26,7 @@ Forbidden:
 ## Output
 
 Write the stage report to `logs/trace/c2rust/06-verification-report.md` and `logs/trace/c2rust/unsafe-ratio.json`.
+The report must include cargo build, cargo test, unsafe gate, semantic gate, and repair-loop evidence.
 
 ## Gate
 

@@ -20,6 +20,9 @@ source_contract:
       source_dir: "src"
       test_dir: "tests"
   source_readonly: true
+  local_fallback_source_root: ".code/FlashDB"
+  invalid_source_root:
+    - "work/code/README.md"
 
 migration_contract:
   source_language: "c"
@@ -33,10 +36,16 @@ migration_contract:
   test_source: "FlashDB/tests"
   test_policy: "migrate-or-equivalent-coverage"
   unsafe_ratio_max: 0.10
+  semantic_gate_required: true
+  disallowed_placeholders:
+    - "todo!()"
+    - "unimplemented!()"
 
 execution_contract:
   unattended: true
   manual_interaction_allowed: false
+  owner: "loopforge execution orchestrator"
+  repair_loop_required: true
   write_scope:
     allowed:
       - "flashDB_rust/**"
@@ -58,6 +67,9 @@ verification_contract:
     - "flashDB_rust/src exists"
     - "flashDB_rust/tests exists"
     - "unsafe ratio < 10%"
+    - "semantic gate passes"
+    - "tests contain assertions"
+    - "crate is non-empty"
 
 reporting_contract:
   required_files:
@@ -69,3 +81,6 @@ reporting_contract:
     - "logs/trace/c2rust/05-migration-summary.md"
     - "logs/trace/c2rust/06-verification-report.md"
     - "logs/trace/c2rust/unsafe-ratio.json"
+  required_sections:
+    - "semantic gate"
+    - "repair loop"

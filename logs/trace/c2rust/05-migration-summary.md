@@ -1,11 +1,12 @@
 # Migration Summary
 
-- generated_at: `2026-06-30T10:44:53Z`
-- source_root: `E:\009workspace\codex\loopforge-contest-driver\code`
-- flashdb_root: ``
+- generated_at: `2026-06-30T11:52:39Z`
+- source_root: `E:\009workspace\codex\loopforge-contest-driver\.code\FlashDB`
+- support_level: `flashdb-kv-template`
+- project_dir: `E:\009workspace\codex\loopforge-contest-driver\flashDB_rust`
 
-## Status
+## Generation
 
-- This branch is customized for the FlashDB C-to-Rust workflow.
-- Rust project generation is expected at `flashDB_rust/`.
-- Verification will fail closed if the generated Rust project does not exist.
+- `src/lib.rs`
+- `src/flashdb.rs`
+- `tests/flashdb_semantics.rs`

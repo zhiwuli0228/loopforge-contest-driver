@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "required_files_checked": [
+    "work/runtime/loopforge_runner.py",
+    "work/runtime/agent_task_packet.py",
+    "work/runtime/c2rust_analysis.py",
+    "work/runtime/c2rust_project_generator.py",
+    "work/runtime/c2rust_repair.py",
+    "work/rules/loopforge/adapters/c2rust-flashdb/source-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/output-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/test-migration-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/unsafe-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/verification-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/semantic-equivalence-contract.md",
+    "work/rules/loopforge/adapters/c2rust-flashdb/repair-loop-contract.md",
+    "INSTRUCTION.md",
+    "README.md",
+    "work/code/README.md",
+    "work/loopforge.config.yaml",
+    "work/profiles/examples/c2rust-flashdb-migration.yaml",
+    "work/skills/c2rust-flashdb-migration/SKILL.md"
+  ],
+  "missing_files": [],
+  "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+  "local_fallback_source_dir": ".code/FlashDB",
+  "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\execution-adapter",
+  "work_code_readme_is_source_root": false,
+  "issues": []
+}

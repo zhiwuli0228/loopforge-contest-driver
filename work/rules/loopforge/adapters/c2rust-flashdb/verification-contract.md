@@ -7,6 +7,13 @@ cargo build
 cargo test
 ```
 
+READY gate policy:
+
+- `cargo build` must pass
+- `cargo test` must pass
+- unsafe gate must pass
+- semantic gate must pass
+
 Required final files:
 
 - `result/output.md`

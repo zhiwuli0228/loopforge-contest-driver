@@ -7,7 +7,7 @@ description: Convert FlashDB C source and tests into a buildable Rust project na
 
 ## Mission
 
-Generate a Rust rewrite project at `flashDB_rust/` from the FlashDB C source tree provided by `SOURCE_ROOT`.
+Serve the execution orchestrator by generating a Rust rewrite project at `flashDB_rust/` from the FlashDB C source tree provided by `SOURCE_ROOT`.
 
 ## Mandatory Inputs
 
@@ -18,6 +18,7 @@ Read, in order:
 3. `work/profiles/examples/c2rust-flashdb-migration.yaml`
 4. `SOURCE_ROOT/README.md` or `SOURCE_ROOT/READNE.md` or another configured README candidate
 5. `SOURCE_ROOT/src` and `SOURCE_ROOT/tests`, or `SOURCE_ROOT/FlashDB/src` and `SOURCE_ROOT/FlashDB/tests`
+6. `work/rules/loopforge/adapters/c2rust-flashdb/`
 
 ## Write Scope
 
@@ -95,6 +96,8 @@ Rules:
 - Prefer safe Rust.
 - `unsafe` must be avoided unless strictly required and documented.
 - The output crate must be buildable by `cargo build`.
+- Empty crates are forbidden.
+- `todo!()` and `unimplemented!()` are forbidden.
 
 ### 5. Test Migration
 
@@ -105,6 +108,7 @@ flashDB_rust/tests/
 ```
 
 Each important C test scenario must be migrated or equivalently covered.
+Rust tests must contain assertions.
 
 Produce:
 
@@ -123,6 +127,7 @@ Produce:
 
 - `logs/trace/c2rust/06-verification-report.md`
 - `logs/trace/c2rust/unsafe-ratio.json`
+- semantic gate evidence inside the verification report
 
 ### 7. Final Reporting
 
@@ -138,6 +143,7 @@ Produce:
 - build result
 - test result
 - unsafe ratio
+- semantic gate result
 - test migration summary
 
 `result/issues/00-summary.md` must include:
@@ -157,6 +163,7 @@ Return `READY_FOR_EVALUATION` only if:
 - `cargo build` passes
 - `cargo test` passes
 - unsafe ratio is lower than 10%
+- semantic gate passes
 - `result/output.md` exists
 - `result/issues/00-summary.md` exists
 
