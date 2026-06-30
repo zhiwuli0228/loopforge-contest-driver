@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $WorkDir = Join-Path $RootDir "work"
-$ResultDir = Join-Path $WorkDir "result"
-$LogDir = Join-Path $WorkDir "logs"
+$ResultDir = Join-Path $RootDir "result"
+$LogDir = Join-Path $RootDir "logs"
 $ExperimentDir = Join-Path $LogDir "trace\experiments\run-e2e-win-001"
 $ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
 
@@ -41,37 +41,18 @@ function Resolve-SourceRootCandidate {
             return $null
         }
         $resolved = (Resolve-Path -LiteralPath $candidate).Path
-        if ($resolved -match '(?i)\\work\\code$|/work/code$') {
-            return $null
-        }
-        if (Test-SourceRootLike -Path $resolved) {
-            return $resolved
-        }
-        return $null
+        return $resolved
     }
 
     return $null
 }
 
-function Resolve-SourceRootFromCode {
-    $codeRoot = Join-Path $RootDir ".code"
-    if (-not (Test-Path -LiteralPath $codeRoot)) {
+function Resolve-DefaultInputRoot {
+    $codeRoot = Join-Path $RootDir "work\code"
+    if (-not (Test-Path -LiteralPath $codeRoot -PathType Container)) {
         return $null
     }
-    $children = @(Get-ChildItem -LiteralPath $codeRoot -Directory -ErrorAction SilentlyContinue)
-    $validChildren = @()
-    foreach ($child in $children) {
-        if (Test-SourceRootLike -Path $child.FullName) {
-            $validChildren += $child.FullName
-        }
-    }
-    if ($validChildren.Count -eq 1) {
-        return (Resolve-Path -LiteralPath $validChildren[0]).Path
-    }
-    if ($validChildren.Count -eq 0 -and (Test-SourceRootLike -Path $codeRoot)) {
-        return (Resolve-Path -LiteralPath $codeRoot).Path
-    }
-    return $null
+    return (Resolve-Path -LiteralPath $codeRoot).Path
 }
 
 function Write-Diagnosis {
@@ -121,7 +102,7 @@ if (-not $resolvedSourceRoot) {
     }
 }
 if (-not $resolvedSourceRoot) {
-    $resolvedSourceRoot = Resolve-SourceRootFromCode
+    $resolvedSourceRoot = Resolve-DefaultInputRoot
 }
 if (-not $resolvedSourceRoot) {
     Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "A_SOURCE_ROOT"
@@ -177,11 +158,11 @@ if (-not $pythonCmd) {
 $harnessStdout = ""
 $harnessStderr = ""
 Write-ExperimentLine "SOURCE_ROOT=$resolvedSourceRoot"
-& $pythonCmd (Join-Path $WorkDir "runtime\loopforge_runner.py") --work-dir work --result-dir work/result --log-dir work/logs --source-root $resolvedSourceRoot --run 1> (Join-Path $ExperimentDir "harness.stdout.log") 2> (Join-Path $ExperimentDir "harness.stderr.log")
+& $pythonCmd (Join-Path $WorkDir "runtime\loopforge_runner.py") --work-dir work --result-dir result --log-dir logs --source-root $resolvedSourceRoot --run 1> (Join-Path $ExperimentDir "harness.stdout.log") 2> (Join-Path $ExperimentDir "harness.stderr.log")
 if ($LASTEXITCODE -ne 0) {
     $harnessStdout = Read-TextIfExists -Path (Join-Path $ExperimentDir "harness.stdout.log")
     $harnessStderr = Read-TextIfExists -Path (Join-Path $ExperimentDir "harness.stderr.log")
-    if (($harnessStdout -match 'invalid_source_root') -or ($harnessStdout -match 'selected_source_readme:\s*`?work/code/README\.md`?') -or ($harnessStdout -match 'source_root:\s*`?work/code`?') -or ($harnessStderr -match 'invalid_source_root')) {
+    if ((($harnessStdout + $harnessStderr) -match 'source_layout_missing|unable to resolve usable C project layout|ambiguous project roots')) {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "A_SOURCE_ROOT"
     } else {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "G_REPORT_OR_LAUNCHER"
@@ -212,7 +193,7 @@ if ($resultOutput -match '(?m)^\s*-\s*rust_project:\s*`([^`]+)`\s*$') {
 }
 
 if (-not $derivedOutputProject) {
-    if (($resultOutput -match 'invalid_source_root') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'selected_source_readme:\s*`?work/code/README\.md`?') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'source_root:\s*`?work/code`?')) {
+    if (($resultOutput + $harnessStdout + $harnessStderr) -match 'source_layout_missing|unable to resolve usable C project layout|ambiguous project roots') {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "A_SOURCE_ROOT"
     } else {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "B_REQUIREMENT_PARSE"
@@ -227,7 +208,7 @@ if (-not $derivedOutputProject.StartsWith($expectedOutputBase + [IO.Path]::Direc
     exit 1
 }
 if (-not (Test-Path -LiteralPath (Join-Path $derivedOutputProject "Cargo.toml"))) {
-    if (($resultOutput -match 'invalid_source_root') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'selected_source_readme:\s*`?work/code/README\.md`?') -or (($resultOutput + $harnessStdout + $harnessStderr) -match 'source_root:\s*`?work/code`?')) {
+    if (($resultOutput + $harnessStdout + $harnessStderr) -match 'source_layout_missing|unable to resolve usable C project layout|ambiguous project roots') {
         Write-Diagnosis -Status "BLOCKED_WITH_REPORT" -FirstBlockingPoint "A_SOURCE_ROOT" -DerivedOutputProject $derivedOutputProject
         exit 1
     }

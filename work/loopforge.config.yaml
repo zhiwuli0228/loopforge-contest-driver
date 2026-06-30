@@ -6,9 +6,9 @@ framework:
 platform:
   layout: "single-root"
   work_dir: "work"
-  code_dir: ".code"
-  local_fallback_source_dir: ".code/source-project"
-  artifact_dir: "work/logs/trace"
+  windows_code_dir: "work/code"
+  linux_source_root_env: "SOURCE_ROOT"
+  artifact_dir: "logs/trace"
   official_submission_os: "linux"
   local_development_os:
     - "windows"

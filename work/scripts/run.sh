@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${ROOT_DIR}/work"
-RESULT_DIR="${WORK_DIR}/result"
-LOG_DIR="${WORK_DIR}/logs"
+RESULT_DIR="${ROOT_DIR}/result"
+LOG_DIR="${ROOT_DIR}/logs"
 SOURCE_ROOT_VALUE="${SOURCE_ROOT:-}"
 EXTRA_ARGS=()
 HAS_ACTION="false"
@@ -37,14 +37,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
-  if [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/source" ]]; then
+  PLATFORM_NAME="$(uname -s 2>/dev/null || true)"
+  if [[ "$PLATFORM_NAME" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/source" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
-  elif [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
+  elif [[ "$PLATFORM_NAME" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
-  elif [[ -d "${ROOT_DIR}/.code/source-project" ]]; then
-    SOURCE_ROOT_VALUE="${ROOT_DIR}/.code/source-project"
-  elif [[ -d "${ROOT_DIR}/work/code/source-project" ]]; then
-    SOURCE_ROOT_VALUE="${ROOT_DIR}/work/code/source-project"
+  elif [[ "$PLATFORM_NAME" != "Linux" && -d "${ROOT_DIR}/work/code" ]]; then
+    SOURCE_ROOT_VALUE="${ROOT_DIR}/work/code"
   else
     SOURCE_ROOT_VALUE=""
   fi

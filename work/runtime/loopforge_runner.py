@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from agent_task_packet import AgentTaskPacket, RuntimePaths, resolve_runtime_contract
 from c2rust_analysis import analyze_source, evaluate_semantic_equivalence
+from c_project_root_resolver import resolve_c_project_root, write_resolution_trace
 from c2rust_project_generator import generate_project
 from c2rust_repair import run_repair_loop
 from source_analysis_verify_gate import build_and_verify_source_analysis
@@ -26,6 +27,7 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/loopforge_runner.py",
     "work/runtime/agent_task_packet.py",
     "work/runtime/c2rust_analysis.py",
+    "work/runtime/c_project_root_resolver.py",
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
     "work/runtime/c2rust_semantic_audit.py",
@@ -199,12 +201,16 @@ class LoopForgeRunner:
     def __init__(self, workspace_root: Path, work_dir: Path, source_root: Path, result_dir: Path, log_dir: Path) -> None:
         self.workspace_root = workspace_root.resolve()
         self.work_dir = work_dir.resolve()
-        self.source_root = source_root.resolve()
+        self.input_root = source_root.resolve()
         self.result_dir = result_dir.resolve()
         self.log_dir = log_dir.resolve()
         self.trace_dir = self.log_dir / "trace"
         self.artifact_dir = self.trace_dir / "execution-adapter"
         self.migration_trace_dir = self.trace_dir / TRACE_NAMESPACE
+        self.layout_resolution = resolve_c_project_root(self.input_root)
+        write_resolution_trace(self.layout_resolution, self.migration_trace_dir)
+        resolved = self.layout_resolution.get("resolved_project_root", "")
+        self.source_root = Path(resolved).resolve() if resolved else self.input_root
         self.config = parse_simple_yaml((self.work_dir / "loopforge.config.yaml").read_text(encoding="utf-8"))
         profile_rel = str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)
         self.profile = parse_simple_yaml((self.work_dir / profile_rel).read_text(encoding="utf-8"))
@@ -214,6 +220,8 @@ class LoopForgeRunner:
             list(self.config.get("source", {}).get("readme_candidates", README_CANDIDATES)),
             self.profile,
         )
+        if not self.runtime_contract["selected_readme_path"] and self.layout_resolution.get("selected_readme_path"):
+            self.runtime_contract["selected_readme_path"] = self.layout_resolution["selected_readme_path"]
         self.output_base_dir = self.work_dir / "output"
         self.project_dir = self.output_base_dir / sanitize_dirname(self.runtime_contract["output_project_name"])
         self.result_output_path = self.result_dir / "output.md"
@@ -261,6 +269,7 @@ class LoopForgeRunner:
             paths=RuntimePaths(
                 workspace_root=self.workspace_root,
                 work_dir=self.work_dir,
+                input_root=self.input_root,
                 source_root=self.source_root,
                 result_dir=self.result_dir,
                 log_dir=self.log_dir,
@@ -287,6 +296,8 @@ class LoopForgeRunner:
             module_hints=[str(item) for item in self.runtime_contract["module_hints"]],
         )
         packet.metadata["source_root_resolution"] = str(self.source_root)
+        packet.metadata["input_root"] = str(self.input_root)
+        packet.metadata["layout_resolution"] = self.layout_resolution
         packet.metadata["selected_readme_path"] = self.runtime_contract["selected_readme_path"]
         packet.metadata["fallback_readme_path"] = self.runtime_contract["fallback_readme_path"]
         return packet
@@ -331,7 +342,7 @@ class LoopForgeRunner:
                     "# Output",
                     "",
                     "- status: `NOT_RUN`",
-                    "- source_root: `NOT_RUN`",
+                    "- input_root: `NOT_RUN`",
                     "- selected_source_readme: `NOT_RUN`",
                     "- resolved_project_root: `NOT_RUN`",
                     "- rust_project: `NOT_RUN`",
@@ -379,20 +390,25 @@ class LoopForgeRunner:
     def self_check(self, packet: AgentTaskPacket) -> Dict[str, Any]:
         required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES
         missing = [path for path in required_files if not (self.workspace_root / path).exists()]
-        work_code_readme = self.workspace_root / "work" / "code" / "README.md"
-        invalid_source = path_is_relative_to(work_code_readme.resolve(), self.source_root) if work_code_readme.exists() else False
+        invalid_source = self.layout_resolution["status"] != "RESOLVED"
         if invalid_source:
-            packet.add_issue("invalid_source_root", "work/code/README.md is a requirement document, not a valid source root")
+            detail = self.layout_resolution["reason"]
+            candidates = self.layout_resolution.get("candidate_roots", [])
+            if detail == "ambiguous project roots":
+                detail += ": " + ", ".join(f"{item['root']} (score={item['score']})" for item in candidates if item["usable"])
+            packet.add_issue("source_layout_missing", detail)
         for item in missing:
             packet.add_issue("required_asset_missing", item)
         payload = {
             "ok": not missing and not invalid_source,
             "required_files_checked": required_files,
             "missing_files": missing,
+            "input_root": str(self.input_root),
             "source_root": str(self.source_root),
             "selected_readme_path": packet.metadata.get("selected_readme_path", ""),
             "fallback_readme_path": packet.metadata.get("fallback_readme_path", ""),
             "invalid_source_root": invalid_source,
+            "layout_resolution": self.layout_resolution,
             "issues": list(packet.issues),
         }
         self.write_json(self.self_check_path, payload)
@@ -655,7 +671,8 @@ class LoopForgeRunner:
             "# Output",
             "",
             f"- status: `{finalize_payload['status']}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
+            f"- first_blocking_point: `{verification_payload.get('first_blocking_point') or 'none'}`",
+            f"- input_root: `{self.display_path(self.input_root)}`",
             f"- selected_source_readme: `{self.display_path(analysis.get('readme_path') or 'missing')}`",
             f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
             f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
@@ -682,7 +699,9 @@ class LoopForgeRunner:
             "# Issue Summary",
             "",
             f"- final_status: {finalize_payload['status']}",
-            f"- source_root: {self.display_path(self.source_root)}",
+            f"- first_blocking_point: {verification_payload.get('first_blocking_point') or 'none'}",
+            f"- input_root: {self.display_path(self.input_root)}",
+            f"- resolved_project_root: {self.display_path(analysis.get('project_root') or 'missing')}",
             f"- issue_count: {len(packet.issues)}",
             "",
         ]
@@ -706,6 +725,7 @@ class LoopForgeRunner:
 
         run_summary = {
             "generated_at": utc_now(),
+            "input_root": str(self.input_root),
             "source_root": str(self.source_root),
             "analysis": analysis,
             "verification": verification_payload,
@@ -833,7 +853,9 @@ def resolve_path(base: Path, value: str) -> Path:
 
 def _candidate_source_roots(workspace_root: Path) -> List[Path]:
     candidates: List[Path] = []
-    if os.name != "nt":
+    if os.name == "nt":
+        candidates.append(workspace_root / "work" / "code")
+    else:
         for candidate in [
             Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"),
             Path("/__CONTEST_PLATFORM_SOURCE_ROOT__"),
@@ -841,30 +863,25 @@ def _candidate_source_roots(workspace_root: Path) -> List[Path]:
             candidates.append(candidate)
             if candidate.is_dir():
                 candidates.extend(path for path in candidate.iterdir() if path.is_dir())
-    for base in [workspace_root / ".code", workspace_root / "work" / "code"]:
-        candidates.append(base)
-        if base.is_dir():
-            candidates.extend(path for path in base.iterdir() if path.is_dir())
     return candidates
 
 
-def resolve_default_source_root(workspace_root: Path) -> Path:
-    for candidate in _candidate_source_roots(workspace_root):
-        if candidate.is_dir() and any((candidate / name).is_file() for name in README_CANDIDATES):
-            if any((candidate / rel).is_dir() for rel in ["src", "source"]) and any((candidate / rel).is_dir() for rel in ["tests", "test"]):
-                return candidate.resolve()
-    for candidate in _candidate_source_roots(workspace_root):
-        if candidate.is_dir() and any((candidate / rel).is_dir() for rel in ["src", "source"]):
+def resolve_default_source_root(workspace_root: Path, platform_name: Optional[str] = None) -> Path:
+    current_platform = platform_name or os.name
+    if current_platform == "nt":
+        return (workspace_root / "work" / "code").resolve()
+    for candidate in [Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"), Path("/__CONTEST_PLATFORM_SOURCE_ROOT__")]:
+        if candidate.is_dir():
             return candidate.resolve()
-    return (workspace_root / ".code" / "source-project").resolve()
+    return Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source").resolve()
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="LoopForge execution orchestrator")
     parser.add_argument("--work-dir", default="work")
     parser.add_argument("--source-root")
-    parser.add_argument("--result-dir", default="work/result")
-    parser.add_argument("--log-dir", default="work/logs")
+    parser.add_argument("--result-dir", default="result")
+    parser.add_argument("--log-dir", default="logs")
     parser.add_argument("--snapshot")
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--self-check", action="store_true")

@@ -35,7 +35,7 @@ The framework records which README was selected. If no README is available, the 
 ```text
 .
 ├── INSTRUCTION.md
-├── .code/   # optional local fallback source area
+├── work/code/   # default Windows input area
 └── work/
     ├── result/  # evaluator-facing outputs
     ├── logs/    # trace outputs

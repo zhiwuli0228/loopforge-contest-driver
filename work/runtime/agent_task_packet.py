@@ -240,6 +240,7 @@ class GateRecord:
 class RuntimePaths:
     workspace_root: Path
     work_dir: Path
+    input_root: Path
     source_root: Path
     result_dir: Path
     log_dir: Path
@@ -253,6 +254,7 @@ class RuntimePaths:
         return {
             "workspace_root": str(self.workspace_root),
             "work_dir": str(self.work_dir),
+            "input_root": str(self.input_root),
             "source_root": str(self.source_root),
             "result_dir": str(self.result_dir),
             "log_dir": str(self.log_dir),

@@ -53,7 +53,7 @@ Resolve the source path in this order:
 2. Explicit `--source-root`
 3. `SOURCE_ROOT`
 4. Contest platform source mount on Linux
-5. Local fallback `.code/`
+5. Windows default input `work/code/`; non-Windows platform `SOURCE_ROOT` mount
 
 Runtime evidence must be written under `work/logs/trace/`. The source tree under `SOURCE_ROOT` is read-only and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
 Evaluator-facing outputs must be written under `work/result/` and `work/logs/`.

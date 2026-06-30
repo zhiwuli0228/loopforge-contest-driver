@@ -504,32 +504,14 @@ def _referenced_apis(text: str, public_apis: List[str], function_table: List[Dic
     return (_dedupe(references), evidence)
 
 
-def _pick_project_root(packet: AgentTaskPacket) -> Tuple[Optional[Path], List[Path], List[Path]]:
-    candidates = [packet.paths.source_root]
-    candidates.extend(path for path in packet.paths.source_root.iterdir() if path.is_dir())
-    best_root: Optional[Path] = None
-    best_sources: List[Path] = []
-    best_tests: List[Path] = []
-    best_score = -1
-
-    for candidate in candidates:
-        source_dirs = [candidate / rel for rel in packet.source_dirs if (candidate / rel).is_dir()]
-        test_dirs = [candidate / rel for rel in packet.test_dirs if (candidate / rel).is_dir()]
-        score = len(source_dirs) * 10 + len(test_dirs)
-        if source_dirs or test_dirs:
-            if score > best_score:
-                best_root = candidate.resolve()
-                best_sources = source_dirs
-                best_tests = test_dirs
-                best_score = score
-    return best_root, best_sources, best_tests
-
-
 def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
     readme_path = Path(packet.metadata.get("selected_readme_path", "")).resolve() if packet.metadata.get("selected_readme_path") else None
     fallback_readme = Path(packet.metadata.get("fallback_readme_path", "")).resolve() if packet.metadata.get("fallback_readme_path") else None
 
-    project_root, source_dirs, test_dirs = _pick_project_root(packet)
+    resolution = packet.metadata.get("layout_resolution", {})
+    project_root = Path(resolution["resolved_project_root"]).resolve() if resolution.get("resolved_project_root") else None
+    source_dirs = [Path(path).resolve() for path in resolution.get("source_dirs", [])]
+    test_dirs = [Path(path).resolve() for path in resolution.get("test_dirs", [])]
     packet.source_layout = SourceLayout(
         readme_path=readme_path,
         fallback_readme_path=fallback_readme,
@@ -689,9 +671,9 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
     analysis["semantic_invariants"] = extract_semantic_invariants(analysis)
 
     if readme_path is None:
-        packet.add_issue("readme_missing", f"README candidate not found under {packet.paths.source_root}")
+        packet.add_issue("readme_missing", f"README candidate not found under {project_root or packet.paths.input_root}")
     if project_root is None:
-        packet.add_issue("source_layout_missing", f"Expected source/test directories under {packet.paths.source_root} or an immediate child directory")
+        packet.add_issue("source_layout_missing", resolution.get("reason", "unable to resolve usable C project layout from input_root"))
     if not src_files:
         packet.add_issue("source_files_missing", "No C source files were detected in the resolved source directories")
     if not test_files:

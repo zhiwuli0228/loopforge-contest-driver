@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $WorkDir = Join-Path $RootDir "work"
-$ResultDir = Join-Path $WorkDir "result"
-$LogDir = Join-Path $WorkDir "logs"
+$ResultDir = Join-Path $RootDir "result"
+$LogDir = Join-Path $RootDir "logs"
 
 $ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
 
@@ -86,14 +86,6 @@ function Resolve-SourceRoot {
             exit 1
         }
         $resolved = (Resolve-Path -LiteralPath $candidate).Path
-        if ($resolved -match '(?i)\\work\\code$|/work/code$') {
-            Write-LoopForgeError "work/code is a task requirement directory, not a valid SOURCE_ROOT."
-            exit 1
-        }
-        if (-not (Test-SourceRootLike -Path $resolved)) {
-            Write-LoopForgeError "source README/READNE not found under SOURCE_ROOT"
-            exit 1
-        }
         return $resolved
     }
 
@@ -136,8 +128,8 @@ $runnerPath = Join-Path $WorkDir "runtime\loopforge_runner.py"
 $runnerArgs = @(
     $runnerPath,
     "--work-dir", "work",
-    "--result-dir", "work/result",
-    "--log-dir", "work/logs",
+    "--result-dir", "result",
+    "--log-dir", "logs",
     "--source-root", $ResolvedSourceRoot,
     "--run"
 )

@@ -64,6 +64,7 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     api_functions = [item for item in api_functions if item]
 
     requirement = {
+        "input_root": str(packet.paths.input_root),
         "source_root": str(packet.paths.source_root),
         "source_readme": analysis.get("readme_path", ""),
         "task_requirement_readme": str(packet.paths.work_dir / "code" / "README.md"),
@@ -137,7 +138,7 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
 
     output_expected = packet.paths.work_dir / "output" / packet.output_project_name
     verifications = {
-        "requirement": _result("requirement", {"source_root_exists": packet.paths.source_root.is_dir(), "source_root_is_not_work_code": packet.paths.source_root.resolve() != (packet.paths.work_dir / "code").resolve(), "source_readme_identified": bool(requirement["source_readme"]), "source_dirs_exist": bool(requirement["source_dirs"]), "test_dirs_exist": bool(requirement["test_dirs"]), "output_name_has_evidence": bool(requirement["output_project_name"] and requirement["evidence"]), "output_dir_is_canonical": packet.output_project_dir.resolve() == output_expected.resolve()}, {}),
+        "requirement": _result("requirement", {"resolved_project_root_exists": packet.paths.source_root.is_dir() and bool(packet.metadata.get("layout_resolution", {}).get("resolved_project_root")), "source_readme_identified": bool(requirement["source_readme"]), "source_dirs_exist": bool(requirement["source_dirs"]), "test_dirs_exist": bool(requirement["test_dirs"]), "output_name_has_evidence": bool(requirement["output_project_name"] and requirement["evidence"]), "output_dir_is_canonical": packet.output_project_dir.resolve() == output_expected.resolve()}, {}),
         "structure": _result("structure", {"core_c_files_present": bool(structure["core_files"]), "public_apis_present": bool(public), "all_public_apis_defined": not structure["unresolved_declarations"], "all_public_apis_have_evidence": all(item.get("file") and item.get("symbol") for item in structure["evidence"])}, {"public_api_count": len(public), "definition_count": len(public & set(definitions))}),
         "data_model": _result("data_model", {"all_struct_fields_named": all(field.get("name") for item in structs for field in item["fields"]), "all_structs_have_evidence": all(item["evidence"] for item in structs)}, {"struct_count": len(structs)}),
         "api_behavior": _result("api_behavior", {"behavior_coverage_100_percent": _names(behaviors) == public, "all_apis_classified": all(item["kind"] for item in behaviors), "mutations_have_side_effects": all(item["side_effects"] for item in mutating), "all_behaviors_have_evidence": all(item["evidence"] for item in behaviors)}, {"coverage": len(_names(behaviors)) / len(public) if public else 0.0}),
@@ -148,7 +149,8 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     for stage, payload in verifications.items():
         _write_json(trace_dir / ARTIFACTS[stage][1], payload)
     failed = [stage for stage in STAGES if not verifications[stage]["passed"]]
-    gate = {"passed": not failed, "status": "PASSED" if not failed else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not failed else ("A_SOURCE_ROOT" if failed == ["requirement"] else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "verifications": verifications}
+    layout_resolved = packet.metadata.get("layout_resolution", {}).get("status") == "RESOLVED"
+    gate = {"passed": not failed, "status": "PASSED" if not failed else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not failed else ("A_SOURCE_ROOT" if not layout_resolved or "requirement" in failed else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "verifications": verifications}
     missing_lines = ["# Missing Capability Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", f"- missing public APIs: `{', '.join(structure['unresolved_declarations']) or 'none'}`", f"- missing capabilities: `{', '.join(capability['unmapped_public_apis']) or 'none'}`", "- missing data invariants: `none detected by structural gate`", "- missing state transitions: `" + (", ".join(sorted({item['name'] for item in mutating} - {item['api'] for item in state_model['transitions']})) or "none") + "`", f"- missing boundary tests: `{', '.join(uncovered) or 'none'}`", f"- missing error-path tests: `{', '.join(uncovered) or 'none'}`", f"- severity: `{'P1' if failed else 'none'}`", ""]
     (trace_dir / "01g-missing-capability-report.md").write_text("\n".join(missing_lines), encoding="utf-8")
     report = ["# Source Analysis Verify Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", "", "| Stage | Result | Failed checks |", "|---|---|---|"]

@@ -4,7 +4,7 @@
 
 1. Create and activate a Python environment.
 2. Install `work/requirements.txt`.
-3. Set `SOURCE_ROOT` to the source tree you want to evaluate, or use local fallback `.code/`.
+3. Set `SOURCE_ROOT` explicitly; on Windows, `work/code/` is the default input when it is omitted.
 
 ## Common Commands
 
