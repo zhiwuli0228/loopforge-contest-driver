@@ -59,7 +59,7 @@ coding_skill:
   replacement_policy: "This generic coding skill may be replaced by a stronger coding skill without changing LoopForge orchestration, as long as the replacement preserves the same input contract, output artifact path, and gate values."
 
 verification:
-  source: "human-configured"
+  source: "source-readme-or-framework-default"
   working_directory: "code"
   timeout_seconds: 300
   commands:

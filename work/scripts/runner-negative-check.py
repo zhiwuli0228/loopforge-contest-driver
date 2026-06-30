@@ -50,7 +50,7 @@ def run_runner(workspace: Path) -> subprocess.CompletedProcess[str]:
             "work/runtime/loopforge_runner.py",
             "--work-dir",
             "work",
-            "--code-dir",
+            "--source-root",
             "code",
             "--init",
             "--self-check",
@@ -105,8 +105,8 @@ def scenario_missing_all_verification_commands(workspace: Path) -> None:
     config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
-        '  commands:\n    default:\n      - "fill-by-human-before-execution"\n    linux:\n      - "fill-by-human-before-linux-submission"\n    windows:\n      - "fill-by-human-before-windows-local-test"',
-        '  commands: {}',
+        '  commands:\n    default: []',
+        '  commands: "invalid"',
     )
 
 
@@ -139,7 +139,7 @@ SCENARIOS: List[Dict[str, object]] = [
     {
         "name": "missing-all-verification-commands",
         "mutator": scenario_missing_all_verification_commands,
-        "expected_errors": ["verification.commands does not define any runnable command for the current platform"],
+        "expected_errors": ["verification.commands must be a list or a platform command map"],
     },
 ]
 
@@ -187,7 +187,7 @@ def validate_scenario(repo_root: Path, scenario: Dict[str, object]) -> None:
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     failures: List[str] = []
     for scenario in SCENARIOS:
         try:

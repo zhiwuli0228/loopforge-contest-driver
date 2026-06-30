@@ -96,7 +96,7 @@ repair_policy:
   forbid_large_scale_rewrite: true
 
 verification:
-  strategy: "human-configured"
+  strategy: "source-readme-or-framework-default"
   command_source: "loopforge.config.yaml"
   working_directory_hint: "code"
   allow_degraded_verification: true

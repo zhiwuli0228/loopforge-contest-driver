@@ -9,22 +9,26 @@ $WorkDir = Join-Path $RootDir "work"
 $ResultDir = Join-Path $RootDir "result"
 $LogDir = Join-Path $RootDir "logs"
 
+if (-not $SourceRoot -or $SourceRoot.Trim() -eq "") {
+    if ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
+        $SourceRoot = $env:SOURCE_ROOT.Trim()
+    }
+    else {
+        $SourceRoot = "code"
+    }
+}
+
+$env:SOURCE_ROOT = $SourceRoot
+
 New-Item -ItemType Directory -Force -Path (Join-Path $ResultDir "issues") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace") | Out-Null
 if (-not (Test-Path (Join-Path $LogDir "interaction.md"))) {
     Set-Content -Path (Join-Path $LogDir "interaction.md") -Value "# Interaction Log`r`n`r`nNo manual interaction.`r`n"
 }
 
-if ($SourceRoot -and $SourceRoot.Trim() -ne "") {
-    $RunnerArgs = @("--source-root", $SourceRoot)
-}
-else {
-    $RunnerArgs = @()
-}
-
 python (Join-Path $WorkDir "runtime\loopforge_runner.py") `
   --work-dir $WorkDir `
   --result-dir $ResultDir `
   --log-dir $LogDir `
-  @RunnerArgs `
+  --source-root $SourceRoot `
   --run

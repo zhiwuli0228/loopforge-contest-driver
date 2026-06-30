@@ -44,18 +44,18 @@ Read framework configuration from:
 work/loopforge.config.yaml
 ```
 
-## 4. Bootstrap
+## 4. Entrypoints
 
 Official Linux execution:
 
 ```bash
-bash work/scripts/bootstrap.sh
+SOURCE_ROOT=<path> bash work/scripts/run.sh
 ```
 
-Windows local smoke execution:
+Windows local execution:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1
+$env:SOURCE_ROOT="<path>"; powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
 ## 5. Source path resolution
@@ -65,7 +65,10 @@ The source project path must be resolved by the following priority:
 1. Platform-provided source path.
 2. Explicit `--source-root` or `SOURCE_ROOT`, when provided.
 3. Auto-detected contest Linux source mount, when present.
-4. Local repository fallback: `code/`.
+4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`, when present.
+5. Local repository fallback: `code/`.
+
+The framework reads task requirements from the README located at the resolved source root.
 
 For local development, placing the source tree under `code/` is sufficient. No extra path argument is required.
 
@@ -75,6 +78,7 @@ Keep these files or directories available:
 
 ```text
 result/output.md
+result/issues/00-summary.md
 logs/interaction.md
 logs/trace/
 ```

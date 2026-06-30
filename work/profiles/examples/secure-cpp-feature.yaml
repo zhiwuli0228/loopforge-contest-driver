@@ -30,7 +30,7 @@ execution:
     - "error handling"
 
 verification:
-  strategy: "human-configured"
+  strategy: "source-readme-or-framework-default"
   working_directory_hint: "code"
   evidence_focus:
     - "acceptance criteria coverage"

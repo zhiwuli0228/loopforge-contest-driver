@@ -1,5 +1,229 @@
 # Output
 
-Framework directory structure has been prepared.
+- source_root: `E:\009workspace\codex\loopforge-contest-driver\code`
+- resolved_code_dir: `E:\009workspace\codex\loopforge-contest-driver\code`
+- artifact_dir: `E:\009workspace\codex\loopforge-contest-driver\code\.loopforge`
+- result: `BLOCKED_WITH_REPORT`
+- verification_status: `blocked-with-report`
+- selected_source_readme: `missing`
+- final_report: `E:\009workspace\codex\loopforge-contest-driver\code\.loopforge\reports\final-report.md`
 
-Actual execution output should be written here by the contest run.
+## Self Check
+
+{
+  "ok": true,
+  "checks": {
+    "python_version": "3.12.7",
+    "workspace_root": "E:\\009workspace\\codex\\loopforge-contest-driver",
+    "work_dir_exists": true,
+    "code_dir_exists": true,
+    "config_exists": true,
+    "artifact_dir_target": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge",
+    "artifact_dir_under_code": true,
+    "verification_commands_configured": false,
+    "verification_working_directory": "code",
+    "runner_copied": true,
+    "config_contract_ok": true,
+    "profile_contract_ok": true,
+    "work_package_contract_ok": true,
+    "coding_skill_status": "CODING_SKILL_READY",
+    "coding_skill_contract_ok": true,
+    "source_readme_found": false
+  },
+  "contract_summary": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "platform": {
+      "configured_work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
+      "configured_code_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+      "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge"
+    },
+    "task": {
+      "mode": "feature-development",
+      "profile": "profiles/templates/feature-development.yaml"
+    },
+    "verification": {
+      "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+      "commands_format": "platform-map",
+      "available_profiles": [],
+      "selected_profile": "",
+      "fallback_used": false,
+      "commands_count": 0
+    },
+    "governance": {
+      "ok": true,
+      "superspec": "",
+      "superpower": "",
+      "mode_rules": [],
+      "delegated_staged_ready": false
+    },
+    "subagent_contract": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "stage_count": 0,
+      "stages": []
+    },
+    "coding_skill": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "enabled": true,
+      "required": true,
+      "skill": "skills/code-implementation/SKILL.md",
+      "apply_at": [
+        "patch_implementation"
+      ],
+      "output": "code/.loopforge/consistency/05-patch-summary.md",
+      "ready_status": "CODING_SKILL_READY",
+      "skill_exists": true,
+      "references_ready": true,
+      "stage_declared": false,
+      "superpower_policy_ready": false
+    },
+    "outputs": {
+      "consistency_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\consistency",
+      "final_report": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\reports\\final-report.md",
+      "patch_snapshot_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\.loopforge\\snapshots"
+    },
+    "profile_summary": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "profile_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\profiles\\templates\\feature-development.yaml",
+      "profile_name": "feature-development-template",
+      "profile_class": "template",
+      "task_mode": "feature-development"
+    },
+    "work_package_summary": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "required_files_present": [
+        "INSTRUCTION.md",
+        "README.md",
+        "SUBMISSION.md",
+        "loopforge.config.yaml",
+        "HARNESS.md",
+        "runtime/loopforge_runner.py",
+        "scripts/bootstrap.sh",
+        "scripts/bootstrap.ps1",
+        "scripts/smoke-test.sh",
+        "scripts/smoke-test.ps1",
+        "skills/loopforge-driver/SKILL.md",
+        "docs/DESIGN.md",
+        "docs/ADAPTATION_GUIDE.md",
+        "docs/CROSS_PLATFORM_DESIGN.md",
+        "docs/DAILY_DEV_USAGE.md",
+        "profiles/README.md",
+        "subagent/opencode-preflight-subagent.md",
+        "subagent/opencode-design-read-subagent.md",
+        "subagent/opencode-implementation-map-subagent.md",
+        "subagent/opencode-drift-analysis-subagent.md",
+        "subagent/opencode-repair-plan-subagent.md",
+        "subagent/opencode-patch-subagent.md",
+        "subagent/opencode-verification-subagent.md",
+        "subagent/opencode-final-report-subagent.md",
+        "rules/loopforge/core/00-core.md",
+        "rules/loopforge/core/01-work-code-boundary.md",
+        "rules/loopforge/core/02-static-rule-ownership.md",
+        "rules/loopforge/core/03-verification-contract.md",
+        "rules/loopforge/core/04-gate-policy.md",
+        "rules/loopforge/core/05-final-report.md",
+        "rules/loopforge/core/06-code-generation-boundary.md"
+      ],
+      "required_files_missing": [],
+      "available_modes": {
+        "consistency-check": [
+          "00-flow.md",
+          "01-phase-policy.md",
+          "02-required-artifacts.md",
+          "03-forbidden-actions.md",
+          "04-final-report.md"
+        ],
+        "defect-repair": [
+          "00-flow.md",
+          "01-phase-policy.md",
+          "02-required-artifacts.md",
+          "03-forbidden-actions.md",
+          "04-final-report.md"
+        ],
+        "feature-development": [
+          "00-flow.md",
+          "01-phase-policy.md",
+          "02-required-artifacts.md",
+          "03-forbidden-actions.md",
+          "04-final-report.md"
+        ],
+        "migration": [
+          "00-flow.md",
+          "01-phase-policy.md",
+          "02-required-artifacts.md",
+          "03-forbidden-actions.md",
+          "04-final-report.md"
+        ],
+        "skill-generation": [
+          "00-flow.md",
+          "01-phase-policy.md",
+          "02-required-artifacts.md",
+          "03-forbidden-actions.md",
+          "04-final-report.md"
+        ]
+      },
+      "configured_mode": "feature-development",
+      "template_count": 5,
+      "example_count": 5
+    }
+  }
+}
+
+## Detection
+
+{
+  "project_type": "unknown",
+  "indicators": {
+    "pom.xml": false,
+    "mvnw": false,
+    "pyproject.toml": false,
+    "requirements.txt": false,
+    "package.json": false,
+    "go.mod": false,
+    "git_worktree": true,
+    "source_readme": false
+  },
+  "source_readme": {
+    "found": false,
+    "selected_path": "",
+    "candidates": [
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
+    ]
+  }
+}
+
+## Verification
+
+{
+  "ok": false,
+  "status": "blocked-with-report",
+  "detected_os": "windows",
+  "selected_command_profile": "",
+  "fallback_used": false,
+  "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+  "timeout_seconds": 300,
+  "commands_attempted": [],
+  "source_readme": {
+    "found": false,
+    "selected_path": "",
+    "candidates": [
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
+    ]
+  },
+  "reason": "source README not found; no runnable verification commands were derived from source README or framework defaults"
+}

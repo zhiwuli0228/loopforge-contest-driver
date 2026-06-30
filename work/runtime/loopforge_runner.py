@@ -27,6 +27,12 @@ ARTIFACT_SUBDIRS = [
     "plan",
     "consistency",
 ]
+README_CANDIDATES = [
+    "README.md",
+    "README",
+    "readme.md",
+    "Readme.md",
+]
 REQUIRED_ROOT_FILES = [
     "INSTRUCTION.md",
     "README.md",
@@ -404,6 +410,23 @@ class LoopForgeRunner:
             str(self.final_report_path),
         ]
 
+    def detect_source_readme(self) -> Dict[str, Any]:
+        candidates: List[str] = []
+        for name in README_CANDIDATES:
+            candidate = self.code_dir / name
+            candidates.append(str(candidate))
+            if candidate.exists():
+                return {
+                    "found": True,
+                    "selected_path": str(candidate),
+                    "candidates": candidates,
+                }
+        return {
+            "found": False,
+            "selected_path": "",
+            "candidates": candidates,
+        }
+
     def validate_profile(self) -> Dict[str, Any]:
         task = self.config.get("task", {})
         configured_mode = str(task.get("mode", "")).strip()
@@ -463,7 +486,7 @@ class LoopForgeRunner:
             warnings.append("profile task.objective is empty")
         profile_primary = str(profile_task.get("language", {}).get("primary", "")).strip()
         config_primary = str(configured_language.get("primary", "")).strip()
-        placeholders = {"", "fill-by-human"}
+        placeholders = {"", "source-root-derived"}
         if config_primary not in placeholders and profile_primary not in placeholders and config_primary != profile_primary:
             warnings.append(
                 f"task.language.primary ({config_primary}) differs from profile task.language.primary ({profile_primary})"
@@ -478,7 +501,10 @@ class LoopForgeRunner:
             warnings.append("profile execution section is empty or missing")
 
         commands = profile_verification.get("commands", [])
-        if not isinstance(commands, list) or not commands:
+        verification_strategy = str(profile_verification.get("strategy", "")).strip()
+        if not isinstance(commands, list):
+            warnings.append("profile verification.commands is not a list")
+        elif not commands and verification_strategy not in {"source-readme-or-framework-default", "source-readme"}:
             warnings.append("profile verification.commands is empty or missing")
         if not isinstance(profile_reporting.get("highlight", []), list) or not profile_reporting.get("highlight", []):
             warnings.append("profile reporting.highlight is empty or missing")
@@ -726,7 +752,7 @@ class LoopForgeRunner:
         apply_at = coding_skill.get("apply_at", [])
         output_value = str(coding_skill.get("output", "")).strip()
         skill_path = (self.work_dir / skill_path_value).resolve() if skill_path_value else None
-        output_path = (self.work_dir / output_value).resolve() if output_value else None
+        output_path = self.resolve_code_relative_path(output_value) if output_value else None
 
         references_ready = False
         stage_declared = False
@@ -1065,9 +1091,6 @@ class LoopForgeRunner:
         else:
             errors.append("verification.commands must be a list or a platform command map")
 
-        if not selected_commands:
-            errors.append("verification.commands does not define any runnable command for the current platform")
-
         return {
             "ok": len(errors) == 0,
             "errors": errors,
@@ -1134,6 +1157,7 @@ class LoopForgeRunner:
             "work_package_contract_ok": config_summary.get("work_package_summary", {}).get("ok", False),
             "coding_skill_status": config_summary.get("coding_skill", {}).get("ready_status", "CODING_SKILL_MISSING"),
             "coding_skill_contract_ok": config_summary.get("coding_skill", {}).get("ok", False),
+            "source_readme_found": self.detect_source_readme().get("found", False),
         }
         ok = all(
             [
@@ -1141,7 +1165,6 @@ class LoopForgeRunner:
                 checks["code_dir_exists"],
                 checks["config_exists"],
                 checks["artifact_dir_under_code"],
-                checks["verification_commands_configured"],
                 checks["config_contract_ok"],
                 checks["profile_contract_ok"],
             ]
@@ -1160,6 +1183,7 @@ class LoopForgeRunner:
         self.assert_layout()
         self.ensure_directories()
         git_probe = self.run_command("git rev-parse --is-inside-work-tree", self.code_dir, 30) if shutil.which("git") else None
+        readme_summary = self.detect_source_readme()
         indicators = {
             "pom.xml": (self.code_dir / "pom.xml").exists(),
             "mvnw": (self.code_dir / "mvnw").exists() or (self.code_dir / "mvnw.cmd").exists(),
@@ -1168,6 +1192,7 @@ class LoopForgeRunner:
             "package.json": (self.code_dir / "package.json").exists(),
             "go.mod": (self.code_dir / "go.mod").exists(),
             "git_worktree": bool(git_probe and git_probe.returncode == 0 and git_probe.stdout.strip().lower() == "true"),
+            "source_readme": readme_summary["found"],
         }
         project_type = "unknown"
         if indicators["pom.xml"] or indicators["mvnw"]:
@@ -1178,7 +1203,11 @@ class LoopForgeRunner:
             project_type = "node"
         elif indicators["go.mod"]:
             project_type = "go"
-        payload = {"project_type": project_type, "indicators": indicators}
+        payload = {
+            "project_type": project_type,
+            "indicators": indicators,
+            "source_readme": readme_summary,
+        }
         self.save_json(self.detect_path, payload)
         state = self.load_state()
         state["phase"] = "DETECT"
@@ -1247,7 +1276,7 @@ class LoopForgeRunner:
     def verification_context(self) -> Tuple[Path, int, List[str]]:
         verification = self.config.get("verification", {})
         normalized = self.normalize_verification_commands(verification.get("commands", []))
-        if not normalized["ok"]:
+        if normalized["errors"]:
             raise ValueError("; ".join(str(item) for item in normalized["errors"]))
         working_directory = str(verification.get("working_directory", "code"))
         timeout_seconds = int(verification.get("timeout_seconds", 300))
@@ -1273,6 +1302,7 @@ class LoopForgeRunner:
             f"- artifact_dir: `{self.artifact_dir}`",
             f"- result: `{finalize_payload.get('result', 'UNKNOWN')}`",
             f"- verification_status: `{verify_payload.get('status', 'not-run')}`",
+            f"- selected_source_readme: `{detect_payload.get('source_readme', {}).get('selected_path', '') or 'missing'}`",
             f"- final_report: `{self.final_report_path}`",
             "",
             "## Self Check",
@@ -1300,6 +1330,9 @@ class LoopForgeRunner:
                 issues.extend(str(item) for item in contract_summary.get("errors", []))
             if verify_payload.get("reason"):
                 issues.append(str(verify_payload["reason"]))
+            source_readme = detect_payload.get("source_readme", {}) if isinstance(detect_payload, dict) else {}
+            if isinstance(source_readme, dict) and not source_readme.get("found", False):
+                issues.append("source README not found near SOURCE_ROOT")
             if not issues:
                 issues.append("Execution completed with non-passing status. See result/output.md and logs/trace/run-summary.json.")
             issues_text += "\n".join(f"- {item}" for item in issues) + "\n"
@@ -1360,6 +1393,7 @@ class LoopForgeRunner:
             self.save_state(state)
             self.record_gate("VERIFY", "FAIL", "verification blocked", payload["reason"])
             return payload
+        readme_summary = self.detect_source_readme()
         cwd, timeout_seconds, commands = self.verification_context()
         commands_summary = self.normalize_verification_commands(self.config.get("verification", {}).get("commands", []))
         attempted: List[Dict[str, Any]] = []
@@ -1367,6 +1401,29 @@ class LoopForgeRunner:
         state = self.load_state()
         state["phase"] = "VERIFY"
         self.save_state(state)
+
+        if not commands:
+            reasons: List[str] = []
+            if not readme_summary.get("found", False):
+                reasons.append("source README not found")
+            reasons.append("no runnable verification commands were derived from source README or framework defaults")
+            payload = {
+                "ok": False,
+                "status": "blocked-with-report",
+                "detected_os": self.current_os,
+                "selected_command_profile": commands_summary["selected_profile"],
+                "fallback_used": commands_summary["fallback_used"],
+                "working_directory": str(cwd),
+                "timeout_seconds": timeout_seconds,
+                "commands_attempted": attempted,
+                "source_readme": readme_summary,
+                "reason": "; ".join(reasons),
+            }
+            self.save_json(self.verify_path, payload)
+            state["result"] = "BLOCKED_WITH_REPORT"
+            self.save_state(state)
+            self.record_gate("VERIFY", "FAIL", "verification blocked", payload["reason"])
+            return payload
 
         for command in commands:
             result = self.run_command(command, cwd, timeout_seconds)
@@ -1391,6 +1448,7 @@ class LoopForgeRunner:
                     "timeout_seconds": timeout_seconds,
                     "commands_attempted": attempted,
                     "selected_command": command,
+                    "source_readme": readme_summary,
                 }
                 self.save_json(self.verify_path, payload)
                 state["result"] = "DONE"
@@ -1407,6 +1465,7 @@ class LoopForgeRunner:
             "working_directory": str(cwd),
             "timeout_seconds": timeout_seconds,
             "commands_attempted": attempted,
+            "source_readme": readme_summary,
             "reason": "all configured verification commands failed",
         }
         self.save_json(self.verify_path, payload)

@@ -3,7 +3,7 @@ set -euo pipefail
 
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
-CODE_DIR="${ROOT_DIR}/code"
+SOURCE_ROOT="${ROOT_DIR}/code"
 ARTIFACT_DIR=""
 PYTHON_BIN="${PYTHON_BIN:-}"
 
@@ -25,8 +25,8 @@ while [[ $# -gt 0 ]]; do
       ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
       shift 2
       ;;
-    --code-dir)
-      CODE_DIR="$2"
+    --source-root)
+      SOURCE_ROOT="$2"
       shift 2
       ;;
     *)
@@ -36,11 +36,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ! "$CODE_DIR" = /* ]]; then
-  CODE_DIR="${ROOT_DIR}/${CODE_DIR}"
+if [[ ! "$SOURCE_ROOT" = /* ]]; then
+  SOURCE_ROOT="${ROOT_DIR}/${SOURCE_ROOT}"
 fi
 
-ARTIFACT_DIR="$CODE_DIR/.loopforge"
+ARTIFACT_DIR="$SOURCE_ROOT/.loopforge"
 PARENT_ARTIFACT_DIR="${WORK_DIR}/code/.loopforge"
 PARENT_ARTIFACT_PREEXISTED="false"
 
@@ -48,10 +48,10 @@ if [[ -e "$PARENT_ARTIFACT_DIR" ]]; then
   PARENT_ARTIFACT_PREEXISTED="true"
 fi
 
-bash "$WORK_DIR/scripts/bootstrap.sh" --work-dir "$WORK_DIR" --code-dir "$CODE_DIR"
-"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --code-dir "$CODE_DIR" --snapshot smoke
-"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --code-dir "$CODE_DIR" --verify
-"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --code-dir "$CODE_DIR" --finalize
+bash "$WORK_DIR/scripts/bootstrap.sh" --source-root "$SOURCE_ROOT"
+"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --source-root "$SOURCE_ROOT" --snapshot smoke
+"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --source-root "$SOURCE_ROOT" --verify
+"$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" --work-dir "$WORK_DIR" --source-root "$SOURCE_ROOT" --finalize
 
 required_paths=(
   "$ARTIFACT_DIR"

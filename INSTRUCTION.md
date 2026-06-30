@@ -1,39 +1,92 @@
 # Contest Execution Instruction
 
-This file is the root entrypoint for the contest evaluator and AI coding agent.
+This repository is a contest driver. The only required external input is the source tree root, exposed as `SOURCE_ROOT`.
 
-## 1. Read platform materials
+## Environment
 
-Before making any change, read the runnable framework materials under:
+Supported execution environments:
 
-- `work/HARNESS.md`
-- `work/skills/loopforge-driver/SKILL.md`
-- `work/loopforge.config.yaml`
+- Linux with `bash`
+- Windows with PowerShell
 
-Do not treat `INSTRUCTION.md` as the full workflow. It only routes the agent to the runnable materials in `work/`.
+Required tools:
 
-## 2. Resolve source path
+- Python 3
+- `pip`
+- `git`
+- Rust toolchain with `cargo`
 
-Resolve the source project path in the following order:
+Optional virtual environment setup:
 
-1. Use the source path provided by the contest platform when invoking this instruction.
-2. If `--source-root` or `SOURCE_ROOT` is explicitly provided, use that value.
-3. If no explicit path is provided and a contest Linux source mount exists, use it automatically.
-4. Otherwise use `code/` under this repository root as the local fallback path.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r work/requirements.txt
+```
 
-## 3. Execute framework
+Windows PowerShell:
 
-Follow `work/HARNESS.md`.
+```powershell
+python -m venv .venv
+. .\.venv\Scripts\Activate.ps1
+python -m pip install -r work/requirements.txt
+```
 
-The framework assets are under `work/`. The source project is outside `work/`, or under `code/` only for local fallback.
+## Source Root Protocol
 
-## 4. Required output locations
+Source path resolution priority:
 
-When execution completes, ensure these paths exist:
+1. Contest platform explicit source path
+2. `--source-root <path>`
+3. `SOURCE_ROOT`
+4. Path extracted by the agent from natural-language task input and normalized into `SOURCE_ROOT`
+5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
+6. Local fallback: `code`
+
+The framework reads requirements and constraints from the source README near `SOURCE_ROOT`. Supported names:
+
+- `${SOURCE_ROOT}/README.md`
+- `${SOURCE_ROOT}/README`
+- `${SOURCE_ROOT}/readme.md`
+- `${SOURCE_ROOT}/Readme.md`
+
+If multiple files exist, the runner records the selected README path in the run trace.
+
+## Run
+
+Linux:
+
+```bash
+SOURCE_ROOT=<path> bash work/scripts/run.sh
+```
+
+Windows PowerShell:
+
+```powershell
+$env:SOURCE_ROOT="<path>"
+powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
+```
+
+If no explicit source path is provided, the scripts first try `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB` on Linux and otherwise fall back to `code`.
+
+## Results
+
+Primary evaluator output:
 
 - `result/output.md`
-- `logs/interaction.md`
+
+Issue summary:
+
+- `result/issues/00-summary.md`
+
+Trace logs:
+
 - `logs/trace/`
 
-Do not require human interaction during automated execution.
-Local development should work with no extra path input when the source tree is placed under `code/`.
+The internal runtime cache remains under `SOURCE_ROOT/.loopforge/`, but it is not the primary evaluator-facing result.
+
+## Scope
+
+- This file is an execution manual, not a business-rule document.
+- Do not require humans to edit `work/loopforge.config.yaml` for new tasks.
+- Requirements should come from `SOURCE_ROOT` and its README, not from manual placeholder filling.

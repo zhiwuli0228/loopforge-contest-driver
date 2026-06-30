@@ -1,6 +1,6 @@
 param(
     [string]$WorkDir = (Split-Path -Parent $PSScriptRoot),
-    [string]$CodeDir = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "code")
+    [string]$SourceRoot = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "code")
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,20 +21,20 @@ function Resolve-Python {
 
 $WorkDir = (Resolve-Path $WorkDir).Path
 $RootDir = Split-Path -Parent $WorkDir
-if (-not [System.IO.Path]::IsPathRooted($CodeDir)) {
-    $CodeDir = Join-Path $RootDir $CodeDir
+if (-not [System.IO.Path]::IsPathRooted($SourceRoot)) {
+    $SourceRoot = Join-Path $RootDir $SourceRoot
 }
 
 $PythonCmd = Resolve-Python
-$ArtifactDir = Join-Path $CodeDir ".loopforge"
+$ArtifactDir = Join-Path $SourceRoot ".loopforge"
 $ParentArtifactDir = Join-Path $WorkDir "code/.loopforge"
 $ParentArtifactPreexisted = Test-Path $ParentArtifactDir
 $RunnerPath = Join-Path $WorkDir "runtime/loopforge_runner.py"
 
-powershell -ExecutionPolicy Bypass -File (Join-Path $WorkDir "scripts/bootstrap.ps1") -WorkDir $WorkDir -CodeDir $CodeDir
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --code-dir `"$CodeDir`" --snapshot smoke"
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --code-dir `"$CodeDir`" --verify"
-Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --code-dir `"$CodeDir`" --finalize"
+powershell -ExecutionPolicy Bypass -File (Join-Path $WorkDir "scripts/bootstrap.ps1") -SourceRoot $SourceRoot
+Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --snapshot smoke"
+Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --verify"
+Invoke-Expression "$PythonCmd `"$RunnerPath`" --work-dir `"$WorkDir`" --source-root `"$SourceRoot`" --finalize"
 
 $requiredPaths = @(
     $ArtifactDir,

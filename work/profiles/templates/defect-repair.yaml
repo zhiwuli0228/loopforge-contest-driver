@@ -7,7 +7,7 @@ task:
   mode: "defect-repair"
   objective: "describe the failing behavior here"
   language:
-    primary: "fill-by-human"
+    primary: "source-root-derived"
     secondary: []
   profile_role: "minimal defect repair"
 
@@ -26,12 +26,11 @@ execution:
   allow_unrelated_refactor: false
 
 verification:
-  strategy: "human-configured"
+  strategy: "source-readme-or-framework-default"
   evidence_focus:
     - "failure addressed"
     - "regression confidence"
-  commands:
-    - "fill-by-human-before-execution"
+  commands: []
 
 reporting:
   highlight:

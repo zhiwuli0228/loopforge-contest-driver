@@ -5,6 +5,7 @@ platform:
   layout: "single-root"
   work_dir: "work"
   code_dir: "code"
+  local_fallback_source_dir: "code"
   artifact_dir: ".loopforge"
   official_submission_os: "linux"
   local_development_os:
@@ -12,13 +13,15 @@ platform:
     - "linux"
 
 task:
-  name: "fill-by-human"
+  name: "source-readme-driven-development"
   mode: "feature-development"
+  source: "source-readme"
+  readme_required: true
   profile: "profiles/templates/feature-development.yaml"
   language:
-    primary: "fill-by-human"
+    primary: "source-root-derived"
     secondary: []
-  objective: "fill-by-human"
+  objective: "derive task intent from SOURCE_ROOT README"
 
 execution:
   unattended: true
@@ -31,18 +34,25 @@ execution:
   push: false
   create_pr: false
 
+coding_skill:
+  enabled: true
+  required: true
+  skill: "skills/code-implementation/SKILL.md"
+  apply_at:
+    - "patch_implementation"
+  output: "code/.loopforge/consistency/05-patch-summary.md"
+
 verification:
-  source: "human-configured"
+  source: "source-readme-or-framework-default"
   working_directory: "code"
   timeout_seconds: 300
   commands:
-    default:
-      - "fill-by-human-before-execution"
-    linux:
-      - "fill-by-human-before-linux-submission"
-    windows:
-      - "fill-by-human-before-windows-local-test"
+    default: []
 
 outputs:
+  result_report: "result/output.md"
+  issue_summary: "result/issues/00-summary.md"
+  trace_dir: "logs/trace"
+  consistency_dir: "code/.loopforge/consistency"
   final_report: "code/.loopforge/reports/final-report.md"
   patch_snapshot_dir: "code/.loopforge/snapshots"

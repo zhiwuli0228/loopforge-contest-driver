@@ -7,7 +7,7 @@ task:
   mode: "skill-generation"
   objective: "describe the tool capability to capture"
   language:
-    primary: "fill-by-human"
+    primary: "source-root-derived"
     secondary: []
   profile_role: "business skill generation"
 
@@ -26,12 +26,11 @@ execution:
   output_scope: "business-skill-only"
 
 verification:
-  strategy: "human-configured"
+  strategy: "source-readme-or-framework-default"
   evidence_focus:
     - "contract coverage"
     - "example quality"
-  commands:
-    - "fill-by-human-before-execution"
+  commands: []
 
 reporting:
   highlight:

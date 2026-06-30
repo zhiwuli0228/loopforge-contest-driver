@@ -8,7 +8,7 @@ task:
   mode: "defect-repair"
   objective: "repair an open source defect with the smallest effective patch"
   language:
-    primary: "fill-by-human"
+    primary: "source-root-derived"
     secondary: []
   profile_role: "minimal oss defect repair"
 
@@ -28,7 +28,7 @@ execution:
   allow_unrelated_refactor: false
 
 verification:
-  strategy: "human-configured"
+  strategy: "source-readme-or-framework-default"
   working_directory_hint: "code"
   evidence_focus:
     - "bug reproduction addressed"

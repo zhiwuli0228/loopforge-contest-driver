@@ -1,136 +1,63 @@
-# LoopForge Core
+# LoopForge Contest Driver
 
-LoopForge is a reusable unattended AI coding framework. In this contest package, the repository root is the submission root, `work/` holds the runnable framework assets, and `code/` is the local fallback source tree.
+This repository is a contest submission driver. It accepts a source tree path through `SOURCE_ROOT`, reads the source README to build task context, and writes evaluator-facing results to `result/` and `logs/`.
 
-## Quick Start
+## Reproduce
 
-For execution and reproduction, start from [INSTRUCTION.md](E:/009workspace/codex/loopforge-contest-driver/INSTRUCTION.md).
+Start from [INSTRUCTION.md](./INSTRUCTION.md).
 
-The expected root-level execution summary is written to [result/output.md](E:/009workspace/codex/loopforge-contest-driver/result/output.md).
+Primary outputs:
 
-For local use, put the target source tree under `code/` and start from `INSTRUCTION.md`. Extra source-path input is optional unless the platform provides a different mount path.
+- [result/output.md](./result/output.md)
+- [result/issues/00-summary.md](./result/issues/00-summary.md)
+- [logs/trace/](./logs/trace/)
 
-## Platform Model
+## Input Model
+
+The contest-facing input model is:
+
+- `SOURCE_ROOT`
+- README files located at the source root
+
+Supported README names:
+
+- `README.md`
+- `README`
+- `readme.md`
+- `Readme.md`
+
+The framework records which README was selected. If no README is available, the run degrades into an explicit report instead of waiting for manual config edits.
+
+## Layout
 
 ```text
 .
 ├── INSTRUCTION.md
 ├── code/    # local fallback source tree
 ├── work/    # framework assets
-├── result/  # root-level output placeholder
-└── logs/    # root-level execution records
+├── result/  # evaluator-facing outputs
+└── logs/    # trace outputs
 ```
 
-- Root `INSTRUCTION.md` is the only contest entry file.
-- `work/` contains instructions, rules, profiles, runtime code, scripts, docs, and templates.
-- `code/` remains available as the default local target project path.
-- `code/.loopforge/` stores runtime artifacts, reports, and snapshots for actual execution.
+## Entrypoints
 
-## Design Boundaries
+Linux:
 
-- LoopForge core is task-agnostic.
-- Tasks are configured through `Mode + Profile`.
-- Static files in this root, except `code/`, are human-owned and read-only to the agent.
-- The agent may change files only in `code/` and `code/.loopforge/`.
-- The runner executes only human-configured verification commands.
-- LoopForge never performs commit, push, PR creation, or platform submission.
-
-## Supported Modes
-
-- `feature-development`: requirement-driven delivery
-- `migration`: source-to-target migration with compatibility control
-- `defect-repair`: minimal bug fixing with regression awareness
-- `consistency-check`: design-versus-implementation analysis with optional controlled repair
-- `skill-generation`: reusable business-skill creation from a tool capability
-
-Each mode defines:
-
-- applicability
-- ordered workflow phases
-- required artifacts
-- forbidden actions
-- final-report extensions
-
-## Key Files
-
-- `INSTRUCTION.md`
-- `work/HARNESS.md`
-- `work/loopforge.config.yaml`
-- `work/runtime/loopforge_runner.py`
-- `work/skills/loopforge-driver/SKILL.md`
-
-## Directory Map
-
-```text
-.
-├── code/
-├── work/
-│   ├── docs/
-│   ├── profiles/
-│   ├── rules/
-│   ├── runtime/
-│   ├── scripts/
-│   ├── subagent/
-│   └── skills/
-├── result/
-└── logs/
+```bash
+SOURCE_ROOT=<path> bash work/scripts/run.sh
 ```
 
-Use `work/profiles/templates/` as starting points during adaptation and `work/profiles/examples/` as reference configurations for different task classes.
+Windows PowerShell:
 
-## Verification Model
+```powershell
+$env:SOURCE_ROOT="<path>"
+powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
+```
 
-LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `work/loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
+If `SOURCE_ROOT` is not provided, Linux attempts `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB` first and then falls back to `code`. Windows and local development fall back to `code`.
 
-Source path input is intentionally minimal:
+## Notes
 
-- local default: `code/`
-- explicit override: `--source-root` or `SOURCE_ROOT`
-- Linux contest auto-detect: use the mounted platform source path only when it actually exists
-
-## Execution Model
-
-LoopForge uses unattended delegated staged execution for `consistency-check` tasks.
-
-The user or contest platform only needs to start from `INSTRUCTION.md`.
-
-The main session is an orchestrator only. It must not execute stage work in a monolithic parent context.
-
-All stage contracts are stored in:
-
-- `work/profiles/superspec/consistency-check-stages.yaml`
-- `work/profiles/superpower/consistency-check-guards.yaml`
-- `work/rules/loopforge/modes/consistency-check/delegated-execution.md`
-
-Runtime artifacts are written to:
-
-- `code/.loopforge/consistency/`
-- `code/.loopforge/reports/final-report.md`
-
-The delegated execution contract requires:
-
-- `subagent_required: true`
-- `fallback_to_main_context_allowed: false`
-- `missing_subagent_policy: BLOCKED_WITH_REPORT`
-- `parent_direct_execution_allowed: false`
-- `file_handoff_required: true`
-
-If the required subagent layer is unavailable, the run must stop with `BLOCKED_WITH_REPORT` instead of continuing in the main Build context.
-
-## Runner Validation
-
-Before or during execution, the runner validates:
-
-- `platform.work_dir` and `platform.code_dir` against the actual invocation
-- `task.mode` against supported modes
-- `task.profile` existence and basic structure
-- profile mode alignment with `work/loopforge.config.yaml`
-- verification working-directory placement under `code/`
-- output paths staying under `code/`
-- delegated subagent contract presence for consistency-check stages
-- final report evidence requirements for subagent-executed stages
-
-Phase-6 validation should cover both:
-
-- positive smoke checks for artifact creation
-- negative-path checks that prove invalid contracts degrade into `BLOCKED_WITH_REPORT`
+- `work/loopforge.config.yaml` carries framework defaults, not per-task manual placeholders.
+- Internal runtime artifacts may still appear under `SOURCE_ROOT/.loopforge/`.
+- The evaluator should read `result/output.md` first, not the internal final report path.
