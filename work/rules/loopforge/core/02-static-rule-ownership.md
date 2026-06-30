@@ -31,7 +31,7 @@ If static assets are incomplete, invalid, or contradictory:
 
 - report the issue explicitly
 - stop before making unsupported assumptions
-- preserve any already-created runtime evidence under `SOURCE_ROOT/.loopforge/`
+- preserve any already-created runtime evidence under `logs/trace/`
 
 Missing or invalid static configuration is an adaptation failure, not a reason for the agent to regenerate the platform contract.
 

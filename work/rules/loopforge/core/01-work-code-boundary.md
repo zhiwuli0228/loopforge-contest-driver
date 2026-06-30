@@ -4,18 +4,18 @@
 
 - The current root holds static platform assets: instructions, config, rules, profiles, runtime source, scripts, and docs.
 - `SOURCE_ROOT` holds the resolved target project to inspect, repair, migrate, or extend.
-- `SOURCE_ROOT/.loopforge/` holds LoopForge execution artifacts generated during the run.
+- `logs/trace/` holds LoopForge execution artifacts generated during the run.
 
 ## Allowed Actions
 
 - Read files from the current root as the source of truth for execution policy.
 - Inspect files under `SOURCE_ROOT` to understand the target project.
 - Modify files under `SOURCE_ROOT` when the selected mode and configuration allow code generation.
-- Create or update artifact files only under `SOURCE_ROOT/.loopforge/`.
+- Create or update artifact files only under `logs/trace/`.
 
 ## Forbidden Actions
 
-- Do not write any runtime artifact into the static root outside `SOURCE_ROOT/.loopforge/`.
+- Do not write any runtime artifact into the static root outside `logs/trace/`.
 - Do not move target-project files out of `SOURCE_ROOT`.
 - Do not rewrite root docs, rules, profiles, scripts, or config during execution.
 - Do not treat the LoopForge root itself as the mutable business-code area.

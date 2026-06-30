@@ -18,9 +18,9 @@ def iter_rust_files(root: Path):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("project", help="Rust project path, for example flashDB_rust")
+    parser.add_argument("project", help="Rust project path, for example a runtime-derived output crate")
     parser.add_argument("--max-ratio", type=float, default=0.10)
-    parser.add_argument("--output", default="logs/trace/c2rust/unsafe-ratio.json")
+    parser.add_argument("--output", default="logs/trace/c-to-rust/unsafe-ratio.json")
     args = parser.parse_args()
 
     project = Path(args.project)
@@ -36,7 +36,7 @@ def main() -> int:
             if not stripped or stripped.startswith("//"):
                 continue
             file_total += 1
-            if "unsafe" in stripped:
+            if "unsafe" in stripped and "unsafe_code" not in stripped:
                 file_unsafe += 1
         total_lines += file_total
         unsafe_lines += file_unsafe

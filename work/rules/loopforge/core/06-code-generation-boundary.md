@@ -14,7 +14,7 @@ If code generation is disabled:
 
 - source files under `SOURCE_ROOT`
 - tests under `SOURCE_ROOT`
-- runtime evidence under `SOURCE_ROOT/.loopforge/`
+- runtime evidence under `logs/trace/`
 
 ## Forbidden Targets
 

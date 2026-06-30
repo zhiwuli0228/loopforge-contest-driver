@@ -7,7 +7,7 @@ platform:
   layout: "single-root"
   work_dir: "work"
   code_dir: ".code"
-  local_fallback_source_dir: ".code/FlashDB"
+  local_fallback_source_dir: ".code/source-project"
   artifact_dir: "logs/trace"
   official_submission_os: "linux"
   local_development_os:
@@ -29,14 +29,14 @@ task:
   mode: "migration"
   source: "source-readme"
   readme_required: true
-  profile: "profiles/examples/c2rust-flashdb-migration.yaml"
+  profile: "profiles/examples/c-to-rust-migration.yaml"
 
 language:
   primary: "c"
   secondary:
     - "rust"
 
-objective: "derive FlashDB C-to-Rust migration requirements from SOURCE_ROOT README/READNE and generate flashDB_rust"
+objective: "derive generic C-to-Rust migration requirements from SOURCE_ROOT README/READNE and generate a runtime-derived Rust output project"
 
 execution:
   unattended: true
@@ -57,7 +57,7 @@ mode_selection:
 coding_skill:
   enabled: true
   required: true
-  skill: "skills/c2rust-flashdb-migration/SKILL.md"
+  skill: "skills/c-to-rust-migration/SKILL.md"
   apply_at:
     - "source_inventory"
     - "api_mapping"
@@ -65,11 +65,11 @@ coding_skill:
     - "rust_project_generation"
     - "test_migration"
     - "verification"
-  output: "logs/trace/c2rust/05-migration-summary.md"
+  output: "logs/trace/c-to-rust/05-migration-summary.md"
 
 verification:
   source: "profile-or-framework-default"
-  working_directory: "flashDB_rust"
+  working_directory: "SOURCE_README_DERIVED_OUTPUT_PROJECT"
   timeout_seconds: 600
   commands:
     default:
@@ -81,11 +81,11 @@ outputs:
   issue_summary: "result/issues/00-summary.md"
   trace_dir: "logs/trace"
   interaction_log: "logs/interaction.md"
-  migration_dir: "logs/trace/c2rust"
-  source_inventory: "logs/trace/c2rust/01-source-inventory.md"
-  api_mapping: "logs/trace/c2rust/02-api-mapping.md"
-  migration_plan: "logs/trace/c2rust/03-migration-plan.md"
-  implementation_summary: "logs/trace/c2rust/05-migration-summary.md"
-  verification_report: "logs/trace/c2rust/06-verification-report.md"
-  unsafe_report: "logs/trace/c2rust/unsafe-ratio.json"
+  migration_dir: "logs/trace/c-to-rust"
+  source_inventory: "logs/trace/c-to-rust/01-source-inventory.md"
+  api_mapping: "logs/trace/c-to-rust/02-api-mapping.md"
+  migration_plan: "logs/trace/c-to-rust/03-migration-plan.md"
+  implementation_summary: "logs/trace/c-to-rust/05-migration-summary.md"
+  verification_report: "logs/trace/c-to-rust/06-verification-report.md"
+  unsafe_report: "logs/trace/c-to-rust/unsafe-ratio.json"
   final_report: "logs/trace/final-report.md"

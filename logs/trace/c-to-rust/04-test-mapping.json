@@ -1,0 +1,10 @@
+{
+  "test_mapping": [
+    {
+      "source_test": "tests/test_flashdb.c",
+      "rust_test_file": "tests/source_migration.rs",
+      "mapping": "inventory-backed source mapping",
+      "coverage_level": "structural_only"
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from agent_task_packet import AgentTaskPacket
 
@@ -56,12 +56,41 @@ def _load_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _sanitize_lib_name(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", value).strip("_").lower()
+    return cleaned or "c_to_rust_output"
+
+
+def _sanitize_package_name(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]", "-", value).strip("-").lower()
+    return cleaned or "c-to-rust-output"
+
+
+def _sanitize_text(text: str, workspace_root: Path) -> str:
+    normalized_text = text.replace("\\", "/")
+    roots = {str(workspace_root), str(workspace_root).replace("\\", "/")}
+    for root in roots:
+        normalized_text = normalized_text.replace(root, ".")
+        normalized_text = re.sub(re.escape(root), ".", normalized_text, flags=re.IGNORECASE)
+    return normalized_text
+
+
+def _sanitize_value(value: Any, workspace_root: Path) -> Any:
+    if isinstance(value, dict):
+        return {key: _sanitize_value(item, workspace_root) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_value(item, workspace_root) for item in value]
+    if isinstance(value, str):
+        return _sanitize_text(value, workspace_root)
+    return value
+
+
 def _remove_duplicate_pub_use(project_dir: Path, symbol: str) -> bool:
     lib_rs = project_dir / "src" / "lib.rs"
     if not lib_rs.is_file():
         return False
     lines = lib_rs.read_text(encoding="utf-8").splitlines()
-    matches = [index for index, line in enumerate(lines) if f"pub use " in line and symbol in line]
+    matches = [index for index, line in enumerate(lines) if "pub use " in line and symbol in line]
     if len(matches) <= 1:
         return False
     first = matches[0]
@@ -80,7 +109,7 @@ def _ensure_module_decl(project_dir: Path, module_name: str) -> bool:
     if not lib_rs.is_file() or not module_rs.is_file():
         return False
     text = _load_text(lib_rs)
-    decl = f"mod {module_name};"
+    decl = f"pub mod {module_name};"
     if decl in text:
         return False
     lines = text.splitlines()
@@ -100,24 +129,40 @@ def _ensure_missing_file(project_dir: Path, missing_path: str) -> bool:
     return False
 
 
-def _fix_missing_import(project_dir: Path, file_path: str, symbol: str) -> bool:
-    candidate = project_dir / file_path
-    if not candidate.is_file():
+def _fix_missing_import(project_dir: Path, symbol: str) -> bool:
+    for candidate in (project_dir / "src").glob("*.rs"):
+        text = _load_text(candidate)
+        if symbol == "c_char" and "use std::ffi::c_char;" not in text:
+            candidate.write_text("use std::ffi::c_char;\n" + text, encoding="utf-8")
+            return True
+        if symbol == "c_void" and "use std::ffi::c_void;" not in text:
+            candidate.write_text("use std::ffi::c_void;\n" + text, encoding="utf-8")
+            return True
+    return False
+
+
+def _ensure_cargo_manifest(packet: AgentTaskPacket, project_dir: Path) -> bool:
+    cargo_toml = project_dir / "Cargo.toml"
+    if cargo_toml.is_file():
         return False
-    text = _load_text(candidate)
-    if f"use std::collections::{symbol};" in text or symbol not in {"BTreeMap", "HashMap"}:
-        return False
-    insertion = f"use std::collections::{symbol};\n"
-    if text.startswith("#!["):
-        parts = text.split("\n", 1)
-        text = parts[0] + "\n\n" + insertion + (parts[1] if len(parts) > 1 else "")
-    else:
-        text = insertion + text
-    candidate.write_text(text, encoding="utf-8")
+    content = "\n".join(
+        [
+            "[package]",
+            f'name = "{_sanitize_package_name(packet.output_project_name)}"',
+            'version = "0.1.0"',
+            'edition = "2021"',
+            "",
+            "[lib]",
+            f'name = "{_sanitize_lib_name(packet.output_project_name)}"',
+            'path = "src/lib.rs"',
+            "",
+        ]
+    )
+    _write(cargo_toml, content)
     return True
 
 
-def _repair_action(project_dir: Path, command_result: Dict[str, Any]) -> Dict[str, Any]:
+def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: Dict[str, Any]) -> Dict[str, Any]:
     stderr_text = "\n".join(command_result.get("stderr_tail", []))
     module_match = re.search(r"file not found for module `([^`]+)`", stderr_text)
     if module_match:
@@ -132,7 +177,7 @@ def _repair_action(project_dir: Path, command_result: Dict[str, Any]) -> Dict[st
             return {"applied": True, "detail": "removed_duplicate_export", "symbol": symbol}
 
     unresolved_import_match = re.search(r"unresolved import `[^`]*::([^`]+)`", stderr_text)
-    if unresolved_import_match and _fix_missing_import(project_dir, "src/flashdb.rs", unresolved_import_match.group(1)):
+    if unresolved_import_match and _fix_missing_import(project_dir, unresolved_import_match.group(1)):
         return {"applied": True, "detail": "added_missing_import", "symbol": unresolved_import_match.group(1)}
 
     missing_module_decl_match = re.search(r"use of undeclared crate or module `([^`]+)`", stderr_text)
@@ -141,11 +186,9 @@ def _repair_action(project_dir: Path, command_result: Dict[str, Any]) -> Dict[st
         if _ensure_module_decl(project_dir, module_name):
             return {"applied": True, "detail": "added_missing_module_decl", "module": module_name}
 
-    cannot_find_type_match = re.search(r"cannot find (?:function|type|struct) `([^`]+)`", stderr_text)
-    if cannot_find_type_match:
-        symbol = cannot_find_type_match.group(1)
-        if _remove_duplicate_pub_use(project_dir, symbol):
-            return {"applied": True, "detail": "deduplicated_symbol_after_missing_lookup", "symbol": symbol}
+    missing_manifest = re.search(r"could not find `Cargo\.toml`", stderr_text) or "could not find `cargo.toml`" in stderr_text.lower()
+    if missing_manifest and _ensure_cargo_manifest(packet, project_dir):
+        return {"applied": True, "detail": "created_missing_cargo_manifest"}
 
     return {"applied": False, "detail": "manual_repair_required"}
 
@@ -153,7 +196,8 @@ def _repair_action(project_dir: Path, command_result: Dict[str, Any]) -> Dict[st
 def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) -> None:
     json_path = packet.paths.migration_trace_dir / "repair-rounds.json"
     md_path = packet.paths.migration_trace_dir / "repair-rounds.md"
-    json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+    sanitized_payload = _sanitize_value(payload, packet.paths.workspace_root)
+    json_path.write_text(json.dumps(sanitized_payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 
     lines = [
         "# Repair Rounds",
@@ -163,21 +207,21 @@ def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) ->
         f"- test_ok: `{payload['test_ok']}`",
         "",
     ]
-    for attempt in payload["attempts"]:
+    for attempt in sanitized_payload["attempts"]:
         lines.extend([f"## Round {attempt['round']}", ""])
         for command in attempt["commands"]:
             lines.append(f"- `{command['command']}` -> returncode `{command['returncode']}`")
         if attempt.get("repair_action"):
             lines.append(f"- repair_action: `{attempt['repair_action']['detail']}`")
         if attempt.get("repair_task_packet"):
-            lines.append(f"- repair_task_packet: `{attempt['repair_task_packet']}`")
+            lines.append(f"- repair_task_packet: `{json.dumps(attempt['repair_task_packet'], ensure_ascii=True)}`")
         lines.append("")
     md_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_seconds: int) -> Dict[str, Any]:
     attempts: List[Dict[str, Any]] = []
-    project_dir = packet.paths.project_dir
+    project_dir = packet.output_project_dir
     rounds = 0
     build_ok = False
     test_ok = False
@@ -192,7 +236,7 @@ def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_second
                 all_ok = False
                 issue_code = "cargo_build_failed" if index == 0 else "cargo_test_failed"
                 packet.add_issue(issue_code, command_result["command"])
-                repair_action = _repair_action(project_dir, command_result)
+                repair_action = _repair_action(packet, project_dir, command_result)
                 round_record["repair_action"] = repair_action
                 if not repair_action["applied"]:
                     round_record["repair_task_packet"] = {

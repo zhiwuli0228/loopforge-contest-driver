@@ -29,33 +29,33 @@ mkdir -p "$NEG_SRC" "$POS_SRC" "$VALID_SRC/src" "$VALID_SRC/tests"
 cat > "$POS_SRC/README.md" <<'README'
 # Positive Smoke Source
 
-Task: verify README-only input is insufficient without the FlashDB source layout.
+Output project: demo_rust
 README
 
 cat > "$VALID_SRC/README.md" <<'README'
 # Valid Fallback Source
 
-Task: migrate this FlashDB subset into Rust and pass all READY gates.
+Project Name: Demo C Library
+Output project: demo_rust
+Source directories: src
+Test directories: tests
 README
 
-cat > "$VALID_SRC/src/flashdb.h" <<'README'
-void flashdb_new(void);
-int flashdb_set(void);
-const char *flashdb_get(void);
-int flashdb_delete(void);
-int flashdb_count(void);
+cat > "$VALID_SRC/src/demo.h" <<'README'
+void demo_init(void);
+int demo_count(void);
 README
 
-cat > "$VALID_SRC/src/flashdb.c" <<'README'
-void flashdb_new(void) {}
-int flashdb_set(void) { return 0; }
-const char *flashdb_get(void) { return 0; }
-int flashdb_delete(void) { return 0; }
-int flashdb_count(void) { return 0; }
+cat > "$VALID_SRC/src/demo.c" <<'README'
+void demo_init(void) {}
+int demo_count(void) { return 0; }
 README
 
-cat > "$VALID_SRC/tests/test_flashdb.c" <<'README'
-/* create, set/get, overwrite, delete */
+cat > "$VALID_SRC/tests/test_demo.c" <<'README'
+void test_demo_count(void) {
+    demo_init();
+    demo_count();
+}
 README
 
 run_case() {
@@ -82,8 +82,8 @@ run_case() {
   done
 }
 
-run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "readme_missing" "flashdb_layout_missing"
-run_case "$POS_SRC" "BLOCKED_WITH_REPORT" "flashdb_layout_missing"
+run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "readme_missing" "source_layout_missing"
+run_case "$POS_SRC" "BLOCKED_WITH_REPORT" "source_layout_missing"
 run_case "$VALID_SRC" "READY_FOR_EVALUATION" "no_blocking_issues"
 
 echo "smoke test passed"

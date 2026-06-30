@@ -6,7 +6,7 @@
 - migration plan
 - compatibility verification evidence
 
-Recommended artifact paths under `SOURCE_ROOT/.loopforge/plan/`:
+Recommended artifact paths under `logs/trace/plan/`:
 
 - `source-inventory.md`
 - `target-architecture.md`

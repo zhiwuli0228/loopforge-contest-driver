@@ -1,0 +1,12 @@
+{
+  "support_level": "source-driven-c",
+  "module_list": [
+    "src/lib.rs",
+    "src/flashdb.rs",
+    "tests/source_migration.rs"
+  ],
+  "test_files": [
+    "tests/test_flashdb.c"
+  ],
+  "semantic_equivalence_claim": "not_claimed"
+}

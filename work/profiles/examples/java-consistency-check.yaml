@@ -38,7 +38,7 @@ verification:
   commands: []
 
 reporting:
-  final_report: "SOURCE_ROOT/.loopforge/reports/final-report.md"
+  final_report: "logs/trace/final-report.md"
   highlight:
     - "design summary"
     - "implementation mapping"

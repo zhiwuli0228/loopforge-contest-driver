@@ -9,7 +9,7 @@
 - mode artifact index
 - final report with references to produced artifacts
 
-Preferred artifact paths under `SOURCE_ROOT/.loopforge/consistency/`:
+Preferred artifact paths under `logs/trace/consistency/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`
@@ -18,7 +18,7 @@ Preferred artifact paths under `SOURCE_ROOT/.loopforge/consistency/`:
 - `repair-plan.md`
 - `test-coverage-gap.md`
 
-Runner-compatible fallback paths under `SOURCE_ROOT/.loopforge/plan/`:
+Runner-compatible fallback paths under `logs/trace/plan/`:
 
 - `design-summary.md`
 - `implementation-mapping.md`

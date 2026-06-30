@@ -27,7 +27,7 @@ executed_by_subagent: "opencode-design-read-subagent"
 parent_direct_execution: false
 input_files_read:
   - "SOURCE_ROOT/README.md"
-output_artifact: "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
+output_artifact: "logs/trace/consistency/01-design-summary.md"
 gate: "READY_FOR_IMPLEMENTATION_MAPPING | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "02-implementation-map | done"

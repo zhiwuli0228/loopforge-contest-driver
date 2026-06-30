@@ -37,7 +37,7 @@ Drive an unattended contest run from the repository root while treating `SOURCE_
 - Parse the source README first and record the selected README path.
 - If no source README exists, degrade into `BLOCKED_WITH_REPORT` with explicit evidence in `result/issues/00-summary.md` and `logs/trace/`.
 - Do not create commits, pushes, pull requests, or submissions.
-- Do not write into `SOURCE_ROOT`; generated outputs must stay under repository-root `flashDB_rust/`, `result/`, and `logs/`.
+- Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `result/`, and `logs/`.
 - Stop after verification and report generation.
 
 ## Source Root Protocol
@@ -96,5 +96,5 @@ At minimum, the run should leave behind:
 - `result/issues/00-summary.md`
 - `logs/trace/run-summary.json`
 - `logs/trace/final-report.md`
-- `logs/trace/c2rust/06-verification-report.md`
+- `logs/trace/c-to-rust/06-verification-report.md`
 The trace report under `logs/trace/` is runtime evidence, not the primary evaluator-facing result.

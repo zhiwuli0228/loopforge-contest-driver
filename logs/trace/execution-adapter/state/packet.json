@@ -1,20 +1,25 @@
 {
   "paths": {
-    "workspace_root": "E:\\009workspace\\codex\\loopforge-contest-driver",
-    "work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
-    "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
-    "result_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\result",
-    "log_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs",
-    "trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace",
-    "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\execution-adapter",
-    "migration_trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\c2rust",
-    "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust"
+    "workspace_root": ".",
+    "work_dir": "./work",
+    "source_root": "./.code/FlashDB",
+    "result_dir": "./result",
+    "log_dir": "./logs",
+    "trace_dir": "./logs/trace",
+    "artifact_dir": "./logs/trace/execution-adapter",
+    "migration_trace_dir": "./logs/trace/c-to-rust",
+    "project_dir": "./flashDB_rust"
   },
   "source_layout": {
-    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
-    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
-    "src_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\src",
-    "tests_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\tests"
+    "readme_path": "./.code/FlashDB/README.md",
+    "fallback_readme_path": "./work/code/README.md",
+    "project_root": "./.code/FlashDB",
+    "source_dirs": [
+      "./.code/FlashDB/src"
+    ],
+    "test_dirs": [
+      "./.code/FlashDB/tests"
+    ]
   },
   "readme_candidates": [
     "README.md",
@@ -24,42 +29,70 @@
     "Readme.md"
   ],
   "max_repair_rounds": 2,
+  "source_project_name": "FlashDB Local Fallback",
+  "source_language": "c",
+  "target_language": "rust",
+  "output_project_name": "flashDB_rust",
+  "output_project_dir": "./flashDB_rust",
+  "source_dirs": [
+    "source",
+    "src"
+  ],
+  "test_dirs": [
+    "tests"
+  ],
+  "build_commands": [
+    "cargo build",
+    "cargo test"
+  ],
+  "unsafe_ratio_max": 0.1,
+  "api_name_hints": [],
+  "module_hints": [
+    "code",
+    "FlashDB"
+  ],
   "issues": [],
   "warnings": [],
   "metadata": {
-    "source_root_resolution": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "source_root_resolution": "./.code/FlashDB",
+    "selected_readme_path": "./.code/FlashDB/README.md",
+    "fallback_readme_path": "./work/code/README.md",
     "project_generation": {
-      "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-      "module_name": "flashdb",
+      "project_dir": "./flashDB_rust",
+      "module_names": [
+        "flashdb"
+      ],
       "mapped_apis": [
-        "flashdb_count",
-        "flashdb_delete",
-        "flashdb_get",
         "flashdb_new",
-        "flashdb_set"
+        "flashdb_count",
+        "flashdb_set",
+        "flashdb_delete"
       ],
       "unsupported_apis": [],
       "source_coverage": {
         "source_file_count": 2,
         "test_file_count": 1,
-        "mapped_api_count": 5,
-        "unsupported_api_count": 0
+        "mapped_api_count": 4,
+        "unsupported_api_count": 0,
+        "translated_definition_count": 0,
+        "definition_count": 2
       },
       "module_list": [
         "src/lib.rs",
         "src/flashdb.rs",
-        "tests/flashdb_semantics.rs"
+        "tests/source_migration.rs"
       ],
       "test_mapping": [
         {
           "source_test": "tests/test_flashdb.c",
-          "rust_test_file": "tests/flashdb_semantics.rs",
-          "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
-          "coverage_level": "partial_bootstrap"
+          "rust_test_file": "tests/source_migration.rs",
+          "mapping": "inventory-backed source mapping",
+          "coverage_level": "structural_only"
         }
       ],
       "bootstrap_only": true,
-      "semantic_equivalence_claim": "bootstrap_skeleton_only"
+      "semantic_equivalence_claim": "not_claimed",
+      "crate_name": "flashdb_rust"
     }
   },
   "gates": {}

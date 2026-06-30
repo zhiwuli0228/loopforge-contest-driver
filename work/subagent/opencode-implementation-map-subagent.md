@@ -26,8 +26,8 @@ stage_id: "02-implementation-map"
 executed_by_subagent: "opencode-implementation-map-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
-output_artifact: "SOURCE_ROOT/.loopforge/consistency/02-implementation-mapping.md"
+  - "logs/trace/consistency/01-design-summary.md"
+output_artifact: "logs/trace/consistency/02-implementation-mapping.md"
 gate: "READY_FOR_DRIFT_ANALYSIS | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "03-drift-analyze | done"

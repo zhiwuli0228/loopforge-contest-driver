@@ -6,7 +6,7 @@
 - changed-file summary
 - regression verification evidence
 
-Recommended artifact paths under `SOURCE_ROOT/.loopforge/plan/`:
+Recommended artifact paths under `logs/trace/plan/`:
 
 - `failure-summary.md`
 - `root-cause.md`

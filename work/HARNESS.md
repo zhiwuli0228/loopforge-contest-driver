@@ -58,15 +58,15 @@ Resolve the source path in this order:
 Runtime evidence must be written under `logs/trace/`. The source tree under `SOURCE_ROOT` is read-only and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
 Evaluator-facing outputs must be written under `result/` and `logs/`.
 
-## C2Rust Output Contract
+## C-To-Rust Output Contract
 
-The migration output project must be generated at repository root:
+The migration output project must be generated at a runtime-derived repository-root directory:
 
-- `flashDB_rust/Cargo.toml`
-- `flashDB_rust/src/`
-- `flashDB_rust/tests/`
+- `<runtime-derived-output-project>/Cargo.toml`
+- `<runtime-derived-output-project>/src/`
+- `<runtime-derived-output-project>/tests/`
 
-Final verification must run inside `flashDB_rust`:
+Final verification must run inside the runtime-derived Rust output project:
 
 - `cargo build`
 - `cargo test`

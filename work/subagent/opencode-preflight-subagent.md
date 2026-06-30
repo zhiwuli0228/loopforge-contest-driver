@@ -28,7 +28,7 @@ executed_by_subagent: "opencode-preflight-subagent"
 parent_direct_execution: false
 input_files_read:
   - "INSTRUCTION.md"
-output_artifact: "SOURCE_ROOT/.loopforge/consistency/00-preflight-report.md"
+output_artifact: "logs/trace/consistency/00-preflight-report.md"
 gate: "READY_FOR_DESIGN_READ | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "01-design-read | done"

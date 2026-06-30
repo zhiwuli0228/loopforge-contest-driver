@@ -26,8 +26,8 @@ stage_id: "05-patch"
 executed_by_subagent: "opencode-patch-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "SOURCE_ROOT/.loopforge/consistency/04-repair-plan.md"
-output_artifact: "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
+  - "logs/trace/consistency/04-repair-plan.md"
+output_artifact: "logs/trace/consistency/05-patch-summary.md"
 gate: "READY_FOR_VERIFICATION | DEGRADED_BUT_READY_FOR_VERIFICATION | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "06-verify | done"

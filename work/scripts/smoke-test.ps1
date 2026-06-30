@@ -35,29 +35,29 @@ New-Item -ItemType Directory -Force -Path (Join-Path $ValidSource "tests") | Out
 Set-Content -Path (Join-Path $PositiveSource "README.md") -Value @"
 # Positive Smoke Source
 
-Task: verify README-only input is insufficient without the FlashDB source layout.
+Output project: demo_rust
 "@
 Set-Content -Path (Join-Path $ValidSource "README.md") -Value @"
 # Valid Fallback Source
 
-Task: migrate this FlashDB subset into Rust and pass all READY gates.
+Project Name: Demo C Library
+Output project: demo_rust
+Source directories: src
+Test directories: tests
 "@
-Set-Content -Path (Join-Path $ValidSource "src\flashdb.h") -Value @"
-void flashdb_new(void);
-int flashdb_set(void);
-const char *flashdb_get(void);
-int flashdb_delete(void);
-int flashdb_count(void);
+Set-Content -Path (Join-Path $ValidSource "src\demo.h") -Value @"
+void demo_init(void);
+int demo_count(void);
 "@
-Set-Content -Path (Join-Path $ValidSource "src\flashdb.c") -Value @"
-void flashdb_new(void) {}
-int flashdb_set(void) { return 0; }
-const char *flashdb_get(void) { return 0; }
-int flashdb_delete(void) { return 0; }
-int flashdb_count(void) { return 0; }
+Set-Content -Path (Join-Path $ValidSource "src\demo.c") -Value @"
+void demo_init(void) {}
+int demo_count(void) { return 0; }
 "@
-Set-Content -Path (Join-Path $ValidSource "tests\test_flashdb.c") -Value @"
-/* create, set/get, overwrite, delete */
+Set-Content -Path (Join-Path $ValidSource "tests\test_demo.c") -Value @"
+void test_demo_count(void) {
+    demo_init();
+    demo_count();
+}
 "@
 
 function Invoke-RunCase {
@@ -96,8 +96,8 @@ function Invoke-RunCase {
 }
 
 try {
-    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("readme_missing", "flashdb_layout_missing")
-    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("flashdb_layout_missing")
+    Invoke-RunCase -SourceRoot $NegativeSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("readme_missing", "source_layout_missing")
+    Invoke-RunCase -SourceRoot $PositiveSource -ExpectedStatus "BLOCKED_WITH_REPORT" -ExpectedIssueCodes @("source_layout_missing")
     Invoke-RunCase -SourceRoot $ValidSource -ExpectedStatus "READY_FOR_EVALUATION" -ExpectedIssueCodes @("no_blocking_issues")
 
     Write-Output "smoke test passed"

@@ -1,6 +1,6 @@
 # Contest Execution Instruction
 
-This repository is a contest driver for the FlashDB C-to-Rust migration task.
+This repository is a generic source-readme-driven C-to-Rust migration harness.
 
 The only required external input is the source tree root, exposed as `SOURCE_ROOT` or passed by `--source-root`.
 
@@ -16,17 +16,17 @@ Supported requirement file names:
 - `${SOURCE_ROOT}/readme.md`
 - `${SOURCE_ROOT}/Readme.md`
 
-The FlashDB source tree must provide:
+The source project must provide:
 
-- `${SOURCE_ROOT}/src` or `${SOURCE_ROOT}/FlashDB/src`
-- `${SOURCE_ROOT}/tests` or `${SOURCE_ROOT}/FlashDB/tests`
+- source directories such as `${SOURCE_ROOT}/src` or another README-derived source directory
+- test directories such as `${SOURCE_ROOT}/tests` or another README-derived test directory
 
 ## Expected Output
 
-After execution, the driver must generate a Rust project:
+After execution, the driver must generate a Rust project in a runtime-derived output directory:
 
 ```text
-flashDB_rust/
+<runtime-derived-output-project>/
 ├── Cargo.toml
 ├── src/
 └── tests/
@@ -35,7 +35,7 @@ flashDB_rust/
 The generated project must pass:
 
 ```bash
-cd flashDB_rust
+cd <runtime-derived-output-project>
 cargo build
 cargo test
 ```
@@ -58,28 +58,27 @@ Resolution priority:
 2. `--source-root <path>`
 3. `SOURCE_ROOT`
 4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
-5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
-6. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__`
-7. local fallback: `.code/FlashDB`
+5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__`
+6. local fallback: generic source candidate under `.code/`, `work/code/`, or `code/`
 
 ## Run
 
 Linux:
 
 ```bash
-SOURCE_ROOT="/path/to/FlashDB" bash work/scripts/run.sh
+SOURCE_ROOT="/path/to/source-project" bash work/scripts/run.sh
 ```
 
 Linux with explicit argument:
 
 ```bash
-bash work/scripts/run.sh --source-root "/path/to/FlashDB"
+bash work/scripts/run.sh --source-root "/path/to/source-project"
 ```
 
 Windows PowerShell:
 
 ```powershell
-$env:SOURCE_ROOT="C:\path\to\FlashDB"
+$env:SOURCE_ROOT="C:\path\to\source-project"
 powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
@@ -96,7 +95,7 @@ Issue summary:
 Trace logs:
 
 - `logs/trace/`
-- `logs/trace/c2rust/`
+- `logs/trace/c-to-rust/`
 
 Interaction log:
 
@@ -109,8 +108,8 @@ No manual interaction is required during execution.
 The driver must not:
 
 - require manual interaction
-- modify platform-provided FlashDB source or tests
+- modify platform-provided C source or tests
 - write runtime artifacts into the source tree
 - rely on prebuilt Rust binaries instead of source
-- finish without generating `flashDB_rust/Cargo.toml`
+- finish without generating an output `Cargo.toml`
 - treat `work/code/README.md` as the source root

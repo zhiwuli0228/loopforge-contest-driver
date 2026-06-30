@@ -15,7 +15,7 @@ if (-not $SourceRoot -or $SourceRoot.Trim() -eq "") {
 
 New-Item -ItemType Directory -Force -Path (Join-Path $ResultDir "issues") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace") | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace\c2rust") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace\c-to-rust") | Out-Null
 if (-not (Test-Path (Join-Path $LogDir "interaction.md"))) {
     Set-Content -Path (Join-Path $LogDir "interaction.md") -Value "# Interaction Log`r`n`r`nNo manual interaction.`r`n"
 }
@@ -26,10 +26,18 @@ if ($SourceRoot -and $SourceRoot.Trim() -ne "") {
 } elseif ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
     $RunnerArgs = @("--source-root", $env:SOURCE_ROOT)
 } else {
-    $FallbackRoot = Join-Path $RootDir ".code\FlashDB"
-    if (Test-Path $FallbackRoot) {
-        $RunnerArgs = @("--source-root", $FallbackRoot)
-    } else {
+    $FallbackCandidates = @(
+        (Join-Path $RootDir ".code\source-project"),
+        (Join-Path $RootDir "work\code\source-project"),
+        (Join-Path $RootDir "code\source-project")
+    )
+    foreach ($FallbackRoot in $FallbackCandidates) {
+        if (Test-Path $FallbackRoot) {
+            $RunnerArgs = @("--source-root", $FallbackRoot)
+            break
+        }
+    }
+    if (-not $RunnerArgs) {
         $RunnerArgs = @()
     }
 }

@@ -6,7 +6,7 @@
 - implementation plan with ordered patch steps
 - verification evidence from configured commands
 
-Recommended artifact paths under `SOURCE_ROOT/.loopforge/plan/`:
+Recommended artifact paths under `logs/trace/plan/`:
 
 - `requirements.md`
 - `brainstorm.md`

@@ -2,8 +2,8 @@ superspec:
   name: "consistency-check-stages"
   version: "1.0"
   purpose: "Define staged work packets for unattended consistency-check execution."
-  artifact_root: "SOURCE_ROOT/.loopforge/consistency"
-  final_report: "SOURCE_ROOT/.loopforge/reports/final-report.md"
+  artifact_root: "logs/trace/consistency"
+  final_report: "logs/trace/final-report.md"
   subagent_required: true
   fallback_to_main_context_allowed: false
   missing_subagent_policy: "BLOCKED_WITH_REPORT"
@@ -34,7 +34,7 @@ stages:
       - "loopforge.config.yaml"
       - "skills/loopforge-driver/SKILL.md"
       - "SOURCE_ROOT/README.md"
-    output: "SOURCE_ROOT/.loopforge/consistency/00-preflight-report.md"
+    output: "logs/trace/consistency/00-preflight-report.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DESIGN_READ"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -46,7 +46,7 @@ stages:
     subagent: "opencode-design-read-subagent"
     input:
       - "SOURCE_ROOT/README.md"
-    output: "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
+    output: "logs/trace/consistency/01-design-summary.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_IMPLEMENTATION_MAPPING"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -57,9 +57,9 @@ stages:
     name: "Implementation Mapping"
     subagent: "opencode-implementation-map-subagent"
     input:
-      - "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
+      - "logs/trace/consistency/01-design-summary.md"
       - "SOURCE_ROOT/**"
-    output: "SOURCE_ROOT/.loopforge/consistency/02-implementation-mapping.md"
+    output: "logs/trace/consistency/02-implementation-mapping.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DRIFT_ANALYSIS"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -70,9 +70,9 @@ stages:
     name: "Drift Analysis"
     subagent: "opencode-drift-analysis-subagent"
     input:
-      - "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
-      - "SOURCE_ROOT/.loopforge/consistency/02-implementation-mapping.md"
-    output: "SOURCE_ROOT/.loopforge/consistency/03-drift-report.md"
+      - "logs/trace/consistency/01-design-summary.md"
+      - "logs/trace/consistency/02-implementation-mapping.md"
+    output: "logs/trace/consistency/03-drift-report.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_REPAIR_PLAN"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -83,10 +83,10 @@ stages:
     name: "Repair Planning"
     subagent: "opencode-repair-plan-subagent"
     input:
-      - "SOURCE_ROOT/.loopforge/consistency/03-drift-report.md"
-      - "SOURCE_ROOT/.loopforge/consistency/02-implementation-mapping.md"
+      - "logs/trace/consistency/03-drift-report.md"
+      - "logs/trace/consistency/02-implementation-mapping.md"
       - "loopforge.config.yaml"
-    output: "SOURCE_ROOT/.loopforge/consistency/04-repair-plan.md"
+    output: "logs/trace/consistency/04-repair-plan.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_PATCH"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -98,14 +98,14 @@ stages:
     subagent: "opencode-patch-subagent"
     skill: "skills/code-implementation/SKILL.md"
     input:
-      - "SOURCE_ROOT/.loopforge/consistency/04-repair-plan.md"
+      - "logs/trace/consistency/04-repair-plan.md"
       - "profiles/superpower/consistency-check-guards.yaml"
       - "skills/code-implementation/SKILL.md"
     optional_input:
       - "skills/code-implementation/references/java-secure-coding.md"
       - "skills/code-implementation/references/minimal-patch-rules.md"
       - "skills/code-implementation/references/patch-summary-template.md"
-    output: "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
+    output: "logs/trace/consistency/05-patch-summary.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_VERIFICATION"
     degraded_gate: "DEGRADED_BUT_READY_FOR_VERIFICATION"
@@ -118,8 +118,8 @@ stages:
     subagent: "opencode-verification-subagent"
     input:
       - "loopforge.config.yaml"
-      - "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
-    output: "SOURCE_ROOT/.loopforge/consistency/06-verification-report.md"
+      - "logs/trace/consistency/05-patch-summary.md"
+    output: "logs/trace/consistency/06-verification-report.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_FINAL_REPORT"
     degraded_gate: "DEGRADED_BUT_READY_FOR_FINAL_REPORT"
@@ -131,8 +131,8 @@ stages:
     name: "Final Report"
     subagent: "opencode-final-report-subagent"
     input:
-      - "SOURCE_ROOT/.loopforge/consistency/*.md"
-    output: "SOURCE_ROOT/.loopforge/reports/final-report.md"
+      - "logs/trace/consistency/*.md"
+    output: "logs/trace/final-report.md"
     parent_direct_execution_allowed: false
     success_gate: "FINAL_REPORT_READY"
     failure_gate: "BLOCKED_WITH_REPORT"

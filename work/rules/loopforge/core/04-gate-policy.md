@@ -25,7 +25,7 @@ Execution may continue in degraded form when:
 
 ## Logging Contract
 
-Each meaningful phase should log a gate event in `SOURCE_ROOT/.loopforge/gates/gate-events.md`.
+Each meaningful phase should log a gate event in `logs/trace/gates/gate-events.md`.
 
 At minimum, log:
 

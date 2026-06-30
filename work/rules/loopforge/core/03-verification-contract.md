@@ -32,7 +32,7 @@ If no runnable verification command can be derived:
 
 ## Output Requirements
 
-Verification evidence must be written under `SOURCE_ROOT/.loopforge/state/` and should include:
+Verification evidence must be written under `logs/trace/state/` and should include:
 
 - attempted commands
 - detected OS

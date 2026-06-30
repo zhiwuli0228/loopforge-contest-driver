@@ -1,8 +1,8 @@
 # LoopForge Contest Driver
 
-This repository is a contest submission driver. It accepts a source tree path through `SOURCE_ROOT`, reads the source README to build task context, and writes evaluator-facing results to `result/` and `logs/`.
+This repository is a generic source-readme-driven C-to-Rust migration harness. It accepts a source tree path through `SOURCE_ROOT`, derives migration context from the source README, and writes evaluator-facing results to `result/` and `logs/`.
 
-Local development fallback resolves to `.code/FlashDB`. The file `work/code/README.md` is a contest requirement document, not a source directory.
+The file `work/code/README.md` is a contest requirement document and runtime fallback metadata source, not a source directory.
 
 ## Reproduce
 
@@ -35,8 +35,8 @@ The framework records which README was selected. If no README is available, the 
 ```text
 .
 ├── INSTRUCTION.md
-├── .code/   # local fallback source tree
-├── code/    # legacy workspace area, not the FlashDB fallback source
+├── .code/   # optional local fallback source area
+├── code/    # optional legacy workspace area
 ├── work/    # framework assets
 ├── result/  # evaluator-facing outputs
 └── logs/    # trace outputs
@@ -69,10 +69,10 @@ $env:SOURCE_ROOT="C:\path\to\source"
 powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-If `SOURCE_ROOT` is not provided, Linux first checks the platform source mount and then falls back to `code`. Windows and local development fall back to `code`.
+If `SOURCE_ROOT` is not provided, the runner first checks platform mounts and then scans local fallback source areas generically.
 
 ## Notes
 
-- `work/loopforge.config.yaml` carries framework defaults, not per-task manual placeholders.
+- `work/loopforge.config.yaml` carries framework defaults, not task-specific hardcoded placeholders.
 - Runtime evidence is written under `logs/trace/`, not under `SOURCE_ROOT`.
 - The evaluator should read `result/output.md` first, not the internal final report path.

@@ -1,0 +1,26 @@
+{
+  "project": "./flashDB_rust",
+  "total_code_lines": 41,
+  "unsafe_lines": 0,
+  "unsafe_ratio": 0.0,
+  "max_ratio": 0.1,
+  "passed": true,
+  "files": [
+    {
+      "file": "./flashDB_rust/src/flashdb.rs",
+      "code_lines": 21,
+      "unsafe_lines": 0
+    },
+    {
+      "file": "./flashDB_rust/src/lib.rs",
+      "code_lines": 9,
+      "unsafe_lines": 0
+    },
+    {
+      "file": "./flashDB_rust/tests/source_migration.rs",
+      "code_lines": 11,
+      "unsafe_lines": 0
+    }
+  ],
+  "generated_at": "2026-06-30T12:57:04Z"
+}

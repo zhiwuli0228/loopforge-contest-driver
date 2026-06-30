@@ -8,7 +8,7 @@ LoopForge is a generic contest execution framework.
 
 - The repository root contains static framework assets.
 - `SOURCE_ROOT` is the resolved source tree.
-- `SOURCE_ROOT/.loopforge/` is internal runtime evidence.
+- `logs/trace/` is internal runtime evidence.
 - `task.mode` selects the generic workflow shape.
 - `task.profile` selects declarative defaults for the current run.
 

@@ -1,10 +1,17 @@
 {
-  "generated_at": "2026-06-30T12:11:49Z",
-  "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+  "generated_at": "2026-06-30T12:57:04Z",
+  "source_root": "./.code/FlashDB",
   "analysis": {
     "ok": true,
-    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
-    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "readme_path": "./.code/FlashDB/README.md",
+    "fallback_readme_path": "./work/code/README.md",
+    "project_root": "./.code/FlashDB",
+    "source_dirs": [
+      "src"
+    ],
+    "test_dirs": [
+      "tests"
+    ],
     "src_files": [
       "src/flashdb.c",
       "src/flashdb.h"
@@ -12,28 +19,384 @@
     "test_files": [
       "tests/test_flashdb.c"
     ],
+    "source_files": [
+      {
+        "path": "src/flashdb.c",
+        "module_hint": "flashdb"
+      },
+      {
+        "path": "src/flashdb.h",
+        "module_hint": "flashdb"
+      }
+    ],
+    "functions": [
+      {
+        "name": "flashdb_new",
+        "return_type": "void",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db",
+        "file": "src/flashdb.c",
+        "decl_kind": "definition",
+        "body_kind": "complex",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_count",
+        "return_type": "size_t",
+        "params": [
+          {
+            "name": "db",
+            "type": "const struct flashdb_handle"
+          }
+        ],
+        "params_text": "const struct flashdb_handle *db",
+        "file": "src/flashdb.c",
+        "decl_kind": "definition",
+        "body_kind": "complex",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_new",
+        "return_type": "void",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_set",
+        "return_type": "int",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          },
+          {
+            "name": "key",
+            "type": "const char"
+          },
+          {
+            "name": "value",
+            "type": "const char"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db, const char *key, const char *value",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_delete",
+        "return_type": "int",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          },
+          {
+            "name": "key",
+            "type": "const char"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db, const char *key",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_count",
+        "return_type": "size_t",
+        "params": [
+          {
+            "name": "db",
+            "type": "const struct flashdb_handle"
+          }
+        ],
+        "params_text": "const struct flashdb_handle *db",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      }
+    ],
     "public_apis": [
       "flashdb_count",
       "flashdb_delete",
-      "flashdb_get",
       "flashdb_new",
       "flashdb_set"
     ],
-    "structs": [
+    "function_table": [
+      {
+        "name": "flashdb_new",
+        "return_type": "void",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db",
+        "file": "src/flashdb.c",
+        "decl_kind": "definition",
+        "body_kind": "complex",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_count",
+        "return_type": "size_t",
+        "params": [
+          {
+            "name": "db",
+            "type": "const struct flashdb_handle"
+          }
+        ],
+        "params_text": "const struct flashdb_handle *db",
+        "file": "src/flashdb.c",
+        "decl_kind": "definition",
+        "body_kind": "complex",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_new",
+        "return_type": "void",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_set",
+        "return_type": "int",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          },
+          {
+            "name": "key",
+            "type": "const char"
+          },
+          {
+            "name": "value",
+            "type": "const char"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db, const char *key, const char *value",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_delete",
+        "return_type": "int",
+        "params": [
+          {
+            "name": "db",
+            "type": "struct flashdb_handle"
+          },
+          {
+            "name": "key",
+            "type": "const char"
+          }
+        ],
+        "params_text": "struct flashdb_handle *db, const char *key",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      },
+      {
+        "name": "flashdb_count",
+        "return_type": "size_t",
+        "params": [
+          {
+            "name": "db",
+            "type": "const struct flashdb_handle"
+          }
+        ],
+        "params_text": "const struct flashdb_handle *db",
+        "file": "src/flashdb.h",
+        "decl_kind": "prototype",
+        "body_kind": "prototype_only",
+        "body_value": null,
+        "module_hint": "flashdb"
+      }
+    ],
+    "types": [
       "flashdb_handle",
       "flashdb_record"
+    ],
+    "type_table": [
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.c"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.c"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.c"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.c"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.c"
+      },
+      {
+        "name": "flashdb_record",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_record",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      },
+      {
+        "name": "flashdb_handle",
+        "kind": "struct",
+        "file": "src/flashdb.h"
+      }
     ],
     "macros": [
       "FLASHDB_H"
     ],
+    "macro_table": [
+      {
+        "name": "FLASHDB_H",
+        "file": "src/flashdb.h"
+      }
+    ],
+    "include_graph": [
+      {
+        "file": "src/flashdb.c",
+        "includes": [
+          "flashdb.h",
+          "stddef.h",
+          "string.h"
+        ]
+      },
+      {
+        "file": "src/flashdb.h",
+        "includes": [
+          "stddef.h"
+        ]
+      },
+      {
+        "file": "tests/test_flashdb.c",
+        "includes": [
+          "flashdb.h"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "file": "tests/test_flashdb.c",
+        "test_names": [
+          "test_flashdb"
+        ],
+        "assertions": [],
+        "referenced_apis": []
+      }
+    ],
+    "test_cases": [
+      {
+        "file": "tests/test_flashdb.c",
+        "test_names": [
+          "test_flashdb"
+        ],
+        "assertions": [],
+        "referenced_apis": []
+      }
+    ],
+    "test_to_api_mapping": [
+      {
+        "source_test": "tests/test_flashdb.c",
+        "test_names": [
+          "test_flashdb"
+        ],
+        "referenced_apis": [],
+        "assertion_count": 0
+      }
+    ],
+    "assertion_count": 0,
     "io_boundaries": [
-      "flashdb_count",
-      "flashdb_delete",
-      "flashdb_get",
-      "flashdb_new",
       "flashdb_set"
     ],
-    "support_level": "flashdb-kv-template",
+    "module_hints": [
+      "code",
+      "FlashDB",
+      "flashdb"
+    ],
+    "support_level": "source-driven-c",
     "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate"
   },
   "verification": {
@@ -41,37 +404,41 @@
     "src_exists": true,
     "tests_exists": true,
     "project_generation": {
-      "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-      "module_name": "flashdb",
+      "project_dir": "./flashDB_rust",
+      "module_names": [
+        "flashdb"
+      ],
       "mapped_apis": [
-        "flashdb_count",
-        "flashdb_delete",
-        "flashdb_get",
         "flashdb_new",
-        "flashdb_set"
+        "flashdb_count",
+        "flashdb_set",
+        "flashdb_delete"
       ],
       "unsupported_apis": [],
       "source_coverage": {
         "source_file_count": 2,
         "test_file_count": 1,
-        "mapped_api_count": 5,
-        "unsupported_api_count": 0
+        "mapped_api_count": 4,
+        "unsupported_api_count": 0,
+        "translated_definition_count": 0,
+        "definition_count": 2
       },
       "module_list": [
         "src/lib.rs",
         "src/flashdb.rs",
-        "tests/flashdb_semantics.rs"
+        "tests/source_migration.rs"
       ],
       "test_mapping": [
         {
           "source_test": "tests/test_flashdb.c",
-          "rust_test_file": "tests/flashdb_semantics.rs",
-          "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
-          "coverage_level": "partial_bootstrap"
+          "rust_test_file": "tests/source_migration.rs",
+          "mapping": "inventory-backed source mapping",
+          "coverage_level": "structural_only"
         }
       ],
       "bootstrap_only": true,
-      "semantic_equivalence_claim": "bootstrap_skeleton_only"
+      "semantic_equivalence_claim": "not_claimed",
+      "crate_name": "flashdb_rust"
     },
     "repair_loop": {
       "ok": true,
@@ -87,8 +454,46 @@
               "returncode": 0,
               "stdout_tail": [],
               "stderr_tail": [
-                "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-                "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s"
+                "   = note: `#[warn(unused_variables)]` on by default",
+                "",
+                "warning: unused variable: `db`",
+                "  --> src/flashdb.rs:19:22",
+                "   |",
+                "19 | pub fn flashdb_count(db: usize) -> usize {",
+                "   |                      ^^ help: if this is intentional, prefix it with an underscore: `_db`",
+                "",
+                "warning: unused variable: `db`",
+                "  --> src/flashdb.rs:24:20",
+                "   |",
+                "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
+                "   |                    ^^ help: if this is intentional, prefix it with an underscore: `_db`",
+                "",
+                "warning: unused variable: `key`",
+                "  --> src/flashdb.rs:24:31",
+                "   |",
+                "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
+                "   |                               ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
+                "",
+                "warning: unused variable: `value`",
+                "  --> src/flashdb.rs:24:43",
+                "   |",
+                "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
+                "   |                                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`",
+                "",
+                "warning: unused variable: `db`",
+                "  --> src/flashdb.rs:29:23",
+                "   |",
+                "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
+                "   |                       ^^ help: if this is intentional, prefix it with an underscore: `_db`",
+                "",
+                "warning: unused variable: `key`",
+                "  --> src/flashdb.rs:29:34",
+                "   |",
+                "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
+                "   |                                  ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
+                "",
+                "warning: `flashdb_rust` (lib) generated 7 warnings",
+                "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s"
               ],
               "ok": true,
               "error": ""
@@ -102,12 +507,11 @@
                 "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
                 "",
                 "",
-                "running 3 tests",
-                "test stores_and_reads_values ... ok",
-                "test deleting_a_key_removes_it_from_the_store ... ok",
-                "test replacing_a_key_returns_the_previous_value ... ok",
+                "running 2 tests",
+                "test crate_has_generated_modules ... ok",
+                "test test_flashdb ... ok",
                 "",
-                "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+                "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
                 "",
                 "",
                 "running 0 tests",
@@ -115,10 +519,45 @@
                 "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
               ],
               "stderr_tail": [
-                "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-                "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s",
-                "     Running unittests src\\lib.rs (target\\debug\\deps\\flashdb_rust-bbd0a51323736fe7.exe)",
-                "     Running tests\\flashdb_semantics.rs (target\\debug\\deps\\flashdb_semantics-cd5109fe428454d4.exe)",
+                "warning: unused variable: `key`",
+                "  --> src/flashdb.rs:24:31",
+                "   |",
+                "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
+                "   |                               ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
+                "",
+                "warning: unused variable: `value`",
+                "  --> src/flashdb.rs:24:43",
+                "   |",
+                "24 | pub fn flashdb_set(db: usize, key: usize, value: usize) -> i32 {",
+                "   |                                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`",
+                "",
+                "warning: unused variable: `db`",
+                "  --> src/flashdb.rs:29:23",
+                "   |",
+                "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
+                "   |                       ^^ help: if this is intentional, prefix it with an underscore: `_db`",
+                "",
+                "warning: unused variable: `key`",
+                "  --> src/flashdb.rs:29:34",
+                "   |",
+                "29 | pub fn flashdb_delete(db: usize, key: usize) -> i32 {",
+                "   |                                  ^^^ help: if this is intentional, prefix it with an underscore: `_key`",
+                "",
+                "warning: `flashdb_rust` (lib) generated 7 warnings",
+                "   Compiling flashdb_rust v0.1.0 (./flashDB_rust)",
+                "warning: unused imports: `flashdb_count`, `flashdb_delete`, `flashdb_new`, and `flashdb_set`",
+                " --> tests/source_migration.rs:2:20",
+                "  |",
+                "2 | use flashdb_rust::{flashdb_new, flashdb_count, flashdb_set, flashdb_delete};",
+                "  |                    ^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^^^^",
+                "  |",
+                "  = note: `#[warn(unused_imports)]` on by default",
+                "",
+                "warning: `flashdb_rust` (lib test) generated 7 warnings (7 duplicates)",
+                "warning: `flashdb_rust` (test \"source_migration\") generated 1 warning (run `cargo fix --test \"source_migration\"` to apply 1 suggestion)",
+                "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.84s",
+                "     Running unittests src/lib.rs (target/debug/deps/flashdb_rust-bbd0a51323736fe7.exe)",
+                "     Running tests/source_migration.rs (target/debug/deps/source_migration-26c741a006633bbd.exe)",
                 "   Doc-tests flashdb_rust"
               ],
               "ok": true,
@@ -131,30 +570,30 @@
       ]
     },
     "unsafe": {
-      "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-      "total_code_lines": 71,
-      "unsafe_lines": 2,
-      "unsafe_ratio": 0.028169014084507043,
+      "project": "./flashDB_rust",
+      "total_code_lines": 41,
+      "unsafe_lines": 0,
+      "unsafe_ratio": 0.0,
       "max_ratio": 0.1,
       "passed": true,
       "files": [
         {
-          "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\flashdb.rs",
-          "code_lines": 38,
-          "unsafe_lines": 1
+          "file": "./flashDB_rust/src/flashdb.rs",
+          "code_lines": 21,
+          "unsafe_lines": 0
         },
         {
-          "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\lib.rs",
-          "code_lines": 8,
-          "unsafe_lines": 1
+          "file": "./flashDB_rust/src/lib.rs",
+          "code_lines": 9,
+          "unsafe_lines": 0
         },
         {
-          "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\tests\\flashdb_semantics.rs",
-          "code_lines": 25,
+          "file": "./flashDB_rust/tests/source_migration.rs",
+          "code_lines": 11,
           "unsafe_lines": 0
         }
       ],
-      "generated_at": "2026-06-30T12:11:49Z"
+      "generated_at": "2026-06-30T12:57:04Z"
     },
     "semantic": {
       "passed": false,
@@ -178,18 +617,17 @@
           "name": "assertive_tests",
           "passed": true,
           "detail": "each Rust test file contains assertions",
-          "assert_count": 11
+          "assert_count": 3
         },
         {
           "name": "api_mapping",
           "passed": true,
           "detail": "source APIs are represented in generated Rust modules",
           "mapped_apis": [
-            "flashdb_count",
-            "flashdb_delete",
-            "flashdb_get",
             "flashdb_new",
-            "flashdb_set"
+            "flashdb_count",
+            "flashdb_set",
+            "flashdb_delete"
           ],
           "unsupported_apis": []
         },
@@ -199,12 +637,13 @@
           "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
           "mapped_source_tests": 1,
           "source_test_count": 1,
-          "rust_test_functions": 3
+          "rust_test_functions": 2
         },
         {
-          "name": "bootstrap_only_guard",
+          "name": "semantic_claim_gate",
           "passed": false,
-          "detail": "bootstrap skeletons cannot claim full semantic equivalence"
+          "detail": "semantic equivalence requires an explicit positive claim backed by generated evidence",
+          "semantic_equivalence_claim": "not_claimed"
         },
         {
           "name": "verification_dependency",
@@ -213,13 +652,25 @@
         }
       ],
       "failing_checks": [
-        "bootstrap_only_guard"
+        "semantic_claim_gate"
       ]
     },
     "test_mapping_gate": true,
     "ready": false,
     "status": "BLOCKED_WITH_REPORT",
     "gates": {
+      "project_layout": {
+        "name": "project_layout",
+        "passed": true,
+        "detail": "generated Cargo.toml/src/tests layout",
+        "payload": {}
+      },
+      "trace_artifacts": {
+        "name": "trace_artifacts",
+        "passed": true,
+        "detail": "required trace artifacts exist",
+        "payload": {}
+      },
       "cargo_build": {
         "name": "cargo_build",
         "passed": true,
@@ -241,30 +692,30 @@
         "passed": true,
         "detail": "unsafe gate",
         "payload": {
-          "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-          "total_code_lines": 71,
-          "unsafe_lines": 2,
-          "unsafe_ratio": 0.028169014084507043,
+          "project": "./flashDB_rust",
+          "total_code_lines": 41,
+          "unsafe_lines": 0,
+          "unsafe_ratio": 0.0,
           "max_ratio": 0.1,
           "passed": true,
           "files": [
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\flashdb.rs",
-              "code_lines": 38,
-              "unsafe_lines": 1
+              "file": "./flashDB_rust/src/flashdb.rs",
+              "code_lines": 21,
+              "unsafe_lines": 0
             },
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\lib.rs",
-              "code_lines": 8,
-              "unsafe_lines": 1
+              "file": "./flashDB_rust/src/lib.rs",
+              "code_lines": 9,
+              "unsafe_lines": 0
             },
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\tests\\flashdb_semantics.rs",
-              "code_lines": 25,
+              "file": "./flashDB_rust/tests/source_migration.rs",
+              "code_lines": 11,
               "unsafe_lines": 0
             }
           ],
-          "generated_at": "2026-06-30T12:11:49Z"
+          "generated_at": "2026-06-30T12:57:04Z"
         }
       },
       "semantic": {
@@ -293,18 +744,17 @@
               "name": "assertive_tests",
               "passed": true,
               "detail": "each Rust test file contains assertions",
-              "assert_count": 11
+              "assert_count": 3
             },
             {
               "name": "api_mapping",
               "passed": true,
               "detail": "source APIs are represented in generated Rust modules",
               "mapped_apis": [
-                "flashdb_count",
-                "flashdb_delete",
-                "flashdb_get",
                 "flashdb_new",
-                "flashdb_set"
+                "flashdb_count",
+                "flashdb_set",
+                "flashdb_delete"
               ],
               "unsupported_apis": []
             },
@@ -314,12 +764,13 @@
               "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
               "mapped_source_tests": 1,
               "source_test_count": 1,
-              "rust_test_functions": 3
+              "rust_test_functions": 2
             },
             {
-              "name": "bootstrap_only_guard",
+              "name": "semantic_claim_gate",
               "passed": false,
-              "detail": "bootstrap skeletons cannot claim full semantic equivalence"
+              "detail": "semantic equivalence requires an explicit positive claim backed by generated evidence",
+              "semantic_equivalence_claim": "not_claimed"
             },
             {
               "name": "verification_dependency",
@@ -328,7 +779,7 @@
             }
           ],
           "failing_checks": [
-            "bootstrap_only_guard"
+            "semantic_claim_gate"
           ]
         }
       },
@@ -340,9 +791,9 @@
           "test_mapping": [
             {
               "source_test": "tests/test_flashdb.c",
-              "rust_test_file": "tests/flashdb_semantics.rs",
-              "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
-              "coverage_level": "partial_bootstrap"
+              "rust_test_file": "tests/source_migration.rs",
+              "mapping": "inventory-backed source mapping",
+              "coverage_level": "structural_only"
             }
           ]
         }
@@ -359,32 +810,37 @@
     "issues": [
       {
         "code": "semantic_gate_failed",
-        "detail": "semantic checks failed: bootstrap_only_guard"
+        "detail": "semantic checks failed: semantic_claim_gate"
       }
     ]
   },
   "finalize": {
     "ok": true,
     "status": "BLOCKED_WITH_REPORT",
-    "report": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\final-report.md"
+    "report": "./logs/trace/final-report.md"
   },
   "packet": {
     "paths": {
-      "workspace_root": "E:\\009workspace\\codex\\loopforge-contest-driver",
-      "work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
-      "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
-      "result_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\result",
-      "log_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs",
-      "trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace",
-      "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\execution-adapter",
-      "migration_trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\c2rust",
-      "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust"
+      "workspace_root": ".",
+      "work_dir": "./work",
+      "source_root": "./.code/FlashDB",
+      "result_dir": "./result",
+      "log_dir": "./logs",
+      "trace_dir": "./logs/trace",
+      "artifact_dir": "./logs/trace/execution-adapter",
+      "migration_trace_dir": "./logs/trace/c-to-rust",
+      "project_dir": "./flashDB_rust"
     },
     "source_layout": {
-      "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
-      "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
-      "src_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\src",
-      "tests_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\tests"
+      "readme_path": "./.code/FlashDB/README.md",
+      "fallback_readme_path": "./work/code/README.md",
+      "project_root": "./.code/FlashDB",
+      "source_dirs": [
+        "./.code/FlashDB/src"
+      ],
+      "test_dirs": [
+        "./.code/FlashDB/tests"
+      ]
     },
     "readme_candidates": [
       "README.md",
@@ -394,50 +850,90 @@
       "Readme.md"
     ],
     "max_repair_rounds": 2,
+    "source_project_name": "FlashDB Local Fallback",
+    "source_language": "c",
+    "target_language": "rust",
+    "output_project_name": "flashDB_rust",
+    "output_project_dir": "./flashDB_rust",
+    "source_dirs": [
+      "source",
+      "src"
+    ],
+    "test_dirs": [
+      "tests"
+    ],
+    "build_commands": [
+      "cargo build",
+      "cargo test"
+    ],
+    "unsafe_ratio_max": 0.1,
+    "api_name_hints": [],
+    "module_hints": [
+      "code",
+      "FlashDB"
+    ],
     "issues": [
       {
         "code": "semantic_gate_failed",
-        "detail": "semantic checks failed: bootstrap_only_guard"
+        "detail": "semantic checks failed: semantic_claim_gate"
       }
     ],
     "warnings": [],
     "metadata": {
-      "source_root_resolution": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+      "source_root_resolution": "./.code/FlashDB",
+      "selected_readme_path": "./.code/FlashDB/README.md",
+      "fallback_readme_path": "./work/code/README.md",
       "project_generation": {
-        "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-        "module_name": "flashdb",
+        "project_dir": "./flashDB_rust",
+        "module_names": [
+          "flashdb"
+        ],
         "mapped_apis": [
-          "flashdb_count",
-          "flashdb_delete",
-          "flashdb_get",
           "flashdb_new",
-          "flashdb_set"
+          "flashdb_count",
+          "flashdb_set",
+          "flashdb_delete"
         ],
         "unsupported_apis": [],
         "source_coverage": {
           "source_file_count": 2,
           "test_file_count": 1,
-          "mapped_api_count": 5,
-          "unsupported_api_count": 0
+          "mapped_api_count": 4,
+          "unsupported_api_count": 0,
+          "translated_definition_count": 0,
+          "definition_count": 2
         },
         "module_list": [
           "src/lib.rs",
           "src/flashdb.rs",
-          "tests/flashdb_semantics.rs"
+          "tests/source_migration.rs"
         ],
         "test_mapping": [
           {
             "source_test": "tests/test_flashdb.c",
-            "rust_test_file": "tests/flashdb_semantics.rs",
-            "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
-            "coverage_level": "partial_bootstrap"
+            "rust_test_file": "tests/source_migration.rs",
+            "mapping": "inventory-backed source mapping",
+            "coverage_level": "structural_only"
           }
         ],
         "bootstrap_only": true,
-        "semantic_equivalence_claim": "bootstrap_skeleton_only"
+        "semantic_equivalence_claim": "not_claimed",
+        "crate_name": "flashdb_rust"
       }
     },
     "gates": {
+      "project_layout": {
+        "name": "project_layout",
+        "passed": true,
+        "detail": "generated Cargo.toml/src/tests layout",
+        "payload": {}
+      },
+      "trace_artifacts": {
+        "name": "trace_artifacts",
+        "passed": true,
+        "detail": "required trace artifacts exist",
+        "payload": {}
+      },
       "cargo_build": {
         "name": "cargo_build",
         "passed": true,
@@ -459,30 +955,30 @@
         "passed": true,
         "detail": "unsafe gate",
         "payload": {
-          "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-          "total_code_lines": 71,
-          "unsafe_lines": 2,
-          "unsafe_ratio": 0.028169014084507043,
+          "project": "./flashDB_rust",
+          "total_code_lines": 41,
+          "unsafe_lines": 0,
+          "unsafe_ratio": 0.0,
           "max_ratio": 0.1,
           "passed": true,
           "files": [
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\flashdb.rs",
-              "code_lines": 38,
-              "unsafe_lines": 1
+              "file": "./flashDB_rust/src/flashdb.rs",
+              "code_lines": 21,
+              "unsafe_lines": 0
             },
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\lib.rs",
-              "code_lines": 8,
-              "unsafe_lines": 1
+              "file": "./flashDB_rust/src/lib.rs",
+              "code_lines": 9,
+              "unsafe_lines": 0
             },
             {
-              "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\tests\\flashdb_semantics.rs",
-              "code_lines": 25,
+              "file": "./flashDB_rust/tests/source_migration.rs",
+              "code_lines": 11,
               "unsafe_lines": 0
             }
           ],
-          "generated_at": "2026-06-30T12:11:49Z"
+          "generated_at": "2026-06-30T12:57:04Z"
         }
       },
       "semantic": {
@@ -511,18 +1007,17 @@
               "name": "assertive_tests",
               "passed": true,
               "detail": "each Rust test file contains assertions",
-              "assert_count": 11
+              "assert_count": 3
             },
             {
               "name": "api_mapping",
               "passed": true,
               "detail": "source APIs are represented in generated Rust modules",
               "mapped_apis": [
-                "flashdb_count",
-                "flashdb_delete",
-                "flashdb_get",
                 "flashdb_new",
-                "flashdb_set"
+                "flashdb_count",
+                "flashdb_set",
+                "flashdb_delete"
               ],
               "unsupported_apis": []
             },
@@ -532,12 +1027,13 @@
               "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
               "mapped_source_tests": 1,
               "source_test_count": 1,
-              "rust_test_functions": 3
+              "rust_test_functions": 2
             },
             {
-              "name": "bootstrap_only_guard",
+              "name": "semantic_claim_gate",
               "passed": false,
-              "detail": "bootstrap skeletons cannot claim full semantic equivalence"
+              "detail": "semantic equivalence requires an explicit positive claim backed by generated evidence",
+              "semantic_equivalence_claim": "not_claimed"
             },
             {
               "name": "verification_dependency",
@@ -546,7 +1042,7 @@
             }
           ],
           "failing_checks": [
-            "bootstrap_only_guard"
+            "semantic_claim_gate"
           ]
         }
       },
@@ -558,9 +1054,9 @@
           "test_mapping": [
             {
               "source_test": "tests/test_flashdb.c",
-              "rust_test_file": "tests/flashdb_semantics.rs",
-              "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
-              "coverage_level": "partial_bootstrap"
+              "rust_test_file": "tests/source_migration.rs",
+              "mapping": "inventory-backed source mapping",
+              "coverage_level": "structural_only"
             }
           ]
         }

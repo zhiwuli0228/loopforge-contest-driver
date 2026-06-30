@@ -15,7 +15,7 @@ Preserve this stable interface so LoopForge can replace or enhance the skill lat
 
 Read:
 
-1. `SOURCE_ROOT/.loopforge/consistency/04-repair-plan.md`
+1. `logs/trace/consistency/04-repair-plan.md`
 2. `profiles/superpower/consistency-check-guards.yaml`
 3. the target files explicitly listed in the repair plan
 
@@ -86,7 +86,7 @@ When modifying implementation code:
 
 After patch implementation, write:
 
-`SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md`
+`logs/trace/consistency/05-patch-summary.md`
 
 The patch summary must include:
 
@@ -117,5 +117,5 @@ A stronger coding skill may replace this skill later without changing LoopForge 
 2. the same output artifact path
 3. the same gate values
 4. the same write-scope restrictions
-5. the requirement to write `SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md`
+5. the requirement to write `logs/trace/consistency/05-patch-summary.md`
 

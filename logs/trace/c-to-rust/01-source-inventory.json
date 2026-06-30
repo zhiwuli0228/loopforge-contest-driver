@@ -1,0 +1,398 @@
+{
+  "ok": true,
+  "readme_path": "./.code/FlashDB/README.md",
+  "fallback_readme_path": "./work/code/README.md",
+  "project_root": "./.code/FlashDB",
+  "source_dirs": [
+    "src"
+  ],
+  "test_dirs": [
+    "tests"
+  ],
+  "src_files": [
+    "src/flashdb.c",
+    "src/flashdb.h"
+  ],
+  "test_files": [
+    "tests/test_flashdb.c"
+  ],
+  "source_files": [
+    {
+      "path": "src/flashdb.c",
+      "module_hint": "flashdb"
+    },
+    {
+      "path": "src/flashdb.h",
+      "module_hint": "flashdb"
+    }
+  ],
+  "functions": [
+    {
+      "name": "flashdb_new",
+      "return_type": "void",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db",
+      "file": "src/flashdb.c",
+      "decl_kind": "definition",
+      "body_kind": "complex",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_count",
+      "return_type": "size_t",
+      "params": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle"
+        }
+      ],
+      "params_text": "const struct flashdb_handle *db",
+      "file": "src/flashdb.c",
+      "decl_kind": "definition",
+      "body_kind": "complex",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_new",
+      "return_type": "void",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_set",
+      "return_type": "int",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        },
+        {
+          "name": "key",
+          "type": "const char"
+        },
+        {
+          "name": "value",
+          "type": "const char"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db, const char *key, const char *value",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_delete",
+      "return_type": "int",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        },
+        {
+          "name": "key",
+          "type": "const char"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db, const char *key",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_count",
+      "return_type": "size_t",
+      "params": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle"
+        }
+      ],
+      "params_text": "const struct flashdb_handle *db",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    }
+  ],
+  "public_apis": [
+    "flashdb_count",
+    "flashdb_delete",
+    "flashdb_new",
+    "flashdb_set"
+  ],
+  "function_table": [
+    {
+      "name": "flashdb_new",
+      "return_type": "void",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db",
+      "file": "src/flashdb.c",
+      "decl_kind": "definition",
+      "body_kind": "complex",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_count",
+      "return_type": "size_t",
+      "params": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle"
+        }
+      ],
+      "params_text": "const struct flashdb_handle *db",
+      "file": "src/flashdb.c",
+      "decl_kind": "definition",
+      "body_kind": "complex",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_new",
+      "return_type": "void",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_set",
+      "return_type": "int",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        },
+        {
+          "name": "key",
+          "type": "const char"
+        },
+        {
+          "name": "value",
+          "type": "const char"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db, const char *key, const char *value",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_delete",
+      "return_type": "int",
+      "params": [
+        {
+          "name": "db",
+          "type": "struct flashdb_handle"
+        },
+        {
+          "name": "key",
+          "type": "const char"
+        }
+      ],
+      "params_text": "struct flashdb_handle *db, const char *key",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    },
+    {
+      "name": "flashdb_count",
+      "return_type": "size_t",
+      "params": [
+        {
+          "name": "db",
+          "type": "const struct flashdb_handle"
+        }
+      ],
+      "params_text": "const struct flashdb_handle *db",
+      "file": "src/flashdb.h",
+      "decl_kind": "prototype",
+      "body_kind": "prototype_only",
+      "body_value": null,
+      "module_hint": "flashdb"
+    }
+  ],
+  "types": [
+    "flashdb_handle",
+    "flashdb_record"
+  ],
+  "type_table": [
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.c"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.c"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.c"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.c"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.c"
+    },
+    {
+      "name": "flashdb_record",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_record",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    },
+    {
+      "name": "flashdb_handle",
+      "kind": "struct",
+      "file": "src/flashdb.h"
+    }
+  ],
+  "macros": [
+    "FLASHDB_H"
+  ],
+  "macro_table": [
+    {
+      "name": "FLASHDB_H",
+      "file": "src/flashdb.h"
+    }
+  ],
+  "include_graph": [
+    {
+      "file": "src/flashdb.c",
+      "includes": [
+        "flashdb.h",
+        "stddef.h",
+        "string.h"
+      ]
+    },
+    {
+      "file": "src/flashdb.h",
+      "includes": [
+        "stddef.h"
+      ]
+    },
+    {
+      "file": "tests/test_flashdb.c",
+      "includes": [
+        "flashdb.h"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "tests/test_flashdb.c",
+      "test_names": [
+        "test_flashdb"
+      ],
+      "assertions": [],
+      "referenced_apis": []
+    }
+  ],
+  "test_cases": [
+    {
+      "file": "tests/test_flashdb.c",
+      "test_names": [
+        "test_flashdb"
+      ],
+      "assertions": [],
+      "referenced_apis": []
+    }
+  ],
+  "test_to_api_mapping": [
+    {
+      "source_test": "tests/test_flashdb.c",
+      "test_names": [
+        "test_flashdb"
+      ],
+      "referenced_apis": [],
+      "assertion_count": 0
+    }
+  ],
+  "assertion_count": 0,
+  "io_boundaries": [
+    "flashdb_set"
+  ],
+  "module_hints": [
+    "code",
+    "FlashDB",
+    "flashdb"
+  ],
+  "support_level": "source-driven-c",
+  "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate"
+}

@@ -6,7 +6,7 @@
 - example set
 - quality review evidence
 
-Recommended artifact paths under `SOURCE_ROOT/.loopforge/plan/`:
+Recommended artifact paths under `logs/trace/plan/`:
 
 - `capability-inventory.md`
 - `usage-contract.md`

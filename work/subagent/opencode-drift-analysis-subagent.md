@@ -26,8 +26,8 @@ stage_id: "03-drift-analyze"
 executed_by_subagent: "opencode-drift-analysis-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "SOURCE_ROOT/.loopforge/consistency/01-design-summary.md"
-output_artifact: "SOURCE_ROOT/.loopforge/consistency/03-drift-report.md"
+  - "logs/trace/consistency/01-design-summary.md"
+output_artifact: "logs/trace/consistency/03-drift-report.md"
 gate: "READY_FOR_REPAIR_PLAN | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "04-repair-plan | done"
