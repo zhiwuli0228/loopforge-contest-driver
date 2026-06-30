@@ -54,13 +54,18 @@ def extract_metadata(text: str) -> dict[str, str]:
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
-    superspec_path = repo_root / "profiles" / "superspec" / "consistency-check-stages.yaml"
-    final_report_path = repo_root / "code" / ".loopforge" / "reports" / "final-report.md"
+    work_root = Path(__file__).resolve().parents[1]
+    workspace_root = work_root.parent
+    superspec_path = work_root / "profiles" / "superspec" / "consistency-check-stages.yaml"
+    subagent_root = work_root / "subagent"
+    final_report_path = workspace_root / "code" / ".loopforge" / "reports" / "final-report.md"
     errors: list[str] = []
 
     if not superspec_path.exists():
         print("[FAIL] missing profiles/superspec/consistency-check-stages.yaml", file=sys.stderr)
+        return 1
+    if not subagent_root.exists():
+        print("[FAIL] missing subagent directory", file=sys.stderr)
         return 1
 
     stages = parse_stage_contracts(superspec_path)
@@ -70,11 +75,14 @@ def main() -> int:
 
     for stage in stages:
         stage_id = stage.get("id", "<unknown>")
+        subagent_name = stage.get("subagent", "")
+        if subagent_name and not (subagent_root / f"{subagent_name}.md").exists():
+            errors.append(f"{stage_id}: missing subagent definition: subagent/{subagent_name}.md")
         if stage_id == "07-final-report":
             continue
-        artifact_path = repo_root / stage.get("output", "")
+        artifact_path = workspace_root / stage.get("output", "")
         if not artifact_path.exists():
-            errors.append(f"missing stage artifact: {artifact_path.relative_to(repo_root)}")
+            errors.append(f"missing stage artifact: {artifact_path.relative_to(workspace_root)}")
             continue
         metadata = extract_metadata(read_text(artifact_path))
         if not metadata.get("executed_by_subagent"):

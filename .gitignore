@@ -3,3 +3,4 @@ code/.loopforge/
 .agents/
 __pycache__/
 *.pyc
+work/code/FlashDB/

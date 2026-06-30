@@ -70,19 +70,21 @@ def require_literal(errors: list[str], label: str, text: str, literal: str) -> N
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
+    work_root = Path(__file__).resolve().parents[1]
+    workspace_root = work_root.parent
     errors: list[str] = []
 
-    instruction_path = repo_root / "INSTRUCTION.md"
-    readme_path = repo_root / "README.md"
-    skill_path = repo_root / "skills" / "loopforge-driver" / "SKILL.md"
-    superspec_path = repo_root / "profiles" / "superspec" / "consistency-check-stages.yaml"
-    superpower_path = repo_root / "profiles" / "superpower" / "consistency-check-guards.yaml"
-    profile_path = repo_root / "profiles" / "examples" / "java-consistency-check.yaml"
-    delegated_rule_path = repo_root / "rules" / "loopforge" / "modes" / "consistency-check" / "delegated-execution.md"
-    artifact_rule_path = repo_root / "rules" / "loopforge" / "modes" / "consistency-check" / "02-required-artifacts.md"
-    final_report_rule_path = repo_root / "rules" / "loopforge" / "core" / "05-final-report.md"
-    runtime_path = repo_root / "runtime" / "loopforge_runner.py"
+    instruction_path = workspace_root / "INSTRUCTION.md"
+    readme_path = workspace_root / "README.md"
+    skill_path = work_root / "skills" / "loopforge-driver" / "SKILL.md"
+    subagent_root = work_root / "subagent"
+    superspec_path = work_root / "profiles" / "superspec" / "consistency-check-stages.yaml"
+    superpower_path = work_root / "profiles" / "superpower" / "consistency-check-guards.yaml"
+    profile_path = work_root / "profiles" / "examples" / "java-consistency-check.yaml"
+    delegated_rule_path = work_root / "rules" / "loopforge" / "modes" / "consistency-check" / "delegated-execution.md"
+    artifact_rule_path = work_root / "rules" / "loopforge" / "modes" / "consistency-check" / "02-required-artifacts.md"
+    final_report_rule_path = work_root / "rules" / "loopforge" / "core" / "05-final-report.md"
+    runtime_path = work_root / "runtime" / "loopforge_runner.py"
 
     for path in (
         instruction_path,
@@ -97,7 +99,10 @@ def main() -> int:
         runtime_path,
     ):
         if not path.exists():
-            errors.append(f"missing required file: {path.relative_to(repo_root)}")
+            errors.append(f"missing required file: {path.relative_to(workspace_root)}")
+
+    if not subagent_root.exists():
+        errors.append("missing required directory: subagent")
 
     if errors:
         for item in errors:
@@ -146,6 +151,8 @@ def main() -> int:
         stage_id = stage.get("id", "<unknown>")
         if not stage.get("subagent"):
             errors.append(f"stage {stage_id} missing subagent")
+        elif not (subagent_root / f"{stage['subagent']}.md").exists():
+            errors.append(f"stage {stage_id} missing subagent definition: subagent/{stage['subagent']}.md")
         if not stage.get("output"):
             errors.append(f"stage {stage_id} missing output")
         if stage.get("parent_direct_execution_allowed") != "false":

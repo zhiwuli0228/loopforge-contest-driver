@@ -144,4 +144,6 @@ If execution fails, collect and report:
 - relevant log file path
 - whether partial result exists
 
+If delegated execution cannot continue because the required subagent layer is unavailable, stop with `BLOCKED_WITH_REPORT` and record the reason as `required subagent unavailable`.
+
 Do not modify platform-provided source materials during failure handling.

@@ -20,6 +20,7 @@ work/
 ├── loopforge.config.yaml
 ├── runtime/
 ├── scripts/
+├── subagent/
 ├── rules/
 ├── profiles/
 └── skills/

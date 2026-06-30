@@ -40,6 +40,7 @@ Drive an unattended LoopForge run from the repository root while loading framewo
 - `work/rules/loopforge/modes/{task.mode}/`
 - relevant adapter rules under `work/rules/loopforge/adapters/`
 - the configured profile under `work/profiles/`
+- delegated stage-worker definitions under `work/subagent/`
 
 ## Hard Constraints
 
@@ -96,6 +97,7 @@ The orchestrator must load:
 - the configured SuperSpec file
 - the configured SuperPower file
 - consistency-check mode rules
+- the referenced subagent definition file under `work/subagent/` for each declared stage
 
 Each declared stage must be executed by its bound subagent.
 
@@ -216,13 +218,14 @@ Read the platform contract in this order:
 6. For Java runs, load both `adapters/java.md` and `adapters/maven.md` when Maven is detected or configured.
 7. Read the referenced profile from `work/profiles/`.
 8. Confirm the run is operating in a valid contest-root layout with framework assets under `work/`.
-9. Inspect `code/` and plan work according to the selected mode.
-10. Modify only files inside `code/`.
-11. Record mode-specific planning and analysis artifacts under `code/.loopforge/plan/` or another runner-compatible path referenced from `mode-artifacts.md`.
-12. Maintain `code/.loopforge/plan/mode-artifacts.md` as the index of mode-specific artifacts produced during the run.
-13. Use `work/runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
-14. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
-15. Leave `code/.loopforge/reports/final-report.md` behind and stop.
+9. For delegated stages, load the matching subagent definition from `work/subagent/{subagent-name}.md`.
+10. Inspect `code/` and plan work according to the selected mode.
+11. Modify only files inside `code/`.
+12. Record mode-specific planning and analysis artifacts under `code/.loopforge/plan/` or another runner-compatible path referenced from `mode-artifacts.md`.
+13. Maintain `code/.loopforge/plan/mode-artifacts.md` as the index of mode-specific artifacts produced during the run.
+14. Use `work/runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
+15. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
+16. Leave `code/.loopforge/reports/final-report.md` behind and stop.
 
 ## Mode Expectations
 

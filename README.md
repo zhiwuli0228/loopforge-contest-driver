@@ -68,6 +68,7 @@ Each mode defines:
 │   ├── rules/
 │   ├── runtime/
 │   ├── scripts/
+│   ├── subagent/
 │   └── skills/
 ├── result/
 └── logs/

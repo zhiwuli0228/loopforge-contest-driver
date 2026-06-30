@@ -47,6 +47,16 @@ REQUIRED_WORK_FILES = [
     "docs/DAILY_DEV_USAGE.md",
     "profiles/README.md",
 ]
+REQUIRED_SUBAGENT_FILES = [
+    "subagent/opencode-preflight-subagent.md",
+    "subagent/opencode-design-read-subagent.md",
+    "subagent/opencode-implementation-map-subagent.md",
+    "subagent/opencode-drift-analysis-subagent.md",
+    "subagent/opencode-repair-plan-subagent.md",
+    "subagent/opencode-patch-subagent.md",
+    "subagent/opencode-verification-subagent.md",
+    "subagent/opencode-final-report-subagent.md",
+]
 REQUIRED_CORE_RULE_FILES = [
     "rules/loopforge/core/00-core.md",
     "rules/loopforge/core/01-work-code-boundary.md",
@@ -498,7 +508,7 @@ class LoopForgeRunner:
             else:
                 missing_required.append(relative_path)
 
-        for relative_path in REQUIRED_WORK_FILES + REQUIRED_CORE_RULE_FILES:
+        for relative_path in REQUIRED_WORK_FILES + REQUIRED_SUBAGENT_FILES + REQUIRED_CORE_RULE_FILES:
             candidate = self.work_dir / relative_path
             if candidate.exists():
                 existing_required.append(relative_path)
@@ -959,6 +969,7 @@ class LoopForgeRunner:
                 errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: final report rule must require Subagent Execution Evidence")
 
         stage_contracts: List[Dict[str, str]] = []
+        available_subagent_files = {path.stem for path in (self.work_dir / "subagent").glob("*.md")} if (self.work_dir / "subagent").exists() else set()
         if not superspec_path.exists():
             errors.append("SUBAGENT_REQUIRED_CONTRACT_MISSING: superspec file not found")
         else:
@@ -979,6 +990,10 @@ class LoopForgeRunner:
                 stage_id = stage.get("id", "<unknown>")
                 if not stage.get("subagent"):
                     errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} missing subagent")
+                elif stage["subagent"] not in available_subagent_files:
+                    errors.append(
+                        f"SUBAGENT_REQUIRED_CONTRACT_MISSING: missing subagent definition file: subagent/{stage['subagent']}.md"
+                    )
                 if not stage.get("output"):
                     errors.append(f"SUBAGENT_REQUIRED_CONTRACT_MISSING: stage {stage_id} missing output artifact")
                 if stage.get("parent_direct_execution_allowed") != "false":
