@@ -32,4 +32,4 @@ Primary run outputs are written to:
 - `result/issues/00-summary.md`
 - `logs/trace/`
 
-Internal runtime evidence stays under `SOURCE_ROOT/.loopforge/` for debugging and traceability.
+Internal runtime evidence stays under `logs/trace/`.

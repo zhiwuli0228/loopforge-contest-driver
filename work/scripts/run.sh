@@ -39,6 +39,8 @@ done
 if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
   if [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/source" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
+  elif [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB" ]]; then
+    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB"
   elif [[ "$(uname -s 2>/dev/null)" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
   else
@@ -52,7 +54,7 @@ if [[ "$HAS_ACTION" == "false" && ! " ${EXTRA_ARGS[*]} " =~ " --help " && ! " ${
   EXTRA_ARGS+=("--run")
 fi
 
-mkdir -p "${RESULT_DIR}/issues" "${LOG_DIR}/trace"
+mkdir -p "${RESULT_DIR}/issues" "${LOG_DIR}/trace/c2rust"
 if [[ ! -f "${LOG_DIR}/interaction.md" ]]; then
   printf '# Interaction Log\n\nNo manual interaction.\n' > "${LOG_DIR}/interaction.md"
 fi

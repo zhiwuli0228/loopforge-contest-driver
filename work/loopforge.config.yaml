@@ -1,14 +1,14 @@
 framework:
   name: "loopforge-contest-driver"
   input_model: "source-readme"
-  default_mode: "feature-development"
+  default_mode: "migration"
 
 platform:
   layout: "single-root"
   work_dir: "work"
   code_dir: "code"
   local_fallback_source_dir: "code"
-  artifact_dir: ".loopforge"
+  artifact_dir: "logs/trace"
   official_submission_os: "linux"
   local_development_os:
     - "windows"
@@ -20,19 +20,23 @@ source:
   readme_candidates:
     - "README.md"
     - "README"
+    - "READNE.md"
     - "readme.md"
     - "Readme.md"
 
 task:
   name: "source-readme-driven-execution"
-  mode: "feature-development"
+  mode: "migration"
   source: "source-readme"
   readme_required: true
-  profile: "profiles/templates/feature-development.yaml"
-  language:
-    primary: "source-root-derived"
-    secondary: []
-  objective: "derive task intent from the README under SOURCE_ROOT"
+  profile: "profiles/examples/c2rust-flashdb-migration.yaml"
+
+language:
+  primary: "c"
+  secondary:
+    - "rust"
+
+objective: "derive FlashDB C-to-Rust migration requirements from SOURCE_ROOT README/READNE and generate flashDB_rust"
 
 execution:
   unattended: true
@@ -48,28 +52,40 @@ execution:
 
 mode_selection:
   source: "source-readme"
-  fallback: "feature-development"
+  fallback: "migration"
 
 coding_skill:
   enabled: true
   required: true
-  skill: "skills/code-implementation/SKILL.md"
+  skill: "skills/c2rust-flashdb-migration/SKILL.md"
   apply_at:
-    - "patch_implementation"
-  output: "SOURCE_ROOT/.loopforge/consistency/05-patch-summary.md"
+    - "source_inventory"
+    - "api_mapping"
+    - "migration_plan"
+    - "rust_project_generation"
+    - "test_migration"
+    - "verification"
+  output: "logs/trace/c2rust/05-migration-summary.md"
 
 verification:
-  source: "source-readme-or-framework-default"
-  working_directory: "SOURCE_ROOT"
-  timeout_seconds: 300
+  source: "profile-or-framework-default"
+  working_directory: "flashDB_rust"
+  timeout_seconds: 600
   commands:
-    default: []
+    default:
+      - "cargo build"
+      - "cargo test"
 
 outputs:
   result_report: "result/output.md"
   issue_summary: "result/issues/00-summary.md"
   trace_dir: "logs/trace"
   interaction_log: "logs/interaction.md"
-  consistency_dir: "SOURCE_ROOT/.loopforge/consistency"
-  final_report: "SOURCE_ROOT/.loopforge/reports/final-report.md"
-  patch_snapshot_dir: "SOURCE_ROOT/.loopforge/snapshots"
+  migration_dir: "logs/trace/c2rust"
+  source_inventory: "logs/trace/c2rust/01-source-inventory.md"
+  api_mapping: "logs/trace/c2rust/02-api-mapping.md"
+  migration_plan: "logs/trace/c2rust/03-migration-plan.md"
+  implementation_summary: "logs/trace/c2rust/05-migration-summary.md"
+  verification_report: "logs/trace/c2rust/06-verification-report.md"
+  unsafe_report: "logs/trace/c2rust/unsafe-ratio.json"
+  final_report: "logs/trace/final-report.md"

@@ -1,0 +1,71 @@
+profile:
+  name: "c2rust-flashdb-migration"
+  mode: "migration"
+  intent: "Convert FlashDB C source and tests into a buildable Rust project."
+
+source_contract:
+  project_name: "FlashDB"
+  source_strategy: "source-readme-driven-execution"
+  readme_candidates:
+    - "README.md"
+    - "README"
+    - "READNE.md"
+    - "readme.md"
+    - "Readme.md"
+  accepted_layouts:
+    - root: "SOURCE_ROOT"
+      source_dir: "src"
+      test_dir: "tests"
+    - root: "SOURCE_ROOT/FlashDB"
+      source_dir: "src"
+      test_dir: "tests"
+  source_readonly: true
+
+migration_contract:
+  source_language: "c"
+  target_language: "rust"
+  output_project: "flashDB_rust"
+  required_output:
+    - "flashDB_rust/Cargo.toml"
+    - "flashDB_rust/src"
+    - "flashDB_rust/tests"
+  core_logic_source: "FlashDB/src"
+  test_source: "FlashDB/tests"
+  test_policy: "migrate-or-equivalent-coverage"
+  unsafe_ratio_max: 0.10
+
+execution_contract:
+  unattended: true
+  manual_interaction_allowed: false
+  write_scope:
+    allowed:
+      - "flashDB_rust/**"
+      - "result/**"
+      - "logs/**"
+    forbidden:
+      - "SOURCE_ROOT/**"
+      - "runtime artifacts inside SOURCE_ROOT"
+      - "SOURCE_ROOT/src/**"
+      - "SOURCE_ROOT/tests/**"
+
+verification_contract:
+  working_directory: "flashDB_rust"
+  commands:
+    - "cargo build"
+    - "cargo test"
+  required_checks:
+    - "flashDB_rust/Cargo.toml exists"
+    - "flashDB_rust/src exists"
+    - "flashDB_rust/tests exists"
+    - "unsafe ratio < 10%"
+
+reporting_contract:
+  required_files:
+    - "result/output.md"
+    - "result/issues/00-summary.md"
+    - "logs/interaction.md"
+    - "logs/trace/final-report.md"
+    - "logs/trace/c2rust/01-source-inventory.md"
+    - "logs/trace/c2rust/05-migration-summary.md"
+    - "logs/trace/c2rust/06-verification-report.md"
+    - "logs/trace/c2rust/unsafe-ratio.json"

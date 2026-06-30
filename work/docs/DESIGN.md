@@ -25,5 +25,5 @@ The source README provides requirements, constraints, and acceptance context.
 ## Output Contract
 
 - Evaluator-facing outputs are written to `result/` and `logs/`.
-- Internal runtime evidence may be written under `SOURCE_ROOT/.loopforge/`.
+- Internal runtime evidence is written under `logs/trace/`.
 - The framework never requires humans to edit task metadata before a run.

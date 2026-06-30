@@ -71,5 +71,5 @@ If `SOURCE_ROOT` is not provided, Linux first checks the platform source mount a
 ## Notes
 
 - `work/loopforge.config.yaml` carries framework defaults, not per-task manual placeholders.
-- Internal runtime artifacts may still appear under `SOURCE_ROOT/.loopforge/`.
+- Runtime evidence is written under `logs/trace/`, not under `SOURCE_ROOT`.
 - The evaluator should read `result/output.md` first, not the internal final report path.

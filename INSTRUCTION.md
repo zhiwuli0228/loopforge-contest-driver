@@ -1,99 +1,89 @@
 # Contest Execution Instruction
 
-This repository is a contest driver. The only required external input is the source tree root, exposed as `SOURCE_ROOT`.
+This repository is a contest driver for the FlashDB C-to-Rust migration task.
+
+The only required external input is the source tree root, exposed as `SOURCE_ROOT` or passed by `--source-root`.
+
+## Expected Source Layout
+
+The runner reads the task requirements from the README near `SOURCE_ROOT`.
+
+Supported requirement file names:
+
+- `${SOURCE_ROOT}/README.md`
+- `${SOURCE_ROOT}/README`
+- `${SOURCE_ROOT}/READNE.md`
+- `${SOURCE_ROOT}/readme.md`
+- `${SOURCE_ROOT}/Readme.md`
+
+The FlashDB source tree must provide:
+
+- `${SOURCE_ROOT}/src` or `${SOURCE_ROOT}/FlashDB/src`
+- `${SOURCE_ROOT}/tests` or `${SOURCE_ROOT}/FlashDB/tests`
+
+## Expected Output
+
+After execution, the driver must generate a Rust project:
+
+```text
+flashDB_rust/
+├── Cargo.toml
+├── src/
+└── tests/
+```
+
+The generated project must pass:
+
+```bash
+cd flashDB_rust
+cargo build
+cargo test
+```
+
+The unsafe usage ratio must be lower than 10%.
 
 ## Environment
-
-Supported execution environments:
-
-- Linux with `bash`
-- Windows with PowerShell
 
 Required tools:
 
 - Python 3
-- `pip`
-- `git`
 - Rust toolchain with `cargo`
+- bash on Linux or PowerShell on Windows
 
-Optional virtual environment setup:
+## Source Root Resolution
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r work/requirements.txt
-```
+Resolution priority:
 
-Windows PowerShell:
-
-```powershell
-python -m venv .venv
-. .\.venv\Scripts\Activate.ps1
-python -m pip install -r work/requirements.txt
-```
-
-## Source Root Protocol
-
-Source path resolution priority:
-
-1. Contest platform explicit source path
+1. contest platform explicit source path
 2. `--source-root <path>`
 3. `SOURCE_ROOT`
-4. Path extracted by the agent from natural-language task input and normalized into `SOURCE_ROOT`
-5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
-6. Local fallback: `code`
+4. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
+5. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`
+6. Linux fallback: `/__CONTEST_PLATFORM_SOURCE_ROOT__`
+7. local fallback: `code`
 
-The framework reads requirements and constraints from the source README near `SOURCE_ROOT`. Supported names:
-
-- `${SOURCE_ROOT}/README.md`
-- `${SOURCE_ROOT}/README`
-- `${SOURCE_ROOT}/readme.md`
-- `${SOURCE_ROOT}/Readme.md`
-
-If multiple files exist, the runner records the selected README path in the run trace.
-
-## Python Dependency Setup
+## Run
 
 Linux:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r work/requirements.txt
+SOURCE_ROOT="/path/to/FlashDB" bash work/scripts/run.sh
+```
+
+Linux with explicit argument:
+
+```bash
+bash work/scripts/run.sh --source-root "/path/to/FlashDB"
 ```
 
 Windows PowerShell:
 
 ```powershell
-py -3.11 -m venv .venv
-. .\.venv\Scripts\Activate.ps1
-python -m pip install -r work/requirements.txt
-```
-
-## Run the Tool
-
-Linux:
-
-```bash
-SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
-```
-
-Linux fallback:
-
-```bash
-bash work/scripts/run.sh
-```
-
-Windows PowerShell:
-
-```powershell
-$env:SOURCE_ROOT="C:\path\to\source"
+$env:SOURCE_ROOT="C:\path\to\FlashDB"
 powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1
 ```
 
-If no explicit source path is provided, the scripts first try the contest platform source mount on Linux and otherwise fall back to `code`.
-
-## Result Retrieval
+## Results
 
 Primary evaluator output:
 
@@ -106,11 +96,20 @@ Issue summary:
 Trace logs:
 
 - `logs/trace/`
+- `logs/trace/c2rust/`
 
-The internal runtime cache remains under `SOURCE_ROOT/.loopforge/`, but it is not the primary evaluator-facing result.
+Interaction log:
 
-## Failure Handling
+- `logs/interaction.md`
 
-- Check `result/issues/00-summary.md` for the blocked reason.
-- Check `logs/trace/run-summary.json` for selected README and verification evidence.
-- Requirements should come from `SOURCE_ROOT` and its README, not from manual placeholder filling.
+No manual interaction is required during execution.
+
+## Forbidden Runtime Behavior
+
+The driver must not:
+
+- require manual interaction
+- modify platform-provided FlashDB source or tests
+- write runtime artifacts into the source tree
+- rely on prebuilt Rust binaries instead of source
+- finish without generating `flashDB_rust/Cargo.toml`

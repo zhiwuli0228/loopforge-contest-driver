@@ -55,5 +55,18 @@ Resolve the source path in this order:
 4. Contest platform source mount on Linux
 5. Local fallback `code/`
 
-Runtime evidence may be written under `SOURCE_ROOT/.loopforge/`.
+Runtime evidence must be written under `logs/trace/`. The source tree under `SOURCE_ROOT` is read-only and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
 Evaluator-facing outputs must be written under `result/` and `logs/`.
+
+## C2Rust Output Contract
+
+The migration output project must be generated at repository root:
+
+- `flashDB_rust/Cargo.toml`
+- `flashDB_rust/src/`
+- `flashDB_rust/tests/`
+
+Final verification must run inside `flashDB_rust`:
+
+- `cargo build`
+- `cargo test`

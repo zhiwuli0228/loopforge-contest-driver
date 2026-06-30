@@ -11,7 +11,7 @@ Use this skill as the entry point for contest execution.
 
 - Repository root contains `INSTRUCTION.md`, `code/`, `work/`, `result/`, and `logs/`
 - Framework assets live under `work/`
-- Runtime evidence is written under `SOURCE_ROOT/.loopforge/`
+- Runtime evidence is written under `logs/trace/`
 - Evaluator-facing outputs are written under `result/` and `logs/`
 
 ## Required Inputs
@@ -37,7 +37,7 @@ Drive an unattended contest run from the repository root while treating `SOURCE_
 - Parse the source README first and record the selected README path.
 - If no source README exists, degrade into `BLOCKED_WITH_REPORT` with explicit evidence in `result/issues/00-summary.md` and `logs/trace/`.
 - Do not create commits, pushes, pull requests, or submissions.
-- Do not write outside `SOURCE_ROOT` except for the root-level evaluator outputs under `result/` and `logs/`.
+- Do not write into `SOURCE_ROOT`; generated outputs must stay under repository-root `flashDB_rust/`, `result/`, and `logs/`.
 - Stop after verification and report generation.
 
 ## Source Root Protocol
@@ -95,7 +95,6 @@ At minimum, the run should leave behind:
 - `result/output.md`
 - `result/issues/00-summary.md`
 - `logs/trace/run-summary.json`
-- `SOURCE_ROOT/.loopforge/state/loop-state.json`
-- `SOURCE_ROOT/.loopforge/reports/final-report.md`
-
-The internal final report under `.loopforge` is runtime evidence, not the primary evaluator-facing result.
+- `logs/trace/final-report.md`
+- `logs/trace/c2rust/06-verification-report.md`
+The trace report under `logs/trace/` is runtime evidence, not the primary evaluator-facing result.
