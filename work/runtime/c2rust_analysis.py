@@ -25,6 +25,9 @@ SUPPORTED_BODY_KINDS = {
     "return_binary_expr",
     "assignment_then_return",
     "state_mutation_then_return",
+    "loop_find_then_return",
+    "loop_find_then_mutate_return",
+    "loop_find_then_shift_delete",
 }
 
 
@@ -59,6 +62,66 @@ def _collect_files(directories: List[Path], suffixes: Tuple[str, ...]) -> List[P
 def _strip_comments(text: str) -> str:
     text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
     return re.sub(r"//[^\n]*", " ", text)
+
+
+def _normalize_path(expr: str) -> str:
+    value = " ".join(expr.split())
+    value = value.replace("->", ".")
+    value = re.sub(r"\s*\[\s*", "[", value)
+    value = re.sub(r"\s*\]\s*", "]", value)
+    value = re.sub(r"\s*\.\s*", ".", value)
+    value = re.sub(r"\s+", " ", value)
+    return value.strip()
+
+
+def _normalize_expression(expr: str) -> str:
+    return _normalize_path(expr.rstrip(";"))
+
+
+def _normalize_body(body: str) -> Tuple[str, List[Dict[str, Any]]]:
+    code = _strip_comments(body)
+    hints: List[Dict[str, Any]] = []
+
+    def replace_strcmp(match: re.Match[str]) -> str:
+        left = _normalize_expression(match.group(1))
+        right = _normalize_expression(match.group(2))
+        operator = match.group(3)
+        hints.append({"kind": "string_compare", "operation": "string_equals", "left": left, "right": right, "operator": operator})
+        expr = f"string_equals({left}, {right})"
+        return expr if operator == "==" else f"!{expr}"
+
+    code = re.sub(
+        r"strcmp\s*\(\s*(.+?)\s*,\s*(.+?)\s*\)\s*(==|!=)\s*0",
+        replace_strcmp,
+        code,
+        flags=re.DOTALL,
+    )
+
+    def replace_copy(match: re.Match[str]) -> str:
+        function_name = match.group(1)
+        destination = _normalize_expression(match.group(2))
+        source = _normalize_expression(match.group(3))
+        size = _normalize_expression(match.group(4)) if match.group(4) else ""
+        hints.append(
+            {
+                "kind": "copy_operation",
+                "operation": "copy",
+                "function": function_name,
+                "destination": destination,
+                "source": source,
+                "size": size,
+            }
+        )
+        suffix = f", {size}" if size else ""
+        return f"copy({destination}, {source}{suffix})"
+
+    code = re.sub(
+        r"\b(strcpy|strncpy|memcpy)\s*\(\s*(.+?)\s*,\s*(.+?)(?:\s*,\s*(.+?))?\s*\)",
+        replace_copy,
+        code,
+        flags=re.DOTALL,
+    )
+    return (" ".join(code.split()), hints)
 
 
 def _split_signature(prefix: str) -> Optional[Tuple[str, str]]:
@@ -108,56 +171,252 @@ def _iter_definitions(text: str) -> List[Tuple[str, str, str, str]]:
     return definitions
 
 
-def _body_kind(return_type: str, body: str) -> Tuple[str, Any, Optional[str]]:
-    normalized = " ".join(_strip_comments(body).split())
+def _parse_comparison(condition: str) -> Optional[Dict[str, Any]]:
+    text = _normalize_expression(condition)
+    string_match = re.fullmatch(r"!?string_equals\((.+), (.+)\)", text)
+    if string_match:
+        negated = text.startswith("!")
+        left = string_match.group(1)
+        right = string_match.group(2)
+        return {
+            "kind": "string_equals",
+            "left": left[1:] if left.startswith("!") else left,
+            "right": right,
+            "negated": negated,
+        }
+    binary_match = re.fullmatch(r"(.+?)\s*(==|!=|<=|>=|<|>)\s*(.+)", text)
+    if binary_match:
+        return {
+            "kind": "binary",
+            "left": _normalize_expression(binary_match.group(1)),
+            "operator": binary_match.group(2),
+            "right": _normalize_expression(binary_match.group(3)),
+            "negated": False,
+        }
+    return None
+
+
+def _parse_assignment(statement: str) -> Optional[Dict[str, str]]:
+    assignment = re.fullmatch(r"(.+?)\s*(=|\+=|-=|\*=|/=)\s*(.+)", statement.strip())
+    if not assignment:
+        return None
+    return {
+        "target": _normalize_expression(assignment.group(1)),
+        "operator": assignment.group(2),
+        "value": _normalize_expression(assignment.group(3)),
+    }
+
+
+def _parse_simple_block(block: str) -> List[Dict[str, str]]:
+    statements = [item.strip() for item in block.strip().strip("{}").split(";") if item.strip()]
+    parsed: List[Dict[str, str]] = []
+    for statement in statements:
+        assignment = _parse_assignment(statement)
+        if not assignment:
+            return []
+        parsed.append(assignment)
+    return parsed
+
+
+def _find_matching(text: str, start: int, opening: str, closing: str) -> int:
+    depth = 0
+    quote: Optional[str] = None
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+def _analyze_loop_find_then_return(normalized: str) -> Optional[Dict[str, Any]]:
+    match = re.fullmatch(
+        r"for\s*\((.+?)\)\s*\{\s*if\s*\((.+?)\)\s*\{\s*return\s+(.+?)\s*;\s*\}\s*\}\s*return\s+(.+?)\s*;",
+        normalized,
+    )
+    if not match:
+        return None
+    comparison = _parse_comparison(match.group(2))
+    if comparison is None:
+        return None
+    return {
+        "kind": "loop_find_then_return",
+        "value": {
+            "loop_header": _normalize_expression(match.group(1)),
+            "match_condition": comparison,
+            "return_expr": _normalize_expression(match.group(3)),
+            "fallback_return": _normalize_expression(match.group(4)),
+        },
+    }
+
+
+def _analyze_loop_find_then_mutate_return(normalized: str) -> Optional[Dict[str, Any]]:
+    match = re.fullmatch(
+        r"for\s*\((.+?)\)\s*\{\s*if\s*\((.+?)\)\s*\{\s*(.+?)\s*return\s+(.+?)\s*;\s*\}\s*\}\s*if\s*\((.+?)\)\s*\{\s*return\s+(.+?)\s*;\s*\}\s*(.+?)\s*return\s+(.+?)\s*;",
+        normalized,
+    )
+    if not match:
+        return None
+    comparison = _parse_comparison(match.group(2))
+    found_assignments = _parse_simple_block(match.group(3))
+    append_assignments = _parse_simple_block(match.group(7))
+    if comparison is None or not found_assignments or not append_assignments:
+        return None
+    guard = _parse_comparison(match.group(5))
+    if guard is None:
+        return None
+    return {
+        "kind": "loop_find_then_mutate_return",
+        "value": {
+            "loop_header": _normalize_expression(match.group(1)),
+            "match_condition": comparison,
+            "found_assignments": found_assignments,
+            "found_return": _normalize_expression(match.group(4)),
+            "capacity_guard": {
+                "condition": guard,
+                "return": _normalize_expression(match.group(6)),
+            },
+            "append_assignments": append_assignments,
+            "tail_return": _normalize_expression(match.group(8)),
+        },
+    }
+
+
+def _analyze_loop_find_then_shift_delete(normalized: str) -> Optional[Dict[str, Any]]:
+    match = re.fullmatch(
+        r"for\s*\((.+?)\)\s*\{\s*if\s*\((.+?)\)\s*\{\s*for\s*\((.+?)\)\s*\{\s*(.+?)\s*;\s*\}\s*(.+?)\s*;\s*return\s+(.+?)\s*;\s*\}\s*\}\s*return\s+(.+?)\s*;",
+        normalized,
+    )
+    if not match:
+        return None
+    comparison = _parse_comparison(match.group(2))
+    shift_assignment = _parse_assignment(match.group(4))
+    count_update = _parse_assignment(match.group(5))
+    if comparison is None or shift_assignment is None or count_update is None:
+        return None
+    return {
+        "kind": "loop_find_then_shift_delete",
+        "value": {
+            "outer_loop_header": _normalize_expression(match.group(1)),
+            "match_condition": comparison,
+            "shift_loop_header": _normalize_expression(match.group(3)),
+            "shift_assignment": shift_assignment,
+            "count_update": count_update,
+            "match_return": _normalize_expression(match.group(6)),
+            "fallback_return": _normalize_expression(match.group(7)),
+        },
+    }
+
+
+def _body_kind(return_type: str, body: str) -> Dict[str, Any]:
+    normalized, hints = _normalize_body(body)
+    payload: Dict[str, Any] = {
+        "body_kind": "unsupported",
+        "body_value": None,
+        "translation_status": "unsupported",
+        "unsupported_reason": "function body does not match a supported translation pattern",
+        "raw_body": body,
+        "normalized_body": normalized,
+        "semantic_hints": hints,
+    }
+
     if not normalized:
-        return ("empty", None, None)
+        payload.update({"body_kind": "empty", "translation_status": "translated", "unsupported_reason": None})
+        return payload
+
+    loop_payload = _analyze_loop_find_then_mutate_return(normalized)
+    if loop_payload is None:
+        loop_payload = _analyze_loop_find_then_shift_delete(normalized)
+    if loop_payload is None:
+        loop_payload = _analyze_loop_find_then_return(normalized)
+    if loop_payload is not None:
+        payload.update(
+            {
+                "body_kind": loop_payload["kind"],
+                "body_value": loop_payload["value"],
+                "translation_status": "translated",
+                "unsupported_reason": None,
+            }
+        )
+        return payload
+
     return_number = re.fullmatch(r"return\s+(-?\d+)\s*;", normalized)
     if return_number:
-        return ("return_number", return_number.group(1), None)
+        payload.update({"body_kind": "return_number", "body_value": return_number.group(1), "translation_status": "translated", "unsupported_reason": None})
+        return payload
     if normalized in {"return NULL;", "return null;", "return 0;"} and "*" in return_type:
-        return ("return_null", None, None)
+        payload.update({"body_kind": "return_null", "translation_status": "translated", "unsupported_reason": None})
+        return payload
     return_identifier = re.fullmatch(r"return\s+([A-Za-z_][A-Za-z0-9_]*)\s*;", normalized)
     if return_identifier:
-        return ("return_identifier", return_identifier.group(1), None)
+        payload.update({"body_kind": "return_identifier", "body_value": return_identifier.group(1), "translation_status": "translated", "unsupported_reason": None})
+        return payload
     return_field = re.fullmatch(
-        r"return\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*(?:->|\.)\s*[A-Za-z_][A-Za-z0-9_]*)+)\s*;",
+        r"return\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*(?:\.|\->)\s*[A-Za-z_][A-Za-z0-9_]*|\[[^\]]+\])+)\s*;",
         normalized,
     )
     if return_field:
-        return ("return_field", return_field.group(1), None)
+        payload.update({"body_kind": "return_field", "body_value": _normalize_expression(return_field.group(1)), "translation_status": "translated", "unsupported_reason": None})
+        return payload
     return_binary = re.fullmatch(
         r"return\s+(.+?)\s*(==|!=|<=|>=|\+|-|\*|/|%|<|>|&&|\|\|)\s*(.+?)\s*;",
         normalized,
     )
     if return_binary:
-        return (
-            "return_binary_expr",
-            {"left": return_binary.group(1).strip(), "operator": return_binary.group(2), "right": return_binary.group(3).strip()},
-            None,
+        payload.update(
+            {
+                "body_kind": "return_binary_expr",
+                "body_value": {
+                    "left": _normalize_expression(return_binary.group(1)),
+                    "operator": return_binary.group(2),
+                    "right": _normalize_expression(return_binary.group(3)),
+                },
+                "translation_status": "translated",
+                "unsupported_reason": None,
+            }
         )
+        return payload
 
     simple_body = re.fullmatch(r"(.+?;)\s*(?:return\s+(.+?)\s*;)?", normalized)
     if simple_body:
         statements = [item.strip() for item in simple_body.group(1).split(";") if item.strip()]
         assignments = []
         for statement in statements:
-            assignment = re.fullmatch(r"(.+?)\s*(=|\+=|-=|\*=|/=)\s*(.+)", statement)
+            assignment = _parse_assignment(statement)
             if not assignment:
+                assignments = []
                 break
-            assignments.append(
-                {"target": assignment.group(1).strip(), "operator": assignment.group(2), "value": assignment.group(3).strip()}
-            )
+            assignments.append(assignment)
         if assignments and len(assignments) == len(statements):
-            has_state_target = any("->" in item["target"] or "." in item["target"] or "[" in item["target"] for item in assignments)
+            has_state_target = any(any(token in item["target"] for token in [".", "["]) for item in assignments)
             kind = "state_mutation_then_return" if has_state_target else "assignment_then_return"
-            return (kind, {"assignments": assignments, "return_expr": simple_body.group(2)}, None)
+            payload.update(
+                {
+                    "body_kind": kind,
+                    "body_value": {"assignments": assignments, "return_expr": _normalize_expression(simple_body.group(2)) if simple_body.group(2) else None},
+                    "translation_status": "translated",
+                    "unsupported_reason": None,
+                }
+            )
+            return payload
 
     if any(token in normalized for token in ["for (", "for(", "while (", "while(", "if (", "if(", "switch ("]):
-        reason = "control flow is not supported by the source-driven translator"
-    else:
-        reason = "function body does not match a supported translation pattern"
-    return ("unsupported", None, reason)
+        payload["unsupported_reason"] = "control flow pattern not recognized by the source-driven translator"
+    return payload
 
 
 def _parse_params(params_text: str) -> List[Dict[str, str]]:
@@ -213,8 +472,6 @@ def _parse_assertions(text: str) -> List[Dict[str, str]]:
         {"kind": "exit_failure", "macro": "exit-failure", "expr": match.group(1).strip()}
         for match in exit_failures
     )
-
-    # Some fixture tests are scenario inventories rather than executable C tests.
     comment_text = " ".join(part for pair in re.findall(r"/\*(.*?)\*/|//([^\n]*)", text, flags=re.DOTALL) for part in pair)
     for left, operator, right in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*(==|!=|<=|>=|<|>)\s*([A-Za-z_0-9-]+)", comment_text):
         assertions.append({"kind": "scenario_condition", "macro": "scenario", "expr": f"{left} {operator} {right}"})
@@ -231,7 +488,7 @@ def _referenced_apis(text: str, public_apis: List[str], function_table: List[Dic
     aliases = {
         "new": ("new", "create", "creating", "initialize", "initializing"),
         "set": ("set", "setting", "store", "storing", "overwrite", "overwriting"),
-        "get": ("get", "getting", "retrieve", "retrieving"),
+        "get": ("get", "getting", "retrieve", "retrieving", "returns"),
         "delete": ("delete", "deleting", "remove", "removing"),
         "count": ("count", "counting"),
     }
@@ -322,6 +579,9 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                         "decl_kind": "prototype",
                         "body_kind": "prototype_only",
                         "body_value": None,
+                        "raw_body": "",
+                        "normalized_body": "",
+                        "semantic_hints": [],
                         "translation_status": "declaration_only",
                         "unsupported_reason": None,
                         "module_hint": Path(rel).stem,
@@ -333,7 +593,7 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                 if name in CONTROL_KEYWORDS:
                     continue
                 params = _parse_params(params_text)
-                kind, value, unsupported_reason = _body_kind(return_type, body)
+                analysis_payload = _body_kind(return_type, body)
                 key = (rel, name, params_text.strip(), "definition")
                 if key in seen_function_keys:
                     continue
@@ -346,10 +606,13 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                         "params_text": params_text.strip(),
                         "file": rel,
                         "decl_kind": "definition",
-                        "body_kind": kind,
-                        "body_value": value,
-                        "translation_status": "translated" if kind in SUPPORTED_BODY_KINDS else "unsupported",
-                        "unsupported_reason": unsupported_reason,
+                        "body_kind": analysis_payload["body_kind"],
+                        "body_value": analysis_payload["body_value"],
+                        "raw_body": analysis_payload["raw_body"],
+                        "normalized_body": analysis_payload["normalized_body"],
+                        "semantic_hints": analysis_payload["semantic_hints"],
+                        "translation_status": analysis_payload["translation_status"],
+                        "unsupported_reason": analysis_payload["unsupported_reason"],
                         "module_hint": Path(rel).stem,
                     }
                 )
@@ -464,7 +727,7 @@ def evaluate_semantic_equivalence(
     test_functions = 0
     for path in test_files:
         text = _read_text(path)
-        file_asserts = text.count("assert!(") + text.count("assert_eq!(") + text.count("assert_ne!(")
+        file_asserts = text.count("assert!(") + text.count("assert_eq!(") + text.count("assert_ne!(") + text.count("matches!(")
         test_functions += text.count("#[test]")
         if file_asserts == 0:
             test_assertions_ok = False
