@@ -9,13 +9,23 @@ from agent_task_packet import AgentTaskPacket, SourceLayout
 
 INCLUDE_RE = re.compile(r'^\s*#include\s+[<"]([^>"]+)[>"]', re.MULTILINE)
 MACRO_RE = re.compile(r"^\s*#define\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
-STRUCT_RE = re.compile(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)")
+STRUCT_DEFINITION_RE = re.compile(r"\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{([^{}]*)\}\s*;", re.DOTALL)
 TYPEDEF_RE = re.compile(r"\btypedef\s+.+?\s+([A-Za-z_][A-Za-z0-9_]*)\s*;", re.DOTALL)
-PROTOTYPE_RE = re.compile(r"(?m)^\s*([A-Za-z_][A-Za-z0-9_\s\*]*?)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^;{}]*)\)\s*;")
-DEFINITION_RE = re.compile(r"(?ms)^\s*([A-Za-z_][A-Za-z0-9_\s\*]*?)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^;{}]*)\)\s*\{([^{}]*)\}")
-ASSERT_RE = re.compile(r"\b(assert(?:_[A-Za-z0-9_]+)?)\s*\(([^)]*)\)")
+PROTOTYPE_RE = re.compile(r"(?m)^[ \t]*([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)[ \t]*;")
+DEFINITION_HEADER_RE = re.compile(r"(?m)^[ \t]*([^;\r\n{}()]+?)[ \t]*\(([^;{}]*)\)[ \t]*\{")
+ASSERT_RE = re.compile(r"\b((?:assert|ASSERT|TEST_ASSERT)(?:_[A-Za-z0-9_]+)?)\s*\(([^;\n]*)\)")
 TEST_NAME_RE = re.compile(r"(?m)^\s*(?:void|int)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 CONTROL_KEYWORDS = {"if", "for", "while", "switch", "return", "sizeof"}
+SUPPORTED_BODY_KINDS = {
+    "empty",
+    "return_number",
+    "return_null",
+    "return_identifier",
+    "return_field",
+    "return_binary_expr",
+    "assignment_then_return",
+    "state_mutation_then_return",
+}
 
 
 def _read_text(path: Path) -> str:
@@ -46,19 +56,108 @@ def _collect_files(directories: List[Path], suffixes: Tuple[str, ...]) -> List[P
     return results
 
 
-def _body_kind(return_type: str, body: str) -> Tuple[str, Optional[str]]:
-    normalized = " ".join(body.split())
+def _strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//[^\n]*", " ", text)
+
+
+def _split_signature(prefix: str) -> Optional[Tuple[str, str]]:
+    if prefix.strip() in CONTROL_KEYWORDS:
+        return None
+    match = re.fullmatch(r"(.+?(?:\s|\*))([A-Za-z_][A-Za-z0-9_]*)", prefix.strip())
+    if not match:
+        return None
+    return_type = match.group(1).strip()
+    name = match.group(2)
+    if not return_type or return_type.split()[0] in CONTROL_KEYWORDS or "=" in return_type:
+        return None
+    return (return_type, name)
+
+
+def _iter_definitions(text: str) -> List[Tuple[str, str, str, str]]:
+    definitions: List[Tuple[str, str, str, str]] = []
+    for match in DEFINITION_HEADER_RE.finditer(text):
+        signature = _split_signature(match.group(1))
+        if not signature:
+            continue
+        return_type, name = signature
+        params_text = match.group(2)
+        opening = match.end() - 1
+        depth = 0
+        quote: Optional[str] = None
+        escaped = False
+        for index in range(opening, len(text)):
+            char = text[index]
+            if quote:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+                continue
+            if char in {'"', "'"}:
+                quote = char
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    definitions.append((return_type, name, params_text, text[opening + 1:index]))
+                    break
+    return definitions
+
+
+def _body_kind(return_type: str, body: str) -> Tuple[str, Any, Optional[str]]:
+    normalized = " ".join(_strip_comments(body).split())
     if not normalized:
-        return ("empty", None)
+        return ("empty", None, None)
     return_number = re.fullmatch(r"return\s+(-?\d+)\s*;", normalized)
     if return_number:
-        return ("return_number", return_number.group(1))
+        return ("return_number", return_number.group(1), None)
     if normalized in {"return NULL;", "return null;", "return 0;"} and "*" in return_type:
-        return ("return_null", None)
-    return_string = re.fullmatch(r'return\s+"([^"]*)"\s*;', normalized)
-    if return_string:
-        return ("return_string", return_string.group(1))
-    return ("complex", None)
+        return ("return_null", None, None)
+    return_identifier = re.fullmatch(r"return\s+([A-Za-z_][A-Za-z0-9_]*)\s*;", normalized)
+    if return_identifier:
+        return ("return_identifier", return_identifier.group(1), None)
+    return_field = re.fullmatch(
+        r"return\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*(?:->|\.)\s*[A-Za-z_][A-Za-z0-9_]*)+)\s*;",
+        normalized,
+    )
+    if return_field:
+        return ("return_field", return_field.group(1), None)
+    return_binary = re.fullmatch(
+        r"return\s+(.+?)\s*(==|!=|<=|>=|\+|-|\*|/|%|<|>|&&|\|\|)\s*(.+?)\s*;",
+        normalized,
+    )
+    if return_binary:
+        return (
+            "return_binary_expr",
+            {"left": return_binary.group(1).strip(), "operator": return_binary.group(2), "right": return_binary.group(3).strip()},
+            None,
+        )
+
+    simple_body = re.fullmatch(r"(.+?;)\s*(?:return\s+(.+?)\s*;)?", normalized)
+    if simple_body:
+        statements = [item.strip() for item in simple_body.group(1).split(";") if item.strip()]
+        assignments = []
+        for statement in statements:
+            assignment = re.fullmatch(r"(.+?)\s*(=|\+=|-=|\*=|/=)\s*(.+)", statement)
+            if not assignment:
+                break
+            assignments.append(
+                {"target": assignment.group(1).strip(), "operator": assignment.group(2), "value": assignment.group(3).strip()}
+            )
+        if assignments and len(assignments) == len(statements):
+            has_state_target = any("->" in item["target"] or "." in item["target"] or "[" in item["target"] for item in assignments)
+            kind = "state_mutation_then_return" if has_state_target else "assignment_then_return"
+            return (kind, {"assignments": assignments, "return_expr": simple_body.group(2)}, None)
+
+    if any(token in normalized for token in ["for (", "for(", "while (", "while(", "if (", "if(", "switch ("]):
+        reason = "control flow is not supported by the source-driven translator"
+    else:
+        reason = "function body does not match a supported translation pattern"
+    return ("unsupported", None, reason)
 
 
 def _parse_params(params_text: str) -> List[Dict[str, str]]:
@@ -68,13 +167,83 @@ def _parse_params(params_text: str) -> List[Dict[str, str]]:
     params: List[Dict[str, str]] = []
     for index, raw in enumerate(params_text.split(",")):
         candidate = raw.strip()
-        parts = candidate.rsplit(" ", 1)
-        if len(parts) == 2 and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", parts[1].replace("*", "")):
-            type_text, name = parts
+        declaration = re.fullmatch(r"(.+?)(\**)([A-Za-z_][A-Za-z0-9_]*)(\s*\[[^]]+\])?", candidate)
+        if declaration:
+            type_text = f"{declaration.group(1).strip()} {declaration.group(2)}".strip()
+            name = declaration.group(3)
         else:
             type_text, name = candidate, f"arg{index}"
-        params.append({"name": name.replace("*", "").strip() or f"arg{index}", "type": type_text.strip()})
+        params.append({"name": name.strip() or f"arg{index}", "type": " ".join(type_text.split())})
     return params
+
+
+def _parse_struct_fields(body: str) -> List[Dict[str, str]]:
+    fields: List[Dict[str, str]] = []
+    for declaration in body.split(";"):
+        candidate = " ".join(declaration.split())
+        if not candidate:
+            continue
+        match = re.fullmatch(r"(.+?)(\**)([A-Za-z_][A-Za-z0-9_]*)(\s*\[\s*([0-9]+)\s*\])?", candidate)
+        if not match:
+            continue
+        fields.append(
+            {
+                "name": match.group(3),
+                "type": f"{match.group(1).strip()} {match.group(2)}".strip(),
+                "array_length": match.group(5) or "",
+            }
+        )
+    return fields
+
+
+def _parse_assertions(text: str) -> List[Dict[str, str]]:
+    assertions = [{"kind": "macro", "macro": macro, "expr": expr.strip()} for macro, expr in ASSERT_RE.findall(text)]
+    code = _strip_comments(text)
+    failure_returns = re.finditer(
+        r"\bif\s*\(([^)]*)\)\s*\{?\s*return\s+(-1|[1-9][0-9]*|false|NULL)\s*;",
+        code,
+        re.IGNORECASE,
+    )
+    assertions.extend(
+        {"kind": "if_return_failure", "macro": "if-return-failure", "expr": match.group(1).strip()}
+        for match in failure_returns
+    )
+    exit_failures = re.finditer(r"\bexit\s*\(\s*(EXIT_FAILURE|-?[1-9][0-9]*)\s*\)", code)
+    assertions.extend(
+        {"kind": "exit_failure", "macro": "exit-failure", "expr": match.group(1).strip()}
+        for match in exit_failures
+    )
+
+    # Some fixture tests are scenario inventories rather than executable C tests.
+    comment_text = " ".join(part for pair in re.findall(r"/\*(.*?)\*/|//([^\n]*)", text, flags=re.DOTALL) for part in pair)
+    for left, operator, right in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*(==|!=|<=|>=|<|>)\s*([A-Za-z_0-9-]+)", comment_text):
+        assertions.append({"kind": "scenario_condition", "macro": "scenario", "expr": f"{left} {operator} {right}"})
+    return assertions
+
+
+def _referenced_apis(text: str, public_apis: List[str], function_table: List[Dict[str, Any]]) -> Tuple[List[str], Dict[str, str]]:
+    known_apis = _dedupe(public_apis + [item["name"] for item in function_table])
+    code = _strip_comments(text)
+    references = [name for name in known_apis if re.search(rf"\b{re.escape(name)}\s*\(", code)]
+    evidence = {name: "function_call" for name in references}
+
+    comment_text = " ".join(part for pair in re.findall(r"/\*(.*?)\*/|//([^\n]*)", text, flags=re.DOTALL) for part in pair).lower()
+    aliases = {
+        "new": ("new", "create", "creating", "initialize", "initializing"),
+        "set": ("set", "setting", "store", "storing", "overwrite", "overwriting"),
+        "get": ("get", "getting", "retrieve", "retrieving"),
+        "delete": ("delete", "deleting", "remove", "removing"),
+        "count": ("count", "counting"),
+    }
+    for name in known_apis:
+        if name in evidence:
+            continue
+        suffix = name.rsplit("_", 1)[-1].lower()
+        words = aliases.get(suffix, (suffix,))
+        if any(re.search(rf"\b{re.escape(word)}\b", comment_text) for word in words):
+            references.append(name)
+            evidence[name] = "scenario_text"
+    return (_dedupe(references), evidence)
 
 
 def _pick_project_root(packet: AgentTaskPacket) -> Tuple[Optional[Path], List[Path], List[Path]]:
@@ -128,14 +297,16 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
         include_graph.append({"file": rel, "includes": _dedupe(INCLUDE_RE.findall(text))})
         for macro in MACRO_RE.findall(text):
             macros.append({"name": macro, "file": rel})
-        for struct_name in STRUCT_RE.findall(text):
-            types.append({"name": struct_name, "kind": "struct", "file": rel})
+        for struct_name, struct_body in STRUCT_DEFINITION_RE.findall(text):
+            types.append({"name": struct_name, "kind": "struct", "file": rel, "fields": _parse_struct_fields(struct_body)})
         for typedef_name in TYPEDEF_RE.findall(text):
             types.append({"name": typedef_name, "kind": "typedef", "file": rel})
         if path in src_files:
-            for return_type, name, params_text in PROTOTYPE_RE.findall(text):
-                if name in CONTROL_KEYWORDS:
+            for signature_text, params_text in PROTOTYPE_RE.findall(text):
+                signature = _split_signature(signature_text)
+                if not signature:
                     continue
+                return_type, name = signature
                 key = (rel, name, params_text.strip(), "prototype")
                 if key in seen_function_keys:
                     continue
@@ -151,16 +322,18 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                         "decl_kind": "prototype",
                         "body_kind": "prototype_only",
                         "body_value": None,
+                        "translation_status": "declaration_only",
+                        "unsupported_reason": None,
                         "module_hint": Path(rel).stem,
                     }
                 )
                 public_api_names.append(name)
 
-            for return_type, name, params_text, body in DEFINITION_RE.findall(text):
+            for return_type, name, params_text, body in _iter_definitions(text):
                 if name in CONTROL_KEYWORDS:
                     continue
                 params = _parse_params(params_text)
-                kind, value = _body_kind(return_type, body)
+                kind, value, unsupported_reason = _body_kind(return_type, body)
                 key = (rel, name, params_text.strip(), "definition")
                 if key in seen_function_keys:
                     continue
@@ -175,6 +348,8 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                         "decl_kind": "definition",
                         "body_kind": kind,
                         "body_value": value,
+                        "translation_status": "translated" if kind in SUPPORTED_BODY_KINDS else "unsupported",
+                        "unsupported_reason": unsupported_reason,
                         "module_hint": Path(rel).stem,
                     }
                 )
@@ -190,8 +365,8 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
     for path in test_files:
         text = _read_text(path)
         rel = _sanitize_rel(path, project_base)
-        assertions = [{"macro": macro, "expr": expr.strip()} for macro, expr in ASSERT_RE.findall(text)]
-        referenced_apis = [name for name in public_apis if re.search(rf"\b{re.escape(name)}\b", text)]
+        assertions = _parse_assertions(text)
+        referenced_apis, reference_evidence = _referenced_apis(text, public_apis, functions)
         test_names = [name for name in TEST_NAME_RE.findall(text) if name not in CONTROL_KEYWORDS]
         if not test_names:
             test_names = [Path(rel).stem]
@@ -201,6 +376,7 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
                 "test_names": _dedupe(test_names),
                 "assertions": assertions,
                 "referenced_apis": _dedupe(referenced_apis),
+                "reference_evidence": reference_evidence,
             }
         )
 
@@ -270,6 +446,7 @@ def evaluate_semantic_equivalence(
     src_files = sorted(path for path in (project_dir / "src").rglob("*.rs") if path.is_file())
     test_files = sorted(path for path in (project_dir / "tests").rglob("*.rs") if path.is_file())
     rust_text = "\n".join(_read_text(path) for path in src_files + test_files)
+    rust_test_text = "\n".join(_read_text(path) for path in test_files)
     checks: List[Dict[str, Any]] = []
 
     has_cargo = (project_dir / "Cargo.toml").is_file()
@@ -296,13 +473,13 @@ def evaluate_semantic_equivalence(
 
     mapped_apis = project_payload.get("mapped_apis", [])
     unsupported_apis = project_payload.get("unsupported_apis", [])
-    api_matches = [name for name in mapped_apis if re.search(rf"\b{re.escape(name)}\b", rust_text)]
+    api_matches = [name for name in mapped_apis if re.search(rf"\b{re.escape(name)}\s*\(", rust_test_text)]
     semantic_map_ok = bool(mapped_apis) and len(api_matches) == len(mapped_apis)
     checks.append(
         {
             "name": "api_mapping",
             "passed": semantic_map_ok,
-            "detail": "source APIs are represented in generated Rust modules",
+            "detail": "every mapped source API is called by generated Rust tests",
             "mapped_apis": api_matches,
             "unsupported_apis": unsupported_apis,
         }
@@ -345,7 +522,17 @@ def evaluate_semantic_equivalence(
     passed = all(check["passed"] for check in checks)
     failing = [check["name"] for check in checks if not check["passed"]]
     if not passed:
-        packet.add_issue("semantic_gate_failed", f"semantic checks failed: {', '.join(failing)}")
+        uncovered_tests = [
+            item.get("source_test", "unknown")
+            for item in project_payload.get("test_mapping", [])
+            if item.get("coverage_level") in {"none", "structural_only", "partial_semantic"}
+        ]
+        detail_parts = [f"semantic checks failed: {', '.join(failing)}"]
+        if unsupported_apis:
+            detail_parts.append(f"APIs without translated semantic coverage: {', '.join(unsupported_apis)}")
+        if uncovered_tests:
+            detail_parts.append(f"source tests without complete semantic coverage: {', '.join(uncovered_tests)}")
+        packet.add_issue("semantic_gate_failed", "; ".join(detail_parts))
     return {
         "passed": passed,
         "checks": checks,
