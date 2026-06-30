@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $WorkDir = Join-Path $RootDir "work"
-$ResultDir = Join-Path $RootDir "result"
-$LogDir = Join-Path $RootDir "logs"
+$ResultDir = Join-Path $WorkDir "result"
+$LogDir = Join-Path $WorkDir "logs"
 
 $ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
 
@@ -136,8 +136,8 @@ $runnerPath = Join-Path $WorkDir "runtime\loopforge_runner.py"
 $runnerArgs = @(
     $runnerPath,
     "--work-dir", "work",
-    "--result-dir", "result",
-    "--log-dir", "logs",
+    "--result-dir", "work/result",
+    "--log-dir", "work/logs",
     "--source-root", $ResolvedSourceRoot,
     "--run"
 )

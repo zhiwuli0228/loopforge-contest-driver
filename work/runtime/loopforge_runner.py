@@ -333,6 +333,8 @@ class LoopForgeRunner:
                     "- selected_source_readme: `NOT_RUN`",
                     "- resolved_project_root: `NOT_RUN`",
                     "- rust_project: `NOT_RUN`",
+                    "- cargo_toml: `NOT_RUN`",
+                    "- semantic_audit_report: `NOT_RUN`",
                     "- cargo_build: `NOT_RUN`",
                     "- cargo_test: `NOT_RUN`",
                     "- unsafe_gate: `NOT_RUN`",
@@ -655,6 +657,8 @@ class LoopForgeRunner:
             f"- selected_source_readme: `{self.display_path(analysis.get('readme_path') or 'missing')}`",
             f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
             f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
+            f"- cargo_toml: `{self.display_path(packet.output_project_dir / 'Cargo.toml')}`",
+            f"- semantic_audit_report: `{self.display_path(self.migration_trace_dir / 'semantic-audit-report.md')}`",
             f"- cargo_build: `{gates.get('cargo_build', {}).get('passed', False)}`",
             f"- cargo_test: `{gates.get('cargo_test', {}).get('passed', False)}`",
             f"- unsafe_gate: `{gates.get('unsafe', {}).get('passed', False)}`",
@@ -662,7 +666,7 @@ class LoopForgeRunner:
             "",
             "## Summary",
             "",
-            f"- The execution orchestrator analyzed `{packet.source_project_name}`, generated or refreshed `{packet.output_project_dir.name}`, executed the repair loop, and evaluated semantic/test-mapping gates before declaring READY.",
+            f"- The execution orchestrator analyzed `{packet.source_project_name}`, generated or refreshed `{self.display_path(packet.output_project_dir)}`, executed the repair loop, and evaluated semantic/test-mapping gates before declaring READY.",
             "",
         ]
         if packet.issues:
@@ -686,7 +690,7 @@ class LoopForgeRunner:
                     [
                         f"- failed_gate: {', '.join(failed_gates) or 'analysis'}",
                         f"- root_cause: {item['detail']}",
-                        f"- evidence_file: logs/trace/c-to-rust/06-verification-report.md",
+                        f"- evidence_file: work/logs/trace/c-to-rust/06-verification-report.md",
                         f"- repair_attempted: {'yes' if packet.gates.get('repair_loop') else 'no'}",
                         "- remaining_action: implement the missing behavior or relax the semantic claim with explicit unsupported behavior notes",
                         "",
@@ -849,8 +853,8 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="LoopForge execution orchestrator")
     parser.add_argument("--work-dir", default="work")
     parser.add_argument("--source-root")
-    parser.add_argument("--result-dir", default="result")
-    parser.add_argument("--log-dir", default="logs")
+    parser.add_argument("--result-dir", default="work/result")
+    parser.add_argument("--log-dir", default="work/logs")
     parser.add_argument("--snapshot")
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--self-check", action="store_true")

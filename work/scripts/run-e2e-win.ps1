@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $WorkDir = Join-Path $RootDir "work"
-$ResultDir = Join-Path $RootDir "result"
-$LogDir = Join-Path $RootDir "logs"
+$ResultDir = Join-Path $WorkDir "result"
+$LogDir = Join-Path $WorkDir "logs"
 $ExperimentDir = Join-Path $LogDir "trace\experiments\run-e2e-win-001"
 $ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
 
@@ -177,7 +177,7 @@ if (-not $pythonCmd) {
 $harnessStdout = ""
 $harnessStderr = ""
 Write-ExperimentLine "SOURCE_ROOT=$resolvedSourceRoot"
-& $pythonCmd (Join-Path $WorkDir "runtime\loopforge_runner.py") --work-dir work --result-dir result --log-dir logs --source-root $resolvedSourceRoot --run 1> (Join-Path $ExperimentDir "harness.stdout.log") 2> (Join-Path $ExperimentDir "harness.stderr.log")
+& $pythonCmd (Join-Path $WorkDir "runtime\loopforge_runner.py") --work-dir work --result-dir work/result --log-dir work/logs --source-root $resolvedSourceRoot --run 1> (Join-Path $ExperimentDir "harness.stdout.log") 2> (Join-Path $ExperimentDir "harness.stderr.log")
 if ($LASTEXITCODE -ne 0) {
     $harnessStdout = Read-TextIfExists -Path (Join-Path $ExperimentDir "harness.stdout.log")
     $harnessStderr = Read-TextIfExists -Path (Join-Path $ExperimentDir "harness.stderr.log")

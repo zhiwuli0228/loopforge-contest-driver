@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${ROOT_DIR}/work"
-RESULT_DIR="${ROOT_DIR}/result"
-LOG_DIR="${ROOT_DIR}/logs"
+RESULT_DIR="${WORK_DIR}/result"
+LOG_DIR="${WORK_DIR}/logs"
 SOURCE_ROOT_VALUE="${SOURCE_ROOT:-}"
 EXTRA_ARGS=()
 HAS_ACTION="false"
