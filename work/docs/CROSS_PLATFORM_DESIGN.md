@@ -6,20 +6,20 @@ LoopForge supports Windows local development and Linux official submission throu
 
 - official submission is Linux-first
 - Windows is a development and local smoke-test compatibility layer
-- `runtime/loopforge_runner.py` remains the single cross-platform execution core
+- `work/runtime/loopforge_runner.py` remains the single cross-platform execution core
 - static configuration continues to use `/` path separators
 - all runtime artifacts remain under `code/.loopforge/`
 
 ## Entrypoints
 
-- Linux official entry: `bash scripts/bootstrap.sh`
-- Windows development entry: `powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1`
-- Linux smoke test: `bash scripts/smoke-test.sh`
-- Windows smoke test: `powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1`
+- Linux official entry: `bash work/scripts/bootstrap.sh`
+- Windows development entry: `powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1`
+- Linux smoke test: `bash work/scripts/smoke-test.sh`
+- Windows smoke test: `powershell -ExecutionPolicy Bypass -File work/scripts/smoke-test.ps1`
 
 ## Verification Command Selection
 
-`loopforge.config.yaml` may provide:
+`work/loopforge.config.yaml` may provide:
 
 - `verification.commands.default`
 - `verification.commands.linux`

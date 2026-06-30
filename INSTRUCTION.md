@@ -1,193 +1,147 @@
-# LoopForge Execution Instruction
+# INSTRUCTION.md
 
-This directory is the contest project root.
+This file is the execution guide for judges, platform Agents, opencode, and human reproducers.
 
-Do not look for another nested `work/` directory.
+It explains how to prepare the environment, install dependencies, provide the source path, run the tool, and collect results.
 
-## 1. Environment Preparation
+It does not contain business-specific task data or implementation strategy.
 
-- Runtime expects the current directory to contain LoopForge assets plus `code/`.
-- Python 3.11+ is required for `runtime/loopforge_runner.py`.
-- Official submission environment is Linux with `bash` and `python3`.
-- Windows local development uses PowerShell plus Python.
-- Project-specific build and test tools must already exist for the target project in `code/`.
-- LoopForge core does not require network access.
+## 1. Runtime Requirements
 
-## 2. Workspace Layout
+Required:
 
-```text
-.
-├── INSTRUCTION.md
-├── loopforge.config.yaml
-├── code/
-├── skills/
-├── runtime/
-├── scripts/
-├── rules/
-└── profiles/
-```
+- Linux with `bash`, or Windows with PowerShell for local development
+- Python 3.11+
+- `pip`
+- `git`
+- Rust toolchain when the downstream workflow needs Rust build or test validation
 
-Treat this directory as LoopForge driver assets. Treat `code/` as the target project. Runtime artifacts are written only under `code/.loopforge/`.
-
-## 3. Human Adaptation Before Execution
-
-Fill `loopforge.config.yaml` before unattended execution:
-
-- `task.name`
-- `task.mode`
-- `task.profile`
-- `task.language`
-- `task.objective`
-- `verification.commands`
-
-LoopForge must not modify this configuration file during execution.
-
-## 4. Official Linux Submission Execution
-
-From this directory:
+Check commands:
 
 ```bash
-bash scripts/bootstrap.sh
+python3 --version
+python3 -m pip --version
+bash --version
+git --version
 ```
 
-## 5. Windows Development Execution
+For Rust-related validation:
 
-For local development and smoke testing on Windows:
+```bash
+cargo --version
+rustc --version
+```
+
+## 2. Python Environment Setup
+
+Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r work/requirements.txt
+```
+
+Windows PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r work\requirements.txt
 ```
 
-Windows execution is for development compatibility only. Official submission remains Linux-first.
+If `work/requirements.txt` is effectively empty, no third-party Python dependency is required.
 
-## 6. Agent Entrypoint
+## 3. Source Path Input
 
-Then use the LoopForge agent entrypoint:
+The tool requires a source project path.
+
+The Agent should resolve the source path in this order:
+
+1. Use the source path explicitly provided by the contest platform.
+2. If the user instruction contains a natural-language source path, extract that path.
+3. If `--source-root` is provided, use it.
+4. If `SOURCE_ROOT` is set, use it.
+5. On Linux, fall back to `/__CONTEST_PLATFORM_SOURCE_ROOT__/FlashDB`.
+6. On Windows or local development, fall back to `code`.
+
+When the source path is resolved, pass it to the tool as `SOURCE_ROOT`.
+
+Natural-language path examples the Agent should normalize before execution:
+
+- `源码在 /workspace/input/FlashDB。`
+- `请使用 /mnt/data/FlashDB 作为源码路径。`
+- `The source project is located at /contest/source/FlashDB.`
+- `源码路径是 D:\contest\FlashDB。`
+- `本地测试时源码放在 ./code。`
+
+## 4. Run the Tool
+
+Linux:
+
+```bash
+SOURCE_ROOT="<resolved-source-path>" bash work/scripts/run.sh
+```
+
+Example:
+
+```bash
+SOURCE_ROOT="/workspace/input/FlashDB" bash work/scripts/run.sh
+```
+
+Windows PowerShell:
+
+```powershell
+$env:SOURCE_ROOT = "<resolved-source-path>"
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1
+```
+
+Example:
+
+```powershell
+$env:SOURCE_ROOT = "code"
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1
+```
+
+## 5. Result Retrieval
+
+After execution, read:
 
 ```text
-skills/loopforge-driver/SKILL.md
+result/output.md
 ```
 
-The skill reads `loopforge.config.yaml`, loads the relevant rules, applies code changes only inside `code/`, invokes the runner, and stops after writing the final report.
-
-## 7. Agent Auto-Start
-
-If you are an AI coding agent, contest executor, or OpenCode agent, execute this file directly.
-
-Steps:
-
-1. Read `skills/loopforge-driver/SKILL.md`.
-2. Read `loopforge.config.yaml`.
-3. Treat this root directory as LoopForge driver assets.
-4. Treat `code/` as the target project.
-5. Treat `code/docs/` as frozen design documents if present.
-6. Write runtime artifacts only under `code/.loopforge/`.
-7. Execute the task mode configured in `loopforge.config.yaml`.
-8. Execute verification commands configured in `loopforge.config.yaml`.
-9. Generate `code/.loopforge/reports/final-report.md`.
-10. Stop after final report generation.
-
-Forbidden:
-
-- Do not modify `skills/**`, `rules/**`, `runtime/**`, `scripts/**`, `profiles/**` unless the task explicitly says to modify LoopForge itself.
-- Do not modify `code/docs/**`.
-- Do not run `git add`, `git commit`, `git push`, or create PRs.
-
-## Unattended Delegated Execution Contract
-
-This project must be executed in unattended mode.
-
-After reading this file, the agent must not wait for human confirmation between stages.
-
-For non-trivial tasks, especially `consistency-check`, the agent must not execute the whole workflow in one monolithic reasoning context.
-
-The agent must act as an orchestrator and execute the task through staged delegated execution.
-
-Subagent execution is mandatory for each stage.
-
-Required contract:
-
-- `subagent_required: true`
-- `fallback_to_main_context_allowed: false`
-- `missing_subagent_policy: BLOCKED_WITH_REPORT`
-- `parent_direct_execution_allowed: false`
-- `file_handoff_required: true`
-
-Required stages:
-
-1. Preflight
-2. Design Read
-3. Implementation Mapping
-4. Drift Analysis
-5. Repair Planning
-6. Patch Implementation
-7. Verification
-8. Final Report
-
-Each stage must:
-
-- read only its required input files
-- write its output artifact under `code/.loopforge/consistency/`
-- expose a machine-readable gate status
-- avoid returning full long-form analysis to the orchestrator context
-- use file artifacts as the handoff mechanism
-- automatically continue to the next stage when the gate allows it
-- be executed by its declared subagent
-- set `parent_direct_execution_allowed: false`
-
-No manual prompt between stages is allowed.
-
-If a stage cannot continue, the agent must generate a blocked or degraded report and still produce `code/.loopforge/reports/final-report.md` when possible.
-
-If required subagents are unavailable, stop immediately with:
+If issues are produced, read:
 
 ```text
-BLOCKED_WITH_REPORT
-reason: required subagent unavailable
+result/issues/00-summary.md
 ```
 
-The main Build session must not simulate stage execution in its own context.
+Logs are stored in:
 
-## Manual Stage Prompt Policy
+```text
+logs/trace/
+```
 
-Manual stage-by-stage prompting is forbidden.
+Human interaction records are stored in:
 
-The user or contest platform must not be required to issue separate prompts for:
+```text
+logs/interaction.md
+```
 
-- design reading
-- implementation mapping
-- repair planning
-- patch implementation
-- verification
-- final report generation
+If execution is fully unattended, `logs/interaction.md` may remain unchanged except for the automatic header.
 
-All stage transitions must be decided by the orchestrator using file artifacts and gate statuses.
+## 6. Failure Handling
 
-The orchestrator may only:
+If execution fails, collect and report:
 
-- read the entry instruction and stage contracts
-- check subagent availability
-- invoke the declared stage subagent
-- read the stage artifact gate
-- assemble the final report
+- dependency installation result
+- resolved `SOURCE_ROOT`
+- executed command
+- failed stage
+- relevant log file path
+- whether partial result exists
 
-The orchestrator must not directly perform design analysis, implementation mapping, drift analysis, repair planning, patching, or full verification inside the parent context.
-
-## 8. Completion Criteria
-
-Execution is complete when all of the following are true:
-
-- `code/` contains the generated or repaired changes
-- `code/.loopforge/reports/final-report.md` exists
-- verification results are recorded in `code/.loopforge/`
-- no commit, push, PR, or submission action was performed
-
-## 9. Result Retrieval
-
-The platform retrieves:
-
-- `code/`
-
-Primary report:
-
-- `code/.loopforge/reports/final-report.md`
+Do not modify platform-provided source materials during failure handling.

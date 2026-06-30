@@ -12,13 +12,13 @@ LoopForge is a reusable Loop Engineering hosting platform. Contest tasks are onl
 
 ## Core Components
 
-- `skills/loopforge-driver/SKILL.md`: agent entrypoint
-- `runtime/loopforge_runner.py`: deterministic execution helper
-- `rules/loopforge/core/`: invariant platform rules
-- `rules/loopforge/modes/`: reusable flow definitions
-- `rules/loopforge/adapters/`: language and platform guidance
-- `profiles/`: configuration templates and examples
-- `docs/CROSS_PLATFORM_DESIGN.md`: Windows-development and Linux-submission compatibility contract
+- `work/skills/loopforge-driver/SKILL.md`: agent entrypoint
+- `work/runtime/loopforge_runner.py`: deterministic execution helper
+- `work/rules/loopforge/core/`: invariant platform rules
+- `work/rules/loopforge/modes/`: reusable flow definitions
+- `work/rules/loopforge/adapters/`: language and platform guidance
+- `work/profiles/`: configuration templates and examples
+- `work/docs/CROSS_PLATFORM_DESIGN.md`: Windows-development and Linux-submission compatibility contract
 
 ## Execution Model
 
@@ -37,14 +37,14 @@ Where:
 - the submission root outside `code/` is human-maintained and read-only during execution
 - `code/` is the only business-code mutation area
 - `code/.loopforge/` is the only runtime artifact area
-- verification commands come only from `loopforge.config.yaml`
+- verification commands come only from `work/loopforge.config.yaml`
 - LoopForge generates code and reports, but never commits, pushes, creates PRs, or submits results
 
 ## Runner Responsibilities
 
 The runner is a deterministic executor. It is responsible for:
 
-- reading `loopforge.config.yaml`
+- reading `work/loopforge.config.yaml`
 - validating the LoopForge root package and selected mode/profile contract
 - creating `code/.loopforge/`
 - copying its runtime into `code/.loopforge/runtime/`

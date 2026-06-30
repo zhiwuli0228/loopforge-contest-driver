@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LoopForge runner for the single-root LoopForge contest layout."""
+"""LoopForge runner for the contest layout with framework assets under work/."""
 
 from __future__ import annotations
 
@@ -27,11 +27,14 @@ ARTIFACT_SUBDIRS = [
     "plan",
     "consistency",
 ]
-REQUIRED_WORK_FILES = [
+REQUIRED_ROOT_FILES = [
     "INSTRUCTION.md",
     "README.md",
     "SUBMISSION.md",
+]
+REQUIRED_WORK_FILES = [
     "loopforge.config.yaml",
+    "HARNESS.md",
     "runtime/loopforge_runner.py",
     "scripts/bootstrap.sh",
     "scripts/bootstrap.ps1",
@@ -195,10 +198,21 @@ class CommandResult:
 
 
 class LoopForgeRunner:
-    def __init__(self, workspace_root: Path, work_dir: Path, code_dir: Path) -> None:
+    def __init__(
+        self,
+        workspace_root: Path,
+        work_dir: Path,
+        code_dir: Path,
+        source_root: Optional[Path] = None,
+        result_dir: Optional[Path] = None,
+        log_dir: Optional[Path] = None,
+    ) -> None:
         self.workspace_root = workspace_root.resolve()
         self.work_dir = work_dir.resolve()
         self.code_dir = code_dir.resolve()
+        self.source_root = self.code_dir if source_root is None else source_root.resolve()
+        self.result_dir = (self.workspace_root / "result").resolve() if result_dir is None else result_dir.resolve()
+        self.log_dir = (self.workspace_root / "logs").resolve() if log_dir is None else log_dir.resolve()
         self.config_path = self.work_dir / "loopforge.config.yaml"
         self.config = self.load_config()
         self.artifact_dir = self.code_dir / str(self.config.get("platform", {}).get("artifact_dir", ".loopforge"))
@@ -213,9 +227,32 @@ class LoopForgeRunner:
         self.consistency_dir = self.artifact_dir / "consistency"
         self.final_report_path = self.artifact_dir / "reports" / "final-report.md"
         self.gate_events_path = self.artifact_dir / "gates" / "gate-events.md"
+        self.result_output_path = self.result_dir / "output.md"
+        self.result_issue_summary_path = self.result_dir / "issues" / "00-summary.md"
+        self.log_trace_dir = self.log_dir / "trace"
+        self.interaction_log_path = self.log_dir / "interaction.md"
+        self.run_trace_path = self.log_trace_dir / "run-summary.json"
         self.current_os = detect_os()
 
+    def resolve_code_relative_path(self, configured_path: str) -> Path:
+        normalized = configured_path.replace("\\", "/").strip()
+        if normalized in {"", "."}:
+            return self.workspace_root
+        if normalized == "code":
+            return self.code_dir
+        if normalized.startswith("code/"):
+            return (self.code_dir / normalized[5:]).resolve()
+        return (self.workspace_root / configured_path).resolve()
+
+    def ensure_entrypoint_outputs(self) -> None:
+        self.result_dir.mkdir(parents=True, exist_ok=True)
+        (self.result_dir / "issues").mkdir(parents=True, exist_ok=True)
+        self.log_trace_dir.mkdir(parents=True, exist_ok=True)
+        if not self.interaction_log_path.exists():
+            self.interaction_log_path.write_text("# Interaction Log\n\nNo manual interaction.\n", encoding="utf-8")
+
     def ensure_directories(self) -> None:
+        self.ensure_entrypoint_outputs()
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
         for name in ARTIFACT_SUBDIRS:
             (self.artifact_dir / name).mkdir(parents=True, exist_ok=True)
@@ -269,9 +306,12 @@ class LoopForgeRunner:
         if not self.code_dir.exists():
             raise FileNotFoundError(f"code dir not found: {self.code_dir}")
         if self.code_dir == self.work_dir:
-            raise ValueError("code_dir must be a nested target directory under the LoopForge root")
-        if self.work_dir not in self.code_dir.parents:
-            raise ValueError("code_dir must resolve under work_dir for the single-root layout")
+            raise ValueError("code_dir must be different from work_dir")
+        if self.work_dir.parent != self.workspace_root:
+            raise ValueError("work_dir must resolve as the framework directory under the repository root")
+        if self.code_dir == self.workspace_root or self.workspace_root in self.code_dir.parents:
+            if self.code_dir.parent != self.workspace_root:
+                raise ValueError("local fallback code_dir must resolve as a direct child of the repository root")
         platform = self.config.get("platform", {})
         if platform.get("layout") != "single-root":
             raise ValueError("unsupported platform.layout; expected single-root")
@@ -451,6 +491,13 @@ class LoopForgeRunner:
         existing_required: List[str] = []
         missing_required: List[str] = []
 
+        for relative_path in REQUIRED_ROOT_FILES:
+            candidate = self.workspace_root / relative_path
+            if candidate.exists():
+                existing_required.append(relative_path)
+            else:
+                missing_required.append(relative_path)
+
         for relative_path in REQUIRED_WORK_FILES + REQUIRED_CORE_RULE_FILES:
             candidate = self.work_dir / relative_path
             if candidate.exists():
@@ -519,8 +566,10 @@ class LoopForgeRunner:
         errors: List[str] = []
         warnings: List[str] = []
 
-        expected_work = (self.work_dir / str(platform.get("work_dir", "."))).resolve()
-        expected_code = (self.work_dir / str(platform.get("code_dir", "code"))).resolve()
+        configured_work_dir = str(platform.get("work_dir", ".")).strip() or "."
+        configured_code_dir = str(platform.get("code_dir", "code")).strip() or "code"
+        expected_work = (self.workspace_root / configured_work_dir).resolve()
+        expected_code = self.resolve_code_relative_path(configured_code_dir)
         configured_mode = str(task.get("mode", "")).strip()
         allowed_modes = {
             "feature-development",
@@ -532,8 +581,10 @@ class LoopForgeRunner:
 
         if expected_work != self.work_dir:
             errors.append(f"platform.work_dir resolves to {expected_work}, but runner is using {self.work_dir}")
-        if expected_code != self.code_dir:
+        if expected_code != self.code_dir and self.code_dir == (self.workspace_root / configured_code_dir).resolve():
             errors.append(f"platform.code_dir resolves to {expected_code}, but runner is using {self.code_dir}")
+        elif expected_code != self.code_dir and self.code_dir != (self.workspace_root / configured_code_dir).resolve():
+            warnings.append(f"platform.code_dir default is {expected_code}, overridden source root is {self.code_dir}")
         if str(platform.get("official_submission_os", "")).strip() != "linux":
             errors.append("platform.official_submission_os must be linux")
         if configured_mode not in allowed_modes:
@@ -584,9 +635,9 @@ class LoopForgeRunner:
                 "stages": [],
             }
 
-        final_report = (self.work_dir / str(outputs.get("final_report", "code/.loopforge/reports/final-report.md"))).resolve()
-        snapshot_dir = (self.work_dir / str(outputs.get("patch_snapshot_dir", "code/.loopforge/snapshots"))).resolve()
-        consistency_dir = (self.work_dir / str(outputs.get("consistency_dir", "code/.loopforge/consistency"))).resolve()
+        final_report = self.resolve_code_relative_path(str(outputs.get("final_report", "code/.loopforge/reports/final-report.md")))
+        snapshot_dir = self.resolve_code_relative_path(str(outputs.get("patch_snapshot_dir", "code/.loopforge/snapshots")))
+        consistency_dir = self.resolve_code_relative_path(str(outputs.get("consistency_dir", "code/.loopforge/consistency")))
         if self.code_dir not in final_report.parents:
             errors.append("outputs.final_report must resolve under code/")
         if self.code_dir not in snapshot_dir.parents:
@@ -600,7 +651,7 @@ class LoopForgeRunner:
         warnings.extend(coding_skill_summary.get("warnings", []))
 
         working_directory = str(verification.get("working_directory", "code")).strip()
-        verification_cwd = (self.work_dir / working_directory).resolve() if working_directory not in {"", "."} else self.work_dir
+        verification_cwd = self.resolve_code_relative_path(working_directory) if working_directory not in {"", "."} else self.work_dir
         if verification_cwd != self.code_dir and self.code_dir not in verification_cwd.parents:
             errors.append("verification.working_directory must resolve to code/ or a descendant of code/")
         if not verification_cwd.exists():
@@ -833,7 +884,7 @@ class LoopForgeRunner:
             "continue in main context",
         ]
 
-        instruction_text = (self.work_dir / "INSTRUCTION.md").read_text(encoding="utf-8")
+        instruction_text = (self.workspace_root / "INSTRUCTION.md").read_text(encoding="utf-8")
         skill_text = (self.work_dir / "skills" / "loopforge-driver" / "SKILL.md").read_text(encoding="utf-8")
         superpower_path = (self.work_dir / str(governance.get("superpower", ""))).resolve()
         superspec_path = (self.work_dir / str(governance.get("superspec", ""))).resolve()
@@ -1188,8 +1239,90 @@ class LoopForgeRunner:
         if working_directory in {".", ""}:
             cwd = self.work_dir
         else:
-            cwd = (self.work_dir / working_directory).resolve()
+            cwd = self.resolve_code_relative_path(working_directory)
         return cwd, timeout_seconds, [str(item) for item in normalized["selected_commands"]]
+
+    def write_entrypoint_result(
+        self,
+        verify_payload: Dict[str, Any],
+        finalize_payload: Dict[str, Any],
+        self_check_payload: Dict[str, Any],
+        detect_payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        self.ensure_entrypoint_outputs()
+        lines = [
+            "# Output",
+            "",
+            f"- source_root: `{self.source_root}`",
+            f"- resolved_code_dir: `{self.code_dir}`",
+            f"- artifact_dir: `{self.artifact_dir}`",
+            f"- result: `{finalize_payload.get('result', 'UNKNOWN')}`",
+            f"- verification_status: `{verify_payload.get('status', 'not-run')}`",
+            f"- final_report: `{self.final_report_path}`",
+            "",
+            "## Self Check",
+            "",
+            json.dumps(self_check_payload, indent=2, ensure_ascii=True),
+            "",
+            "## Detection",
+            "",
+            json.dumps(detect_payload, indent=2, ensure_ascii=True),
+            "",
+            "## Verification",
+            "",
+            json.dumps(verify_payload, indent=2, ensure_ascii=True),
+            "",
+        ]
+        self.result_output_path.write_text("\n".join(lines), encoding="utf-8")
+
+        issues_text = "# Issues Summary\n\n"
+        if verify_payload.get("ok") is True and self_check_payload.get("ok") is True:
+            issues_text += "No execution issues recorded.\n"
+        else:
+            issues: List[str] = []
+            contract_summary = self_check_payload.get("contract_summary", {})
+            if isinstance(contract_summary, dict):
+                issues.extend(str(item) for item in contract_summary.get("errors", []))
+            if verify_payload.get("reason"):
+                issues.append(str(verify_payload["reason"]))
+            if not issues:
+                issues.append("Execution completed with non-passing status. See result/output.md and logs/trace/run-summary.json.")
+            issues_text += "\n".join(f"- {item}" for item in issues) + "\n"
+        self.result_issue_summary_path.write_text(issues_text, encoding="utf-8")
+
+        trace_payload = {
+            "source_root": str(self.source_root),
+            "code_dir": str(self.code_dir),
+            "artifact_dir": str(self.artifact_dir),
+            "result_dir": str(self.result_dir),
+            "log_dir": str(self.log_dir),
+            "self_check": self_check_payload,
+            "detect": detect_payload,
+            "verify": verify_payload,
+            "finalize": finalize_payload,
+        }
+        self.run_trace_path.write_text(json.dumps(trace_payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        return {"output": str(self.result_output_path), "issues": str(self.result_issue_summary_path), "trace": str(self.run_trace_path)}
+
+    def run_entrypoint(self) -> Dict[str, Any]:
+        init_payload = self.init_workspace()
+        self_check_payload = self.self_check()
+        detect_payload = self.detect_project()
+        verify_payload = self.verify()
+        finalize_payload = self.finalize()
+        output_paths = self.write_entrypoint_result(verify_payload, finalize_payload, self_check_payload, detect_payload)
+        return {
+            "ok": True,
+            "source_root": str(self.source_root),
+            "code_dir": str(self.code_dir),
+            "artifact_dir": str(self.artifact_dir),
+            "init": init_payload,
+            "self_check": self_check_payload,
+            "detect": detect_payload,
+            "verify": verify_payload,
+            "finalize": finalize_payload,
+            "entrypoint_outputs": output_paths,
+        }
 
     def verify(self) -> Dict[str, Any]:
         self.assert_layout()
@@ -1396,8 +1529,8 @@ class LoopForgeRunner:
             "",
             "## Cross-platform Notes",
             "",
-            "- Windows development path: powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1",
-            "- Linux submission path: bash scripts/bootstrap.sh",
+            "- Windows development path: powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1",
+            "- Linux submission path: bash work/scripts/bootstrap.sh",
             f"- Git available: {'true' if shutil.which('git') else 'false'}",
             f"- Shell used for verification: {'cmd.exe or PowerShell child shell' if self.current_os == 'windows' else '/bin/sh-compatible shell'}",
             "",
@@ -1458,14 +1591,18 @@ class LoopForgeRunner:
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="LoopForge runner")
-    parser.add_argument("--work-dir", default=".", help="path to the LoopForge root directory")
+    parser.add_argument("--work-dir", default="work", help="path to the framework work directory")
     parser.add_argument("--code-dir", default="code", help="path to the target code directory")
+    parser.add_argument("--source-root", help="path to the source project root")
+    parser.add_argument("--result-dir", help="path to the root-level result directory")
+    parser.add_argument("--log-dir", help="path to the root-level log directory")
     parser.add_argument("--init", action="store_true", help="initialize code/.loopforge")
     parser.add_argument("--self-check", action="store_true", help="validate runtime and configuration")
     parser.add_argument("--detect", action="store_true", help="detect target project shape")
     parser.add_argument("--snapshot", metavar="NAME", help="write a git diff snapshot into code/.loopforge/snapshots")
     parser.add_argument("--verify", action="store_true", help="run configured verification.commands")
     parser.add_argument("--finalize", action="store_true", help="write code/.loopforge/reports/final-report.md")
+    parser.add_argument("--run", action="store_true", help="execute the entrypoint workflow and mirror outputs to result/ and logs/")
     return parser.parse_args(argv)
 
 
@@ -1481,32 +1618,49 @@ def resolve_workspace_root(cwd: Path, work_arg: str, code_arg: str) -> Path:
     else:
         work_path = work_path.resolve()
     if not code_path.is_absolute():
-        code_path = (work_path / code_path).resolve()
+        code_path = (work_path.parent / code_path).resolve()
     else:
         code_path = code_path.resolve()
 
     if work_path == code_path:
         raise ValueError("work_dir and code_dir must be different paths")
-    if work_path not in code_path.parents:
-        raise ValueError("code_dir must resolve under work_dir for the single-root layout")
-    return work_path
+    return work_path.parent
 
 
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
-    if not any([args.init, args.self_check, args.detect, args.snapshot, args.verify, args.finalize]):
+    if not any([args.init, args.self_check, args.detect, args.snapshot, args.verify, args.finalize, args.run]):
         print("No action provided.", file=sys.stderr)
         return 2
 
     try:
-        workspace_root = resolve_workspace_root(Path.cwd().resolve(), args.work_dir, args.code_dir)
-        work_dir = workspace_root
-        code_dir = Path(args.code_dir)
+        effective_code_arg = args.source_root if args.source_root else args.code_dir
+        workspace_root = resolve_workspace_root(Path.cwd().resolve(), args.work_dir, effective_code_arg)
+        work_dir = Path(args.work_dir)
+        if not work_dir.is_absolute():
+            work_dir = (Path.cwd().resolve() / work_dir).resolve()
+        else:
+            work_dir = work_dir.resolve()
+        code_dir = Path(effective_code_arg)
         if not code_dir.is_absolute():
-            code_dir = (work_dir / code_dir).resolve()
+            code_dir = (workspace_root / code_dir).resolve()
         else:
             code_dir = code_dir.resolve()
-        runner = LoopForgeRunner(workspace_root, work_dir, code_dir)
+        result_dir = None
+        if args.result_dir:
+            result_dir = Path(args.result_dir)
+            if not result_dir.is_absolute():
+                result_dir = (Path.cwd().resolve() / result_dir).resolve()
+            else:
+                result_dir = result_dir.resolve()
+        log_dir = None
+        if args.log_dir:
+            log_dir = Path(args.log_dir)
+            if not log_dir.is_absolute():
+                log_dir = (Path.cwd().resolve() / log_dir).resolve()
+            else:
+                log_dir = log_dir.resolve()
+        runner = LoopForgeRunner(workspace_root, work_dir, code_dir, code_dir, result_dir, log_dir)
 
         if args.init:
             print_json(runner.init_workspace())
@@ -1520,6 +1674,8 @@ def main(argv: List[str]) -> int:
             print_json(runner.verify())
         if args.finalize:
             print_json(runner.finalize())
+        if args.run:
+            print_json(runner.run_entrypoint())
     except Exception as exc:
         print_json({"ok": False, "error": str(exc)})
         return 1

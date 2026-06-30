@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORK_DIR="."
-CODE_DIR="code"
+WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
+CODE_DIR="${ROOT_DIR}/code"
 PYTHON_BIN="${PYTHON_BIN:-}"
 
 if [[ -z "$PYTHON_BIN" ]]; then
@@ -20,6 +21,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --work-dir)
       WORK_DIR="$2"
+      ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
       shift 2
       ;;
     --code-dir)
@@ -33,13 +35,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ ! "$CODE_DIR" = /* ]]; then
+  CODE_DIR="${ROOT_DIR}/${CODE_DIR}"
+fi
+
 CODING_SKILL_PATH="$WORK_DIR/skills/code-implementation/SKILL.md"
 CODING_SKILL_READY="no"
 if [[ -f "$CODING_SKILL_PATH" ]]; then
   CODING_SKILL_READY="yes"
 fi
 
-echo "Coding skill: skills/code-implementation/SKILL.md"
+echo "Coding skill: work/skills/code-implementation/SKILL.md"
 echo "Coding skill ready: $CODING_SKILL_READY"
 
 "$PYTHON_BIN" "$WORK_DIR/runtime/loopforge_runner.py" \

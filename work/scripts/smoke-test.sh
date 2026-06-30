@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORK_DIR="."
-CODE_DIR="code"
+WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
+CODE_DIR="${ROOT_DIR}/code"
 ARTIFACT_DIR=""
 PYTHON_BIN="${PYTHON_BIN:-}"
 
@@ -21,6 +22,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --work-dir)
       WORK_DIR="$2"
+      ROOT_DIR="$(cd "${WORK_DIR}/.." && pwd)"
       shift 2
       ;;
     --code-dir)
@@ -34,8 +36,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ ! "$CODE_DIR" = /* ]]; then
+  CODE_DIR="${ROOT_DIR}/${CODE_DIR}"
+fi
+
 ARTIFACT_DIR="$CODE_DIR/.loopforge"
-PARENT_ARTIFACT_DIR="$(cd .. 2>/dev/null && pwd)/code/.loopforge"
+PARENT_ARTIFACT_DIR="${WORK_DIR}/code/.loopforge"
 PARENT_ARTIFACT_PREEXISTED="false"
 
 if [[ -e "$PARENT_ARTIFACT_DIR" ]]; then

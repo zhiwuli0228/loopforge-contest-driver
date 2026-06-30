@@ -1,22 +1,28 @@
 # LoopForge Core
 
-LoopForge is a reusable Loop Engineering hosting platform for unattended AI coding workflows. The contest package uses a single-root layout: this directory is the driver root and `code/` is the nested mutable target project.
+LoopForge is a reusable unattended AI coding framework. In this contest package, the repository root is the submission root, `work/` holds the runnable framework assets, and `code/` is the local fallback source tree.
+
+## Quick Start
+
+For execution and reproduction, start from [INSTRUCTION.md](E:/009workspace/codex/loopforge-contest-driver/INSTRUCTION.md).
+
+The expected root-level execution summary is written to [result/output.md](E:/009workspace/codex/loopforge-contest-driver/result/output.md).
 
 ## Platform Model
 
 ```text
 .
-├── code/   # target project
-├── skills/
-├── runtime/
-├── scripts/
-├── rules/
-└── profiles/
+├── INSTRUCTION.md
+├── code/    # local fallback source tree
+├── work/    # framework assets
+├── result/  # root-level output placeholder
+└── logs/    # root-level execution records
 ```
 
-- The current directory contains instructions, rules, profiles, runtime code, scripts, docs, and templates.
-- `code/` contains the project under repair, migration, development, or analysis.
-- `code/.loopforge/` stores execution artifacts, reports, and snapshots.
+- Root `INSTRUCTION.md` is the only contest entry file.
+- `work/` contains instructions, rules, profiles, runtime code, scripts, docs, and templates.
+- `code/` remains available as the default local target project path.
+- `code/.loopforge/` stores runtime artifacts, reports, and snapshots for actual execution.
 
 ## Design Boundaries
 
@@ -46,28 +52,32 @@ Each mode defines:
 ## Key Files
 
 - `INSTRUCTION.md`
-- `loopforge.config.yaml`
-- `runtime/loopforge_runner.py`
-- `skills/loopforge-driver/SKILL.md`
+- `work/HARNESS.md`
+- `work/loopforge.config.yaml`
+- `work/runtime/loopforge_runner.py`
+- `work/skills/loopforge-driver/SKILL.md`
 
 ## Directory Map
 
 ```text
 .
-├── docs/
-├── profiles/
-├── rules/
-├── runtime/
-├── scripts/
-├── skills/
-└── code/
+├── code/
+├── work/
+│   ├── docs/
+│   ├── profiles/
+│   ├── rules/
+│   ├── runtime/
+│   ├── scripts/
+│   └── skills/
+├── result/
+└── logs/
 ```
 
-Use `profiles/templates/` as starting points during adaptation and `profiles/examples/` as reference configurations for different task classes.
+Use `work/profiles/templates/` as starting points during adaptation and `work/profiles/examples/` as reference configurations for different task classes.
 
 ## Verification Model
 
-LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
+LoopForge does not guess project verification commands. Human adaptation must provide `verification.commands` in `work/loopforge.config.yaml`. The runner executes those commands inside the configured working directory and records the result under `code/.loopforge/state/`.
 
 ## Execution Model
 
@@ -79,9 +89,9 @@ The main session is an orchestrator only. It must not execute stage work in a mo
 
 All stage contracts are stored in:
 
-- `profiles/superspec/consistency-check-stages.yaml`
-- `profiles/superpower/consistency-check-guards.yaml`
-- `rules/loopforge/modes/consistency-check/delegated-execution.md`
+- `work/profiles/superspec/consistency-check-stages.yaml`
+- `work/profiles/superpower/consistency-check-guards.yaml`
+- `work/rules/loopforge/modes/consistency-check/delegated-execution.md`
 
 Runtime artifacts are written to:
 
@@ -105,7 +115,7 @@ Before or during execution, the runner validates:
 - `platform.work_dir` and `platform.code_dir` against the actual invocation
 - `task.mode` against supported modes
 - `task.profile` existence and basic structure
-- profile mode alignment with `loopforge.config.yaml`
+- profile mode alignment with `work/loopforge.config.yaml`
 - verification working-directory placement under `code/`
 - output paths staying under `code/`
 - delegated subagent contract presence for consistency-check stages

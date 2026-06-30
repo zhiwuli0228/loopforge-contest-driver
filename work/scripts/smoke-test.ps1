@@ -1,6 +1,6 @@
 param(
-    [string]$WorkDir = ".",
-    [string]$CodeDir = "code"
+    [string]$WorkDir = (Split-Path -Parent $PSScriptRoot),
+    [string]$CodeDir = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "code")
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,9 +19,15 @@ function Resolve-Python {
     throw "python interpreter not found"
 }
 
+$WorkDir = (Resolve-Path $WorkDir).Path
+$RootDir = Split-Path -Parent $WorkDir
+if (-not [System.IO.Path]::IsPathRooted($CodeDir)) {
+    $CodeDir = Join-Path $RootDir $CodeDir
+}
+
 $PythonCmd = Resolve-Python
 $ArtifactDir = Join-Path $CodeDir ".loopforge"
-$ParentArtifactDir = Join-Path ((Resolve-Path "..").Path) "code/.loopforge"
+$ParentArtifactDir = Join-Path $WorkDir "code/.loopforge"
 $ParentArtifactPreexisted = Test-Path $ParentArtifactDir
 $RunnerPath = Join-Path $WorkDir "runtime/loopforge_runner.py"
 

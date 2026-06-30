@@ -1,0 +1,126 @@
+profile:
+  name: "java-consistency-check-example"
+  class: "example"
+  intent: "Java Maven multi-module design and implementation consistency check"
+
+task:
+  mode: "consistency-check"
+  objective: "Check Java Maven ecommerce implementation consistency against frozen design documents and report or repair controlled drift."
+  language:
+    primary: "java"
+    secondary: []
+  build_tool: "maven"
+
+inputs:
+  required:
+    - "frozen design documents"
+    - "implementation scope"
+  optional:
+    - "api contract"
+    - "entity schema"
+    - "repair authorization"
+    - "module inclusion list"
+    - "module exclusion list"
+
+execution:
+  analysis_first: true
+  controlled_repair_default: true
+  require_traceability_matrix: true
+  require_repair_plan: true
+
+execution_model:
+  type: "delegated-staged"
+  unattended: true
+  human_intervention_allowed: false
+  manual_stage_prompt_allowed: false
+  orchestrator_required: true
+  subagent_required: true
+  fallback_to_main_context_allowed: false
+  missing_subagent_policy: "BLOCKED_WITH_REPORT"
+  parent_direct_execution_allowed: false
+  file_handoff_required: true
+  monolithic_context_forbidden: true
+
+context_policy:
+  max_stage_context: "bounded"
+  return_full_analysis_to_orchestrator: false
+  use_artifact_handoff: true
+  artifact_dir: "code/.loopforge/consistency"
+
+scope:
+  included_modules:
+    - "gulimall-product"
+    - "gulimall-common"
+  excluded_modules:
+    - "gulimall-order"
+    - "gulimall-ware"
+    - "gulimall-coupon"
+    - "gulimall-member"
+    - "gulimall-gateway"
+    - "gulimall-third-party"
+    - "renren-fast"
+    - "renren-generator"
+
+design_sources:
+  - "code/docs/01-scope.md"
+  - "code/docs/02-domain-rules.md"
+  - "code/docs/03-api-contract.md"
+  - "code/docs/04-error-codes.md"
+  - "code/docs/05-test-scenarios.md"
+
+implementation_targets:
+  - "code/gulimall-product/src/main/java"
+  - "code/gulimall-common/src/main/java"
+
+required_artifacts:
+  - "code/.loopforge/consistency/00-preflight-report.md"
+  - "code/.loopforge/consistency/01-design-summary.md"
+  - "code/.loopforge/consistency/02-implementation-mapping.md"
+  - "code/.loopforge/consistency/03-drift-report.md"
+  - "code/.loopforge/consistency/04-repair-plan.md"
+  - "code/.loopforge/consistency/05-patch-summary.md"
+  - "code/.loopforge/consistency/06-verification-report.md"
+  - "code/.loopforge/consistency/07-final-evidence-index.md"
+  - "code/.loopforge/reports/final-report.md"
+
+coding_skill:
+  required: true
+  skill: "skills/code-implementation/SKILL.md"
+  patch_summary: "code/.loopforge/consistency/05-patch-summary.md"
+
+repair_policy:
+  minimal_patch: true
+  allow_common_module_change: true
+  forbid_unrelated_refactor: true
+  forbid_design_doc_change: true
+  forbid_large_scale_rewrite: true
+
+verification:
+  strategy: "human-configured"
+  command_source: "loopforge.config.yaml"
+  working_directory_hint: "code"
+  allow_degraded_verification: true
+  require_failure_reason: true
+  require_stdout_stderr_summary: true
+  evidence_focus:
+    - "traceability quality"
+    - "drift classification quality"
+    - "verification command evidence"
+  commands:
+    - "mvn -pl gulimall-product -am -DskipTests package"
+
+verification_policy:
+  command_source: "loopforge.config.yaml"
+  allow_degraded_verification: true
+  require_failure_reason: true
+  require_stdout_stderr_summary: true
+
+reporting:
+  final_report: "code/.loopforge/reports/final-report.md"
+  highlight:
+    - "design summary"
+    - "implementation mapping"
+    - "traceability matrix"
+    - "drift categories"
+    - "repair plan"
+    - "verification evidence"

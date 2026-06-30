@@ -4,22 +4,22 @@ For local development outside a contest environment:
 
 1. keep this repository root under version control as the platform package
 2. place the working repository under `code/`
-3. configure `loopforge.config.yaml` from the repository root
+3. configure `work/loopforge.config.yaml` from the repository root
 4. run the runner directly for deterministic steps
 
 Example:
 
 ```bash
-python runtime/loopforge_runner.py --work-dir . --code-dir code --init --self-check --detect
-python runtime/loopforge_runner.py --work-dir . --code-dir code --snapshot local-before-change
-python runtime/loopforge_runner.py --work-dir . --code-dir code --verify --finalize
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --init --self-check --detect
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --snapshot local-before-change
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --verify --finalize
 ```
 
 Windows entrypoints:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
-powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
+powershell -ExecutionPolicy Bypass -File work/scripts/bootstrap.ps1
+powershell -ExecutionPolicy Bypass -File work/scripts/smoke-test.ps1
 ```
 
 If `verification.commands` is still a placeholder, `--verify` should end in `BLOCKED_WITH_REPORT`. That is expected behavior for an unadapted package.
@@ -27,7 +27,7 @@ If `verification.commands` is still a placeholder, `--verify` should end in `BLO
 For a minimal platform acceptance check:
 
 ```bash
-bash scripts/smoke-test.sh
+bash work/scripts/smoke-test.sh
 ```
 
 Expected smoke-test outcomes:
@@ -46,7 +46,7 @@ Expected smoke-test outcomes:
 For negative-path acceptance checks:
 
 ```bash
-python scripts/runner-negative-check.py
+python work/scripts/runner-negative-check.py
 ```
 
 Expected negative-path outcomes:

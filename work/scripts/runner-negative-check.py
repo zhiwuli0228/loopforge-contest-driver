@@ -28,15 +28,10 @@ def make_workspace(repo_root: Path) -> Path:
         "INSTRUCTION.md",
         "README.md",
         "SUBMISSION.md",
-        "loopforge.config.yaml",
         "code",
-        "docs",
-        "profiles",
-        "rules",
-        "runtime",
-        "scripts",
-        "skills",
-        "config-templates",
+        "work",
+        "result",
+        "logs",
     ]
     for name in copy_names:
         source = repo_root / name
@@ -52,9 +47,9 @@ def run_runner(workspace: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
-            "runtime/loopforge_runner.py",
+            "work/runtime/loopforge_runner.py",
             "--work-dir",
-            ".",
+            "work",
             "--code-dir",
             "code",
             "--init",
@@ -74,7 +69,7 @@ def read_json(path: Path) -> Dict[str, object]:
 
 
 def scenario_missing_profile(workspace: Path) -> None:
-    config_path = workspace / "loopforge.config.yaml"
+    config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
         '  profile: "profiles/templates/feature-development.yaml"',
@@ -83,17 +78,17 @@ def scenario_missing_profile(workspace: Path) -> None:
 
 
 def scenario_verification_outside_code(workspace: Path) -> None:
-    config_path = workspace / "loopforge.config.yaml"
+    config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(config_path, '  working_directory: "code"', '  working_directory: "."')
 
 
 def scenario_profile_mode_mismatch(workspace: Path) -> None:
-    profile_path = workspace / "profiles" / "templates" / "feature-development.yaml"
+    profile_path = workspace / "work" / "profiles" / "templates" / "feature-development.yaml"
     replace_once(profile_path, '  mode: "feature-development"', '  mode: "migration"')
 
 
 def scenario_output_outside_code(workspace: Path) -> None:
-    config_path = workspace / "loopforge.config.yaml"
+    config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
         '  final_report: "code/.loopforge/reports/final-report.md"',
@@ -102,12 +97,12 @@ def scenario_output_outside_code(workspace: Path) -> None:
 
 
 def scenario_missing_mode_rule(workspace: Path) -> None:
-    target = workspace / "rules" / "loopforge" / "modes" / "feature-development" / "04-final-report.md"
+    target = workspace / "work" / "rules" / "loopforge" / "modes" / "feature-development" / "04-final-report.md"
     target.unlink()
 
 
 def scenario_missing_all_verification_commands(workspace: Path) -> None:
-    config_path = workspace / "loopforge.config.yaml"
+    config_path = workspace / "work" / "loopforge.config.yaml"
     replace_once(
         config_path,
         '  commands:\n    default:\n      - "fill-by-human-before-execution"\n    linux:\n      - "fill-by-human-before-linux-submission"\n    windows:\n      - "fill-by-human-before-windows-local-test"',

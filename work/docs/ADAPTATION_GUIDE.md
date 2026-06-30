@@ -9,12 +9,12 @@
    - `defect-repair`
    - `consistency-check`
    - `skill-generation`
-3. Select or clone a suitable template from `profiles/templates/`.
+3. Select or clone a suitable template from `work/profiles/templates/`.
 4. Point `task.profile` at the chosen profile.
-5. Update `loopforge.config.yaml` with task metadata and real verification commands.
+5. Update `work/loopforge.config.yaml` with task metadata and real verification commands.
 6. Confirm that `execution.allow_code_generation` matches the intended run.
-7. Use `scripts/bootstrap.sh` for Linux submission-oriented runs from the repository root.
-8. Use `scripts/bootstrap.ps1` for Windows local development and smoke testing from the repository root.
+7. Use `work/scripts/bootstrap.sh` for Linux submission-oriented runs from the repository root.
+8. Use `work/scripts/bootstrap.ps1` for Windows local development and smoke testing from the repository root.
 9. Run the LoopForge skill and let it operate only inside `code/`.
 
 ## What Must Be Human-Adapted
@@ -57,7 +57,7 @@
 The runner now checks the adapted package for basic contract validity. In practice this means:
 
 - `task.profile` must exist under the LoopForge root
-- profile `task.mode` must match `loopforge.config.yaml`
+- profile `task.mode` must match `work/loopforge.config.yaml`
 - `verification.working_directory` must stay inside `code/`
 - configured report and snapshot outputs must stay inside `code/`
 
@@ -69,5 +69,5 @@ The runner also checks:
 - required core rule files
 - required files for the selected mode directory
 - basic profile section completeness
-- template/example inventory counts for `profiles/`
+- template/example inventory counts for `work/profiles/`
 - platform-specific verification command selection and fallback behavior

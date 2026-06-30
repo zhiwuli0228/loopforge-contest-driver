@@ -1,6 +1,6 @@
 ---
 name: loopforge-driver
-description: Execute LoopForge hosted tasks from INSTRUCTION.md and loopforge.config.yaml. Use when asked to run LoopForge, start hosted execution, execute contest task, or run unattended repair and verification.
+description: Execute LoopForge hosted tasks from INSTRUCTION.md and work/loopforge.config.yaml. Use when asked to run LoopForge, start hosted execution, execute contest task, or run unattended repair and verification.
 ---
 
 # LoopForge Driver Skill
@@ -11,9 +11,10 @@ This is the canonical contest skill.
 
 Execution root:
 
-- Current directory: `.`
-- Target project: `code/`
-- Runtime artifacts: `code/.loopforge/`
+- Repository root contains `INSTRUCTION.md`, `code/`, `work/`, `result/`, and `logs/`
+- Framework assets live under `work/`
+- Target project defaults to `code/`
+- Runtime artifacts live under `code/.loopforge/`
 
 Canonical entry:
 
@@ -21,7 +22,7 @@ Canonical entry:
 
 Configuration:
 
-- `loopforge.config.yaml`
+- `work/loopforge.config.yaml`
 
 Runtime output:
 
@@ -29,23 +30,23 @@ Runtime output:
 
 ## Mission
 
-Drive an unattended LoopForge run from the current root and apply task changes only inside `code/`.
+Drive an unattended LoopForge run from the repository root while loading framework assets only from `work/` and applying task changes only inside `code/`.
 
 ## Required Inputs
 
 - `INSTRUCTION.md`
-- `loopforge.config.yaml`
-- `rules/loopforge/core/`
-- `rules/loopforge/modes/{task.mode}/`
-- relevant adapter rules under `rules/loopforge/adapters/`
-- the configured profile under `profiles/`
+- `work/loopforge.config.yaml`
+- `work/rules/loopforge/core/`
+- `work/rules/loopforge/modes/{task.mode}/`
+- relevant adapter rules under `work/rules/loopforge/adapters/`
+- the configured profile under `work/profiles/`
 
 ## Hard Constraints
 
 - Do not modify static files in the current LoopForge root.
 - Do not generate or rewrite rules, profiles, or configuration.
 - Do not guess verification commands.
-- Read `loopforge.config.yaml` before selecting adapters or verification steps.
+- Read `work/loopforge.config.yaml` before selecting adapters or verification steps.
 - Treat `code/docs/` design sources as frozen unless the human explicitly changed the task boundary outside LoopForge execution.
 - Do not create commits, pushes, pull requests, or submissions.
 - Do not write outside `code/` except for reading LoopForge static assets from the current root.
@@ -62,17 +63,17 @@ The agent must follow these rules:
 1. Do not hard-code Windows-only paths.
 2. Do not hard-code Linux-only paths except in Linux submission scripts.
 3. Use `/` in configuration paths.
-4. Treat `scripts/bootstrap.sh` as the official Linux entry.
-5. Treat `scripts/bootstrap.ps1` as the Windows development entry.
+4. Treat `work/scripts/bootstrap.sh` as the official Linux entry.
+5. Treat `work/scripts/bootstrap.ps1` as the Windows development entry.
 6. Use the Python runner for cross-platform deterministic actions.
 7. Do not modify verification commands.
-8. Select platform-specific commands from `loopforge.config.yaml`.
+8. Select platform-specific commands from `work/loopforge.config.yaml`.
 9. If a platform-specific verification command is missing, fall back to default commands.
 10. If no command is configured, generate `BLOCKED_WITH_REPORT`.
 
 ## Delegated Staged Execution
 
-When `task.mode` in `loopforge.config.yaml` is `consistency-check`, this skill must use delegated staged execution.
+When `task.mode` in `work/loopforge.config.yaml` is `consistency-check`, this skill must use delegated staged execution.
 
 The primary agent must act as an orchestrator.
 
@@ -90,7 +91,7 @@ Subagent contract:
 
 The orchestrator must load:
 
-- `loopforge.config.yaml`
+- `work/loopforge.config.yaml`
 - the configured profile
 - the configured SuperSpec file
 - the configured SuperPower file
@@ -193,33 +194,33 @@ Do not depend on internal implementation details of the coding skill.
 Read the platform contract in this order:
 
 1. `INSTRUCTION.md`
-2. `loopforge.config.yaml`
-3. `rules/loopforge/core/00-core.md`
-4. `rules/loopforge/core/01-work-code-boundary.md`
-5. `rules/loopforge/core/02-static-rule-ownership.md`
-6. `rules/loopforge/core/03-verification-contract.md`
-7. `rules/loopforge/core/04-gate-policy.md`
-8. `rules/loopforge/core/05-final-report.md`
-9. `rules/loopforge/core/06-code-generation-boundary.md`
-10. all files under `rules/loopforge/modes/{task.mode}/`
-11. relevant files under `rules/loopforge/adapters/`, including Java and Maven rules for Java Maven runs
-12. the configured profile under `profiles/`
+2. `work/loopforge.config.yaml`
+3. `work/rules/loopforge/core/00-core.md`
+4. `work/rules/loopforge/core/01-work-code-boundary.md`
+5. `work/rules/loopforge/core/02-static-rule-ownership.md`
+6. `work/rules/loopforge/core/03-verification-contract.md`
+7. `work/rules/loopforge/core/04-gate-policy.md`
+8. `work/rules/loopforge/core/05-final-report.md`
+9. `work/rules/loopforge/core/06-code-generation-boundary.md`
+10. all files under `work/rules/loopforge/modes/{task.mode}/`
+11. relevant files under `work/rules/loopforge/adapters/`, including Java and Maven rules for Java Maven runs
+12. the configured profile under `work/profiles/`
 
 ## Required Procedure
 
 1. Read `INSTRUCTION.md`.
-2. Read `loopforge.config.yaml`.
+2. Read `work/loopforge.config.yaml`.
 3. Load all core rules in the declared order.
-4. Load the full rule set for `task.mode` from `rules/loopforge/modes/{mode}/`.
+4. Load the full rule set for `task.mode` from `work/rules/loopforge/modes/{mode}/`.
 5. Load adapter rules relevant to the configured language or platform.
 6. For Java runs, load both `adapters/java.md` and `adapters/maven.md` when Maven is detected or configured.
-7. Read the referenced profile from `profiles/`.
-8. Confirm the run is operating in a valid single-root layout with nested `code/`.
+7. Read the referenced profile from `work/profiles/`.
+8. Confirm the run is operating in a valid contest-root layout with framework assets under `work/`.
 9. Inspect `code/` and plan work according to the selected mode.
 10. Modify only files inside `code/`.
 11. Record mode-specific planning and analysis artifacts under `code/.loopforge/plan/` or another runner-compatible path referenced from `mode-artifacts.md`.
 12. Maintain `code/.loopforge/plan/mode-artifacts.md` as the index of mode-specific artifacts produced during the run.
-13. Use `runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
+13. Use `work/runtime/loopforge_runner.py` with `--work-dir` and `--code-dir` to initialize artifacts, snapshot diffs, run configured verification, and finalize the report.
 14. If verification cannot pass, still leave a blocked final report rather than inventing a verifier.
 15. Leave `code/.loopforge/reports/final-report.md` behind and stop.
 
@@ -235,9 +236,9 @@ Read the platform contract in this order:
 ## Runner Invocation Pattern
 
 ```text
-python runtime/loopforge_runner.py --work-dir . --code-dir code --init --self-check --detect
-python runtime/loopforge_runner.py --work-dir . --code-dir code --snapshot before-change
-python runtime/loopforge_runner.py --work-dir . --code-dir code --verify --finalize
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --init --self-check --detect
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --snapshot before-change
+python work/runtime/loopforge_runner.py --work-dir work --code-dir code --verify --finalize
 ```
 
 ## Output Expectations
