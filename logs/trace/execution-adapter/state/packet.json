@@ -1,0 +1,210 @@
+{
+  "paths": {
+    "workspace_root": ".",
+    "work_dir": "./work",
+    "source_root": "./work/code/FlashDB",
+    "result_dir": "./work/result",
+    "log_dir": "./work/logs",
+    "trace_dir": "./work/logs/trace",
+    "artifact_dir": "./work/logs/trace/execution-adapter",
+    "migration_trace_dir": "./work/logs/trace/c-to-rust",
+    "output_base_dir": "./work/output",
+    "project_dir": "./work/output/flashDB_rust"
+  },
+  "source_layout": {
+    "readme_path": "./work/code/FlashDB/README.md",
+    "fallback_readme_path": "./work/code/README.md",
+    "project_root": "",
+    "source_dirs": [],
+    "test_dirs": []
+  },
+  "readme_candidates": [
+    "README.md",
+    "README",
+    "READNE.md",
+    "readme.md",
+    "Readme.md"
+  ],
+  "max_repair_rounds": 3,
+  "source_project_name": "Introduction",
+  "source_language": "c",
+  "target_language": "rust",
+  "output_project_name": "flashDB_rust",
+  "output_project_dir": "./work/output/flashDB_rust",
+  "source_dirs": [
+    "source"
+  ],
+  "test_dirs": [
+    "test"
+  ],
+  "build_commands": [
+    "cargo build",
+    "cargo test"
+  ],
+  "unsafe_ratio_max": 0.1,
+  "api_name_hints": [],
+  "module_hints": [
+    "work",
+    "code",
+    "FlashDB"
+  ],
+  "issues": [
+    {
+      "code": "source_layout_missing",
+      "detail": "Expected source/test directories under ./work/code/FlashDB or an immediate child directory"
+    },
+    {
+      "code": "source_files_missing",
+      "detail": "No C source files were detected in the resolved source directories"
+    },
+    {
+      "code": "test_files_missing",
+      "detail": "No C test files were detected in the resolved test directories"
+    },
+    {
+      "code": "semantic_template_missing",
+      "detail": "The source tree does not expose a usable C source/test layout for migration"
+    },
+    {
+      "code": "source_analysis_gate_failed",
+      "detail": "failed stages: requirement, structure, capability, test_coverage"
+    }
+  ],
+  "warnings": [],
+  "metadata": {
+    "source_root_resolution": "./work/code/FlashDB",
+    "selected_readme_path": "./work/code/FlashDB/README.md",
+    "fallback_readme_path": "./work/code/README.md"
+  },
+  "gates": {
+    "source_analysis": {
+      "name": "source_analysis",
+      "passed": false,
+      "detail": "strict source analysis verify gate",
+      "payload": {
+        "passed": false,
+        "status": "BLOCKED_WITH_REPORT",
+        "first_blocking_point": "C_SOURCE_ANALYSIS",
+        "failed_stages": [
+          "requirement",
+          "structure",
+          "capability",
+          "test_coverage"
+        ],
+        "verifications": {
+          "requirement": {
+            "stage": "requirement",
+            "passed": false,
+            "checks": {
+              "source_root_exists": true,
+              "source_root_is_not_work_code": true,
+              "source_readme_identified": true,
+              "source_dirs_exist": false,
+              "test_dirs_exist": false,
+              "output_name_has_evidence": true,
+              "output_dir_is_canonical": true
+            },
+            "metrics": {},
+            "failures": [
+              "source_dirs_exist",
+              "test_dirs_exist"
+            ]
+          },
+          "structure": {
+            "stage": "structure",
+            "passed": false,
+            "checks": {
+              "core_c_files_present": false,
+              "public_apis_present": false,
+              "all_public_apis_defined": true,
+              "all_public_apis_have_evidence": true
+            },
+            "metrics": {
+              "public_api_count": 0,
+              "definition_count": 0
+            },
+            "failures": [
+              "core_c_files_present",
+              "public_apis_present"
+            ]
+          },
+          "data_model": {
+            "stage": "data_model",
+            "passed": true,
+            "checks": {
+              "all_struct_fields_named": true,
+              "all_structs_have_evidence": true
+            },
+            "metrics": {
+              "struct_count": 0
+            },
+            "failures": []
+          },
+          "api_behavior": {
+            "stage": "api_behavior",
+            "passed": true,
+            "checks": {
+              "behavior_coverage_100_percent": true,
+              "all_apis_classified": true,
+              "mutations_have_side_effects": true,
+              "all_behaviors_have_evidence": true
+            },
+            "metrics": {
+              "coverage": 0.0
+            },
+            "failures": []
+          },
+          "capability": {
+            "stage": "capability",
+            "passed": false,
+            "checks": {
+              "capabilities_present": false,
+              "api_membership_100_percent": true,
+              "normal_paths_present": true,
+              "implementation_plans_present": true,
+              "coverage_plans_present": true,
+              "all_capabilities_have_evidence": true
+            },
+            "metrics": {
+              "capability_count": 0
+            },
+            "failures": [
+              "capabilities_present"
+            ]
+          },
+          "state_model": {
+            "stage": "state_model",
+            "passed": true,
+            "checks": {
+              "mutation_transition_coverage_100_percent": true,
+              "all_transitions_have_evidence": true,
+              "failure_preservation_explicit": true
+            },
+            "metrics": {
+              "mutating_api_count": 0,
+              "transition_count": 0
+            },
+            "failures": []
+          },
+          "test_coverage": {
+            "stage": "test_coverage",
+            "passed": false,
+            "checks": {
+              "source_tests_present": false,
+              "source_assertions_present": false,
+              "every_capability_has_test_or_plan": true
+            },
+            "metrics": {
+              "covered_api_count": 0,
+              "derived_test_required_count": 0
+            },
+            "failures": [
+              "source_tests_present",
+              "source_assertions_present"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

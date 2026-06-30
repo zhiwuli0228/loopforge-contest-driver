@@ -1,0 +1,17 @@
+{
+  "stage": "test_coverage",
+  "passed": false,
+  "checks": {
+    "source_tests_present": false,
+    "source_assertions_present": false,
+    "every_capability_has_test_or_plan": true
+  },
+  "metrics": {
+    "covered_api_count": 0,
+    "derived_test_required_count": 0
+  },
+  "failures": [
+    "source_tests_present",
+    "source_assertions_present"
+  ]
+}

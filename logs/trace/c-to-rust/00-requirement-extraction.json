@@ -1,0 +1,20 @@
+{
+  "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\code\\FlashDB",
+  "source_readme": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\code\\FlashDB\\README.md",
+  "task_requirement_readme": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\code\\README.md",
+  "source_dirs": [],
+  "test_dirs": [],
+  "output_project_name": "flashDB_rust",
+  "output_project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\output\\flashDB_rust",
+  "build_commands": [
+    "cargo build",
+    "cargo test"
+  ],
+  "unsafe_limit": 0.1,
+  "evidence": [
+    {
+      "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\work\\code\\FlashDB\\README.md",
+      "kind": "source_readme"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "stage": "api_behavior",
+  "passed": true,
+  "checks": {
+    "behavior_coverage_100_percent": true,
+    "all_apis_classified": true,
+    "mutations_have_side_effects": true,
+    "all_behaviors_have_evidence": true
+  },
+  "metrics": {
+    "coverage": 0.0
+  },
+  "failures": []
+}
