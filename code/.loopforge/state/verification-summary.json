@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "status": "blocked-with-report",
+  "detected_os": "windows",
+  "selected_command_profile": "",
+  "fallback_used": false,
+  "working_directory": "E:\\009workspace\\codex\\loopforge-contest-driver\\code",
+  "timeout_seconds": 300,
+  "commands_attempted": [],
+  "source_readme": {
+    "found": false,
+    "selected_path": "",
+    "candidates": [
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\README",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\readme.md",
+      "E:\\009workspace\\codex\\loopforge-contest-driver\\code\\Readme.md"
+    ]
+  },
+  "reason": "source README not found; no runnable verification commands were derived from source README or framework defaults"
+}

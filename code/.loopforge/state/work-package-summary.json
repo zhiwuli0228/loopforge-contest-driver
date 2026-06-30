@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "required_files_present": [
+    "INSTRUCTION.md",
+    "README.md",
+    "SUBMISSION.md",
+    "loopforge.config.yaml",
+    "HARNESS.md",
+    "runtime/loopforge_runner.py",
+    "scripts/bootstrap.sh",
+    "scripts/bootstrap.ps1",
+    "scripts/smoke-test.sh",
+    "scripts/smoke-test.ps1",
+    "skills/loopforge-driver/SKILL.md",
+    "docs/DESIGN.md",
+    "docs/ADAPTATION_GUIDE.md",
+    "docs/CROSS_PLATFORM_DESIGN.md",
+    "docs/DAILY_DEV_USAGE.md",
+    "profiles/README.md",
+    "subagent/opencode-preflight-subagent.md",
+    "subagent/opencode-design-read-subagent.md",
+    "subagent/opencode-implementation-map-subagent.md",
+    "subagent/opencode-drift-analysis-subagent.md",
+    "subagent/opencode-repair-plan-subagent.md",
+    "subagent/opencode-patch-subagent.md",
+    "subagent/opencode-verification-subagent.md",
+    "subagent/opencode-final-report-subagent.md",
+    "rules/loopforge/core/00-core.md",
+    "rules/loopforge/core/01-work-code-boundary.md",
+    "rules/loopforge/core/02-static-rule-ownership.md",
+    "rules/loopforge/core/03-verification-contract.md",
+    "rules/loopforge/core/04-gate-policy.md",
+    "rules/loopforge/core/05-final-report.md",
+    "rules/loopforge/core/06-code-generation-boundary.md"
+  ],
+  "required_files_missing": [],
+  "available_modes": {
+    "consistency-check": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ],
+    "defect-repair": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ],
+    "feature-development": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ],
+    "migration": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ],
+    "skill-generation": [
+      "00-flow.md",
+      "01-phase-policy.md",
+      "02-required-artifacts.md",
+      "03-forbidden-actions.md",
+      "04-final-report.md"
+    ]
+  },
+  "configured_mode": "feature-development",
+  "template_count": 5,
+  "example_count": 5
+}

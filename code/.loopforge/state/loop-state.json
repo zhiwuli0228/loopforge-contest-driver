@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "phase": "FINALIZE",
+  "result": "BLOCKED_WITH_REPORT",
+  "created_at": "2026-06-30T09:10:24Z",
+  "updated_at": "2026-06-30T09:33:40Z",
+  "task": {
+    "name": "fill-by-human",
+    "mode": "feature-development",
+    "profile": "profiles/templates/feature-development.yaml",
+    "language": {
+      "primary": "fill-by-human",
+      "secondary": []
+    },
+    "objective": "fill-by-human"
+  },
+  "project_type": "unknown"
+}
