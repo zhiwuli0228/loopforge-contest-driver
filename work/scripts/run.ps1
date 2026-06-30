@@ -9,42 +9,147 @@ $WorkDir = Join-Path $RootDir "work"
 $ResultDir = Join-Path $RootDir "result"
 $LogDir = Join-Path $RootDir "logs"
 
-if (-not $SourceRoot -or $SourceRoot.Trim() -eq "") {
-    $SourceRoot = ""
+$ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
+
+function Write-LoopForgeError {
+    param([string]$Message)
+    Write-Host "[LoopForge] ERROR: $Message"
 }
 
-New-Item -ItemType Directory -Force -Path (Join-Path $ResultDir "issues") | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace") | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace\c-to-rust") | Out-Null
-if (-not (Test-Path (Join-Path $LogDir "interaction.md"))) {
-    Set-Content -Path (Join-Path $LogDir "interaction.md") -Value "# Interaction Log`r`n`r`nNo manual interaction.`r`n"
-}
-
-$RunnerArgs = @()
-if ($SourceRoot -and $SourceRoot.Trim() -ne "") {
-    $RunnerArgs = @("--source-root", $SourceRoot)
-} elseif ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
-    $RunnerArgs = @("--source-root", $env:SOURCE_ROOT)
-} else {
-    $FallbackCandidates = @(
-        (Join-Path $RootDir ".code\source-project"),
-        (Join-Path $RootDir "work\code\source-project"),
-        (Join-Path $RootDir "code\source-project")
-    )
-    foreach ($FallbackRoot in $FallbackCandidates) {
-        if (Test-Path $FallbackRoot) {
-            $RunnerArgs = @("--source-root", $FallbackRoot)
-            break
+function Test-ReadmeCandidate {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    foreach ($candidate in $ReadmeCandidates) {
+        if (Test-Path -LiteralPath (Join-Path $Path $candidate)) {
+            return $true
         }
     }
-    if (-not $RunnerArgs) {
-        $RunnerArgs = @()
-    }
+    return $false
 }
 
-& python (Join-Path $WorkDir "runtime\loopforge_runner.py") `
-  --work-dir $WorkDir `
-  --result-dir $ResultDir `
-  --log-dir $LogDir `
-  @RunnerArgs `
-  --run
+function Test-SourceRootLike {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    if (Test-ReadmeCandidate -Path $Path) {
+        return $true
+    }
+
+    if ((Test-Path -LiteralPath (Join-Path $Path "src")) -and (Test-Path -LiteralPath (Join-Path $Path "tests"))) {
+        return $true
+    }
+
+    foreach ($candidate in $ReadmeCandidates) {
+        $readmePath = Join-Path $Path $candidate
+        if (Test-Path -LiteralPath $readmePath) {
+            $readmeText = Get-Content -LiteralPath $readmePath -Raw -ErrorAction SilentlyContinue
+            if ($readmeText -match '(?im)^\s*(?:-|\*)?\s*(?:source|src|test|tests)\s*:\s*(.+)$') {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+function Resolve-UniqueSourceChild {
+    param([Parameter(Mandatory = $true)][string]$BasePath)
+
+    if (-not (Test-Path -LiteralPath $BasePath)) {
+        return $null
+    }
+
+    $children = @(Get-ChildItem -LiteralPath $BasePath -Directory -ErrorAction SilentlyContinue)
+    $validChildren = @()
+    foreach ($child in $children) {
+        if (Test-SourceRootLike -Path $child.FullName) {
+            $validChildren += $child.FullName
+        }
+    }
+
+    if ($validChildren.Count -eq 1) {
+        return (Resolve-Path -LiteralPath $validChildren[0]).Path
+    }
+
+    return $null
+}
+
+function Resolve-SourceRoot {
+    param([string]$ExplicitSourceRoot)
+
+    if ($ExplicitSourceRoot -and $ExplicitSourceRoot.Trim() -ne "") {
+        $candidate = $ExplicitSourceRoot.Trim()
+        if (-not (Test-Path -LiteralPath $candidate)) {
+            Write-LoopForgeError "SOURCE_ROOT not found: $candidate"
+            exit 1
+        }
+        $resolved = (Resolve-Path -LiteralPath $candidate).Path
+        if ($resolved -match '(?i)\\work\\code$|/work/code$') {
+            Write-LoopForgeError "work/code is a task requirement directory, not a valid SOURCE_ROOT."
+            exit 1
+        }
+        if (-not (Test-SourceRootLike -Path $resolved)) {
+            Write-LoopForgeError "source README/READNE not found under SOURCE_ROOT"
+            exit 1
+        }
+        return $resolved
+    }
+
+    $uniqueFromCode = Resolve-UniqueSourceChild -BasePath (Join-Path $RootDir "code")
+    if ($uniqueFromCode) {
+        return $uniqueFromCode
+    }
+
+    if ($env:SOURCE_ROOT -and $env:SOURCE_ROOT.Trim() -ne "") {
+        return (Resolve-SourceRoot -ExplicitSourceRoot $env:SOURCE_ROOT.Trim())
+    }
+
+    if (Test-SourceRootLike -Path (Join-Path $RootDir "code")) {
+        return (Resolve-Path -LiteralPath (Join-Path $RootDir "code")).Path
+    }
+
+    Write-LoopForgeError "SOURCE_ROOT not found: code"
+    exit 1
+}
+
+New-Item -ItemType Directory -Force -Path $ResultDir | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $ResultDir "issues") | Out-Null
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace\experiments") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $LogDir "trace\c-to-rust") | Out-Null
+
+$interactionLogPath = Join-Path $LogDir "interaction.md"
+if (-not (Test-Path -LiteralPath $interactionLogPath)) {
+    Set-Content -LiteralPath $interactionLogPath -Value "# Interaction Log`r`n`r`nNo manual interaction.`r`n" -Encoding UTF8
+}
+
+$ResolvedSourceRoot = Resolve-SourceRoot -ExplicitSourceRoot $SourceRoot
+Write-Host "[LoopForge] SOURCE_ROOT=$ResolvedSourceRoot"
+
+$pythonCmd = $null
+if (Get-Command python -ErrorAction SilentlyContinue) {
+    $pythonCmd = "python"
+} elseif (Get-Command py -ErrorAction SilentlyContinue) {
+    $pythonCmd = "py"
+}
+
+if (-not $pythonCmd) {
+    Write-LoopForgeError "Python is not available."
+    exit 1
+}
+
+$runnerPath = Join-Path $WorkDir "runtime\loopforge_runner.py"
+$runnerArgs = @(
+    $runnerPath,
+    "--work-dir", "work",
+    "--result-dir", "result",
+    "--log-dir", "logs",
+    "--source-root", $ResolvedSourceRoot,
+    "--run"
+)
+
+& $pythonCmd @runnerArgs
+exit $LASTEXITCODE
