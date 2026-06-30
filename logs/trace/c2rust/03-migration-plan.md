@@ -1,10 +1,10 @@
 # Migration Plan
 
 - support_level: `flashdb-kv-template`
+- semantic_equivalence_claim: `bootstrap_skeleton_only`
 
 ## Crate Layout
 
-- `flashDB_rust/Cargo.toml`
 - `flashDB_rust/src/lib.rs`
 - `flashDB_rust/src/flashdb.rs`
 - `flashDB_rust/tests/flashdb_semantics.rs`
@@ -15,4 +15,4 @@
 
 ## Unsupported Or Degraded Behaviors
 
-- No degraded behavior is declared for the local fallback template.
+- The generated project is only a bootstrap skeleton and must not claim full semantic equivalence.

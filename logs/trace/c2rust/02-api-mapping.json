@@ -1,0 +1,18 @@
+{
+  "support_level": "flashdb-kv-template",
+  "mapped_apis": [
+    "flashdb_count",
+    "flashdb_delete",
+    "flashdb_get",
+    "flashdb_new",
+    "flashdb_set"
+  ],
+  "unsupported_apis": [],
+  "source_coverage": {
+    "source_file_count": 2,
+    "test_file_count": 1,
+    "mapped_api_count": 5,
+    "unsupported_api_count": 0
+  },
+  "bootstrap_only": true
+}

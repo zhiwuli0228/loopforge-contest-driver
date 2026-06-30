@@ -2,4 +2,4 @@
 
 ## Scenario Mapping
 
-- `tests/test_flashdb.c` -> `tests/flashdb_semantics.rs` (equivalent coverage with assertion-backed integration tests)
+- `tests/test_flashdb.c` -> `tests/flashdb_semantics.rs` (bootstrap skeleton coverage with assertion-backed integration tests, coverage=`partial_bootstrap`)

@@ -32,6 +32,9 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
     kv_api_names = [name for name in api_names if name.lower().startswith("fdb_") or "flashdb" in name.lower()]
     if not kv_api_names:
         kv_api_names = ["flashdb_new", "flashdb_set", "flashdb_get", "flashdb_delete", "flashdb_count"]
+    supported_api_set = {"flashdb_new", "flashdb_set", "flashdb_get", "flashdb_delete", "flashdb_count"}
+    mapped_apis = [name for name in kv_api_names if name in supported_api_set]
+    unsupported_apis = [name for name in api_names if name not in supported_api_set]
 
     cargo_toml = """[package]
 name = "flashdb_rust"
@@ -146,16 +149,27 @@ fn deleting_a_key_removes_it_from_the_store() {
         {
             "source_test": source_test,
             "rust_test_file": "tests/flashdb_semantics.rs",
-            "mapping": "equivalent coverage with assertion-backed integration tests",
+            "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
+            "coverage_level": "partial_bootstrap",
         }
         for source_test in analysis.get("test_files", [])
     ]
 
     module_list = ["src/lib.rs", f"src/{module_name}.rs", "tests/flashdb_semantics.rs"]
+    source_coverage = {
+        "source_file_count": len(analysis.get("src_files", [])),
+        "test_file_count": len(analysis.get("test_files", [])),
+        "mapped_api_count": len(mapped_apis),
+        "unsupported_api_count": len(unsupported_apis),
+    }
     return {
         "project_dir": str(project_dir),
         "module_name": module_name,
-        "mapped_apis": kv_api_names,
+        "mapped_apis": mapped_apis,
+        "unsupported_apis": unsupported_apis,
+        "source_coverage": source_coverage,
         "module_list": module_list,
         "test_mapping": test_mapping,
+        "bootstrap_only": True,
+        "semantic_equivalence_claim": "bootstrap_skeleton_only",
     }

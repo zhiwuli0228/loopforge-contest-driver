@@ -45,6 +45,8 @@ if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
   elif [[ -d "${ROOT_DIR}/.code/FlashDB" ]]; then
     SOURCE_ROOT_VALUE="${ROOT_DIR}/.code/FlashDB"
+  elif [[ -d "${ROOT_DIR}/code/FlashDB" ]]; then
+    SOURCE_ROOT_VALUE="${ROOT_DIR}/code/FlashDB"
   else
     SOURCE_ROOT_VALUE=""
   fi

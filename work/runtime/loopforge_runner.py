@@ -28,7 +28,7 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
 ]
-REQUIRED_RULE_FILES = [
+REQUIRED_ADAPTER_FILES = [
     "work/rules/loopforge/adapters/c2rust-flashdb/source-contract.md",
     "work/rules/loopforge/adapters/c2rust-flashdb/output-contract.md",
     "work/rules/loopforge/adapters/c2rust-flashdb/test-migration-contract.md",
@@ -146,6 +146,11 @@ def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def write_json(path: Path, payload: Dict[str, Any]) -> None:
+    ensure_parent(path)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+
+
 def path_is_relative_to(path: Path, other: Path) -> bool:
     try:
         path.relative_to(other)
@@ -166,9 +171,35 @@ class LoopForgeRunner:
         self.migration_trace_dir = self.trace_dir / "c2rust"
         self.project_dir = self.workspace_root / "flashDB_rust"
         self.config = parse_simple_yaml((self.work_dir / "loopforge.config.yaml").read_text(encoding="utf-8"))
-        self.profile = parse_simple_yaml((self.work_dir / str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)).read_text(encoding="utf-8"))
-        self.outputs = self.config.get("outputs", {})
-        self.packet = AgentTaskPacket(
+        profile_rel = str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)
+        self.profile = parse_simple_yaml((self.work_dir / profile_rel).read_text(encoding="utf-8"))
+        self.result_output_path = self.result_dir / "output.md"
+        self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
+        self.interaction_log_path = self.log_dir / "interaction.md"
+        self.run_summary_path = self.trace_dir / "run-summary.json"
+        self.final_report_path = self.trace_dir / "final-report.md"
+        self.self_check_path = self.artifact_dir / "state" / "self-check.json"
+        self.detect_path = self.artifact_dir / "state" / "detect-summary.json"
+        self.verify_path = self.artifact_dir / "state" / "verification-summary.json"
+        self.orchestrator_state_path = self.artifact_dir / "state" / "orchestrator-state.json"
+        self.packet_snapshot_path = self.artifact_dir / "state" / "packet.json"
+        self.gates_path = self.artifact_dir / "gate-events.md"
+        self.mode_artifacts_path = self.artifact_dir / "mode-artifacts.md"
+        self.source_inventory_md = self.migration_trace_dir / "01-source-inventory.md"
+        self.source_inventory_json = self.migration_trace_dir / "01-source-inventory.json"
+        self.api_mapping_md = self.migration_trace_dir / "02-api-mapping.md"
+        self.api_mapping_json = self.migration_trace_dir / "02-api-mapping.json"
+        self.migration_plan_md = self.migration_trace_dir / "03-migration-plan.md"
+        self.migration_plan_json = self.migration_trace_dir / "03-migration-plan.json"
+        self.test_mapping_md = self.migration_trace_dir / "04-test-mapping.md"
+        self.test_mapping_json = self.migration_trace_dir / "04-test-mapping.json"
+        self.migration_summary_md = self.migration_trace_dir / "05-migration-summary.md"
+        self.verification_report_md = self.migration_trace_dir / "06-verification-report.md"
+        self.unsafe_ratio_json = self.migration_trace_dir / "unsafe-ratio.json"
+        self.gate_events: List[Dict[str, str]] = []
+
+    def create_packet(self) -> AgentTaskPacket:
+        packet = AgentTaskPacket(
             paths=RuntimePaths(
                 workspace_root=self.workspace_root,
                 work_dir=self.work_dir,
@@ -185,34 +216,16 @@ class LoopForgeRunner:
             readme_candidates=list(self.config.get("source", {}).get("readme_candidates", README_CANDIDATES)),
             max_repair_rounds=int(self.config.get("execution", {}).get("max_repair_rounds", 2) or 2),
         )
-        self.result_output_path = self.result_dir / "output.md"
-        self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
-        self.interaction_log_path = self.log_dir / "interaction.md"
-        self.run_summary_path = self.trace_dir / "run-summary.json"
-        self.final_report_path = self.trace_dir / "final-report.md"
-        self.source_inventory_path = self.migration_trace_dir / "01-source-inventory.md"
-        self.api_mapping_path = self.migration_trace_dir / "02-api-mapping.md"
-        self.migration_plan_path = self.migration_trace_dir / "03-migration-plan.md"
-        self.test_mapping_path = self.migration_trace_dir / "04-test-mapping.md"
-        self.migration_summary_path = self.migration_trace_dir / "05-migration-summary.md"
-        self.verification_report_path = self.migration_trace_dir / "06-verification-report.md"
-        self.unsafe_ratio_path = self.migration_trace_dir / "unsafe-ratio.json"
-        self.state_dir = self.artifact_dir / "state"
-        self.gates_path = self.artifact_dir / "gate-events.md"
-        self.mode_artifacts_path = self.artifact_dir / "mode-artifacts.md"
-        self.orchestrator_state_path = self.state_dir / "orchestrator-state.json"
-        self.self_check_path = self.state_dir / "self-check.json"
-        self.detect_path = self.state_dir / "detect-summary.json"
-        self.verify_path = self.state_dir / "verification-summary.json"
-        self.gate_events: List[Dict[str, str]] = []
+        packet.metadata["source_root_resolution"] = str(self.source_root)
+        return packet
 
     def ensure_outputs(self) -> None:
         self.result_dir.mkdir(parents=True, exist_ok=True)
         (self.result_dir / "issues").mkdir(parents=True, exist_ok=True)
         self.trace_dir.mkdir(parents=True, exist_ok=True)
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
+        (self.artifact_dir / "state").mkdir(parents=True, exist_ok=True)
         self.migration_trace_dir.mkdir(parents=True, exist_ok=True)
-        self.state_dir.mkdir(parents=True, exist_ok=True)
         if not self.interaction_log_path.exists():
             self.interaction_log_path.write_text("# Interaction Log\n\nNo manual interaction.\n", encoding="utf-8")
         self.mode_artifacts_path.write_text(
@@ -223,40 +236,52 @@ class LoopForgeRunner:
                     f"- mode: `{self.config.get('task', {}).get('mode', 'migration')}`",
                     f"- generated_at: `{utc_now()}`",
                     "",
-                    "- `01-source-inventory.md`",
-                    "- `02-api-mapping.md`",
-                    "- `03-migration-plan.md`",
-                    "- `04-test-mapping.md`",
+                    "- `01-source-inventory.md/json`",
+                    "- `02-api-mapping.md/json`",
+                    "- `03-migration-plan.md/json`",
+                    "- `04-test-mapping.md/json`",
                     "- `05-migration-summary.md`",
                     "- `06-verification-report.md`",
+                    "- `repair-rounds.md/json`",
                     "",
                 ]
             ),
             encoding="utf-8",
         )
 
-    def save_json(self, path: Path, payload: Dict[str, Any]) -> None:
-        ensure_parent(path)
-        path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
-
-    def record_gate_event(self, name: str, passed: bool, detail: str) -> None:
-        self.gate_events.append({"gate": name, "status": "PASS" if passed else "FAIL", "detail": detail})
-        lines = [
-            "| Gate | Status | Detail |",
-            "|---|---|---|",
-        ]
-        lines.extend(f"| {item['gate']} | {item['status']} | {item['detail']} |" for item in self.gate_events)
-        self.gates_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    def resolve_path_token(self, value: str) -> Path:
-        if value == "SOURCE_ROOT":
-            return self.source_root
-        if value.startswith("SOURCE_ROOT/"):
-            return (self.source_root / value[len("SOURCE_ROOT/") :]).resolve()
-        path = Path(value)
-        if not path.is_absolute():
-            path = (self.workspace_root / path).resolve()
-        return path.resolve()
+    def write_templates(self) -> None:
+        self.result_output_path.write_text(
+            "\n".join(
+                [
+                    "# Output",
+                    "",
+                    "- status: `NOT_RUN`",
+                    "- source_root: `NOT_RUN`",
+                    "- selected_source_readme: `NOT_RUN`",
+                    "- flashdb_root: `NOT_RUN`",
+                    "- rust_project: `NOT_RUN`",
+                    "- cargo_build: `NOT_RUN`",
+                    "- cargo_test: `NOT_RUN`",
+                    "- unsafe_gate: `NOT_RUN`",
+                    "- semantic_gate: `NOT_RUN`",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        self.issue_summary_path.write_text(
+            "\n".join(
+                [
+                    "# Issue Summary",
+                    "",
+                    "- final_status: NOT_RUN",
+                    "- source_root: NOT_RUN",
+                    "- issue_count: NOT_RUN",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
 
     def normalize_commands(self) -> List[str]:
         commands = self.config.get("verification", {}).get("commands", [])
@@ -268,36 +293,33 @@ class LoopForgeRunner:
             return [str(item) for item in commands]
         return []
 
-    def summarize_issues(self) -> str:
-        if not self.packet.issues:
-            return "none"
-        return "; ".join(f"{item['code']}: {item['detail']}" for item in self.packet.issues)
+    def record_gate_event(self, gate: str, passed: bool, detail: str) -> None:
+        self.gate_events.append({"gate": gate, "status": "PASS" if passed else "FAIL", "detail": detail})
+        lines = ["| Gate | Status | Detail |", "|---|---|---|"]
+        lines.extend(f"| {item['gate']} | {item['status']} | {item['detail']} |" for item in self.gate_events)
+        self.gates_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def self_check(self) -> Dict[str, Any]:
-        self.ensure_outputs()
-        required_files = REQUIRED_RUNTIME_FILES + REQUIRED_RULE_FILES + REQUIRED_MISC_FILES
+    def self_check(self, packet: AgentTaskPacket) -> Dict[str, Any]:
+        required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES
         missing = [path for path in required_files if not (self.workspace_root / path).exists()]
         work_code_readme = self.workspace_root / "work" / "code" / "README.md"
-        is_real_source = path_is_relative_to(work_code_readme.resolve(), self.source_root) if work_code_readme.exists() else False
-        if is_real_source:
-            self.packet.add_issue("invalid_source_root", "work/code/README.md is a contest requirement description, not a FlashDB source root")
-        if missing:
-            for item in missing:
-                self.packet.add_issue("required_asset_missing", item)
-
-        summary = {
-            "ok": not missing and not is_real_source,
+        invalid_source = path_is_relative_to(work_code_readme.resolve(), self.source_root) if work_code_readme.exists() else False
+        if invalid_source:
+            packet.add_issue("invalid_source_root", "work/code/README.md is a contest requirement document, not a FlashDB source root")
+        for item in missing:
+            packet.add_issue("required_asset_missing", item)
+        payload = {
+            "ok": not missing and not invalid_source,
             "required_files_checked": required_files,
             "missing_files": missing,
             "source_root": str(self.source_root),
             "local_fallback_source_dir": str(self.config.get("platform", {}).get("local_fallback_source_dir", "")),
-            "artifact_dir": str(self.artifact_dir),
-            "work_code_readme_is_source_root": is_real_source,
-            "issues": self.packet.issues,
+            "invalid_source_root": invalid_source,
+            "issues": list(packet.issues),
         }
-        self.save_json(self.self_check_path, summary)
-        self.record_gate_event("SELF_CHECK", summary["ok"], "static runtime assets and source-root boundary validated")
-        return summary
+        write_json(self.self_check_path, payload)
+        self.record_gate_event("SELF_CHECK", payload["ok"], "runtime and adapter assets validated")
+        return payload
 
     def write_source_inventory(self, analysis: Dict[str, Any]) -> None:
         lines = [
@@ -322,70 +344,79 @@ class LoopForgeRunner:
         lines.extend(["", "## I/O Boundaries", ""])
         lines.extend([f"- `{item}`" for item in analysis.get("io_boundaries", [])] or ["- none"])
         lines.append("")
-        self.source_inventory_path.write_text("\n".join(lines), encoding="utf-8")
+        self.source_inventory_md.write_text("\n".join(lines), encoding="utf-8")
+        write_json(self.source_inventory_json, analysis)
 
     def write_api_mapping(self, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
-        mapped_apis = project_payload.get("mapped_apis", []) if project_payload else []
+        mapping_payload = {
+            "support_level": analysis.get("support_level", "unsupported"),
+            "mapped_apis": project_payload.get("mapped_apis", []) if project_payload else [],
+            "unsupported_apis": project_payload.get("unsupported_apis", analysis.get("public_apis", [])) if project_payload else analysis.get("public_apis", []),
+            "source_coverage": project_payload.get("source_coverage", {}) if project_payload else {},
+            "bootstrap_only": bool(project_payload.get("bootstrap_only", False)) if project_payload else False,
+        }
         lines = [
             "# API Mapping",
             "",
-            f"- support_level: `{analysis.get('support_level', 'unsupported')}`",
+            f"- support_level: `{mapping_payload['support_level']}`",
+            f"- bootstrap_only: `{str(mapping_payload['bootstrap_only']).lower()}`",
             "",
-            "## C API To Rust Mapping",
+            "## Mapped APIs",
             "",
         ]
-        if mapped_apis:
-            for api in mapped_apis:
-                lines.append(f"- `{api}` -> `flashdb_rust::{api}` or `FlashDb` method")
-        else:
-            lines.append("- No Rust API mapping was generated.")
-        lines.extend(
-            [
-                "",
-                "## Strategy",
-                "",
-                "- Data model: in-memory ordered key/value store.",
-                "- Error handling: `Option` and total functions for the fallback template.",
-                "- Ownership: owned `String` keys and `Vec<u8>` values with borrowed reads.",
-                "- Unsafe: `#![forbid(unsafe_code)]` in generated modules.",
-                "",
-            ]
-        )
-        self.api_mapping_path.write_text("\n".join(lines), encoding="utf-8")
+        lines.extend([f"- `{item}`" for item in mapping_payload["mapped_apis"]] or ["- none"])
+        lines.extend(["", "## Unsupported APIs", ""])
+        lines.extend([f"- `{item}`" for item in mapping_payload["unsupported_apis"]] or ["- none"])
+        lines.extend(["", "## Source Coverage", ""])
+        for key, value in mapping_payload["source_coverage"].items():
+            lines.append(f"- `{key}`: `{value}`")
+        lines.append("")
+        self.api_mapping_md.write_text("\n".join(lines), encoding="utf-8")
+        write_json(self.api_mapping_json, mapping_payload)
 
     def write_migration_plan(self, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
-        module_list = project_payload.get("module_list", []) if project_payload else []
+        payload = {
+            "support_level": analysis.get("support_level", "unsupported"),
+            "module_list": project_payload.get("module_list", []) if project_payload else [],
+            "test_files": analysis.get("test_files", []),
+            "bootstrap_only": bool(project_payload.get("bootstrap_only", False)) if project_payload else False,
+            "semantic_equivalence_claim": project_payload.get("semantic_equivalence_claim", "not_generated") if project_payload else "not_generated",
+        }
         lines = [
             "# Migration Plan",
             "",
-            f"- support_level: `{analysis.get('support_level', 'unsupported')}`",
+            f"- support_level: `{payload['support_level']}`",
+            f"- semantic_equivalence_claim: `{payload['semantic_equivalence_claim']}`",
             "",
             "## Crate Layout",
             "",
-            "- `flashDB_rust/Cargo.toml`",
-            "- `flashDB_rust/src/lib.rs`",
         ]
-        lines.extend([f"- `flashDB_rust/{item}`" for item in module_list if item != "src/lib.rs"])
+        lines.extend([f"- `flashDB_rust/{item}`" for item in payload["module_list"]] or ["- generation skipped"])
         lines.extend(["", "## Test Migration List", ""])
-        lines.extend([f"- `{item}`" for item in analysis.get("test_files", [])] or ["- none"])
+        lines.extend([f"- `{item}`" for item in payload["test_files"]] or ["- none"])
         lines.extend(["", "## Unsupported Or Degraded Behaviors", ""])
-        if analysis.get("support_level") == "unsupported":
-            lines.append("- The current source layout is not covered by the fallback generator template.")
-        else:
-            lines.append("- No degraded behavior is declared for the local fallback template.")
-        lines.append("")
-        self.migration_plan_path.write_text("\n".join(lines), encoding="utf-8")
-
-    def write_test_mapping(self, project_payload: Optional[Dict[str, Any]]) -> None:
-        lines = ["# Test Mapping", "", "## Scenario Mapping", ""]
-        mapping = project_payload.get("test_mapping", []) if project_payload else []
-        if mapping:
-            for item in mapping:
-                lines.append(f"- `{item['source_test']}` -> `{item['rust_test_file']}` ({item['mapping']})")
+        if payload["bootstrap_only"]:
+            lines.append("- The generated project is only a bootstrap skeleton and must not claim full semantic equivalence.")
         else:
             lines.append("- none")
         lines.append("")
-        self.test_mapping_path.write_text("\n".join(lines), encoding="utf-8")
+        self.migration_plan_md.write_text("\n".join(lines), encoding="utf-8")
+        write_json(self.migration_plan_json, payload)
+
+    def write_test_mapping(self, project_payload: Optional[Dict[str, Any]]) -> None:
+        mapping = project_payload.get("test_mapping", []) if project_payload else []
+        lines = ["# Test Mapping", "", "## Scenario Mapping", ""]
+        if mapping:
+            for item in mapping:
+                lines.append(
+                    f"- `{item['source_test']}` -> `{item['rust_test_file']}` "
+                    f"({item['mapping']}, coverage=`{item.get('coverage_level', 'unknown')}`)"
+                )
+        else:
+            lines.append("- none")
+        lines.append("")
+        self.test_mapping_md.write_text("\n".join(lines), encoding="utf-8")
+        write_json(self.test_mapping_json, {"test_mapping": mapping})
 
     def write_migration_summary(self, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
         lines = [
@@ -404,195 +435,118 @@ class LoopForgeRunner:
         else:
             lines.append("- project generation skipped")
         lines.append("")
-        self.migration_summary_path.write_text("\n".join(lines), encoding="utf-8")
+        self.migration_summary_md.write_text("\n".join(lines), encoding="utf-8")
 
-    def detect_project(self) -> Dict[str, Any]:
-        self.ensure_outputs()
-        analysis = analyze_source(self.packet)
-        self.write_source_inventory(analysis)
-        self.write_api_mapping(analysis, None)
-        self.write_migration_plan(analysis, None)
-        self.write_test_mapping(None)
-        self.write_migration_summary(analysis, None)
-        summary = {
-            "ok": analysis["ok"],
-            "source_layout": self.packet.source_layout.to_dict() if self.packet.source_layout else {},
-            "analysis": analysis,
-            "issues": self.packet.issues,
-        }
-        self.save_json(self.detect_path, summary)
-        self.record_gate_event("DETECT", analysis["ok"], f"support_level={analysis.get('support_level', 'unsupported')}")
-        return summary
+    def verify_generated(self, packet: AgentTaskPacket, project_payload: Dict[str, Any], repair_payload: Dict[str, Any], semantic_payload: Dict[str, Any]) -> Dict[str, Any]:
+        cargo_manifest_exists = (self.project_dir / "Cargo.toml").is_file()
+        src_exists = (self.project_dir / "src").is_dir()
+        tests_exists = (self.project_dir / "tests").is_dir()
 
-    def check_unsafe_ratio(self) -> Dict[str, Any]:
         total_lines = 0
         unsafe_lines = 0
-        files: List[Dict[str, Any]] = []
-        for path in self.project_dir.rglob("*.rs"):
-            if "target" in path.parts:
+        unsafe_files: List[Dict[str, Any]] = []
+        for rust_file in self.project_dir.rglob("*.rs"):
+            if "target" in rust_file.parts:
                 continue
-            code_lines = 0
+            file_total = 0
             file_unsafe = 0
-            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            for line in rust_file.read_text(encoding="utf-8", errors="ignore").splitlines():
                 stripped = line.strip()
                 if not stripped or stripped.startswith("//"):
                     continue
-                code_lines += 1
+                file_total += 1
                 if "unsafe" in stripped:
                     file_unsafe += 1
-            total_lines += code_lines
+            total_lines += file_total
             unsafe_lines += file_unsafe
-            files.append({"file": str(path), "code_lines": code_lines, "unsafe_lines": file_unsafe})
-        ratio = (unsafe_lines / total_lines) if total_lines else 0.0
-        payload = {
+            unsafe_files.append({"file": str(rust_file), "code_lines": file_total, "unsafe_lines": file_unsafe})
+        unsafe_ratio = (unsafe_lines / total_lines) if total_lines else 0.0
+        unsafe_payload = {
             "project": str(self.project_dir),
             "total_code_lines": total_lines,
             "unsafe_lines": unsafe_lines,
-            "unsafe_ratio": ratio,
+            "unsafe_ratio": unsafe_ratio,
             "max_ratio": 0.10,
-            "passed": ratio < 0.10,
-            "files": files,
+            "passed": unsafe_ratio < 0.10,
+            "files": unsafe_files,
             "generated_at": utc_now(),
         }
-        self.unsafe_ratio_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
-        return payload
+        write_json(self.unsafe_ratio_json, unsafe_payload)
 
-    def verify(self) -> Dict[str, Any]:
-        self.ensure_outputs()
-        analysis = analyze_source(self.packet)
-        project_payload: Optional[Dict[str, Any]] = None
-        if analysis["ok"] and analysis.get("support_level") != "unsupported":
-            project_payload = generate_project(self.packet, analysis)
-            self.write_api_mapping(analysis, project_payload)
-            self.write_migration_plan(analysis, project_payload)
-            self.write_test_mapping(project_payload)
-            self.write_migration_summary(analysis, project_payload)
-            self.packet.set_gate("project_generation", True, "generated Rust project from supported fallback template", project_payload)
-            self.record_gate_event("PROJECT_GENERATION", True, "generated flashDB_rust")
-        else:
-            self.packet.set_gate("project_generation", False, "project generation skipped because source analysis is incomplete", {"analysis_ok": analysis["ok"], "support_level": analysis.get("support_level", "unsupported")})
-            self.record_gate_event("PROJECT_GENERATION", False, "analysis did not satisfy generator preconditions")
+        test_mapping_payload = json.loads(self.test_mapping_json.read_text(encoding="utf-8"))
+        test_mapping_gate = bool(test_mapping_payload.get("test_mapping"))
 
-        commands = self.normalize_commands()
-        verification = {
-            "analysis": analysis,
-            "commands": commands,
-            "project_generation": self.packet.gates["project_generation"].to_dict(),
+        packet.set_gate("cargo_build", bool(repair_payload.get("build_ok")), "cargo build gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
+        packet.set_gate("cargo_test", bool(repair_payload.get("test_ok")), "cargo test gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
+        packet.set_gate("unsafe", unsafe_payload["passed"], "unsafe gate", unsafe_payload)
+        packet.set_gate("semantic", bool(semantic_payload.get("passed")), "semantic gate", semantic_payload)
+        packet.set_gate("test_mapping", test_mapping_gate, "test mapping gate", test_mapping_payload)
+        packet.set_gate("repair_loop", bool(repair_payload.get("ok")), "repair loop gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
+
+        verification_payload = {
+            "cargo_manifest_exists": cargo_manifest_exists,
+            "src_exists": src_exists,
+            "tests_exists": tests_exists,
+            "project_generation": project_payload,
+            "repair_loop": repair_payload,
+            "unsafe": unsafe_payload,
+            "semantic": semantic_payload,
+            "test_mapping_gate": test_mapping_gate,
+            "ready": packet.ready(),
+            "status": "READY_FOR_EVALUATION" if packet.ready() else "BLOCKED_WITH_REPORT",
+            "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
+            "issues": packet.issues,
         }
+        write_json(self.verify_path, verification_payload)
+        lines = [
+            "# Verification Report",
+            "",
+            f"- status: `{verification_payload['status']}`",
+            "",
+            "## Gates",
+            "",
+            json.dumps(verification_payload["gates"], indent=2, ensure_ascii=True),
+            "",
+            "## Repair Loop",
+            "",
+            json.dumps(repair_payload, indent=2, ensure_ascii=True),
+            "",
+            "## Semantic",
+            "",
+            json.dumps(semantic_payload, indent=2, ensure_ascii=True),
+            "",
+            "## Issues",
+            "",
+            json.dumps(packet.issues, indent=2, ensure_ascii=True),
+            "",
+        ]
+        self.verification_report_md.write_text("\n".join(lines), encoding="utf-8")
+        return verification_payload
 
-        if self.packet.gates["project_generation"].passed and commands:
-            repair_payload = run_repair_loop(
-                self.packet,
-                commands=commands,
-                timeout_seconds=int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600),
-            )
-            verification["repair_loop"] = repair_payload
-            self.packet.set_gate("cargo_build", repair_payload["build_ok"], "cargo build gate", {"rounds_executed": repair_payload["rounds_executed"]})
-            self.packet.set_gate("cargo_test", repair_payload["test_ok"], "cargo test gate", {"rounds_executed": repair_payload["rounds_executed"]})
-            self.record_gate_event("CARGO_BUILD", repair_payload["build_ok"], "cargo build completed")
-            self.record_gate_event("CARGO_TEST", repair_payload["test_ok"], "cargo test completed")
-        else:
-            self.packet.set_gate("cargo_build", False, "cargo build gate skipped", {"commands": commands})
-            self.packet.set_gate("cargo_test", False, "cargo test gate skipped", {"commands": commands})
-            verification["repair_loop"] = {"ok": False, "attempts": []}
-            self.record_gate_event("CARGO_BUILD", False, "verification commands unavailable or project not generated")
-            self.record_gate_event("CARGO_TEST", False, "verification commands unavailable or project not generated")
-
-        unsafe_payload = self.check_unsafe_ratio() if self.packet.gates["cargo_build"].passed and self.packet.gates["cargo_test"].passed else {
-            "project": str(self.project_dir),
-            "total_code_lines": 0,
-            "unsafe_lines": 0,
-            "unsafe_ratio": 1.0,
-            "max_ratio": 0.10,
-            "passed": False,
-            "files": [],
-            "generated_at": utc_now(),
-        }
-        if unsafe_payload["passed"]:
-            self.packet.set_gate("unsafe", True, "unsafe gate passed", unsafe_payload)
-        else:
-            self.packet.add_issue("unsafe_gate_failed", f"unsafe_ratio={unsafe_payload['unsafe_ratio']:.4f}")
-            self.packet.set_gate("unsafe", False, "unsafe gate failed", unsafe_payload)
-        self.record_gate_event("UNSAFE", unsafe_payload["passed"], f"ratio={unsafe_payload['unsafe_ratio']:.4f}")
-
-        semantic_payload = evaluate_semantic_equivalence(self.packet, analysis, self.project_dir) if self.packet.gates["project_generation"].passed else {
-            "passed": False,
-            "checks": [],
-            "failing_checks": ["project_generation"],
-        }
-        self.packet.set_gate("semantic", semantic_payload["passed"], "semantic equivalence gate", semantic_payload)
-        self.record_gate_event("SEMANTIC", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
-
-        ready = self.packet.ready()
-        status = "READY_FOR_EVALUATION" if ready else "BLOCKED_WITH_REPORT"
-        verification.update(
-            {
-                "status": status,
-                "ready": ready,
-                "gates": {name: gate.to_dict() for name, gate in self.packet.gates.items()},
-                "issues": self.packet.issues,
-            }
-        )
-        self.save_json(self.verify_path, verification)
-        self.verification_report_path.write_text(
-            "\n".join(
-                [
-                    "# Verification Report",
-                    "",
-                    f"- status: `{status}`",
-                    "",
-                    "## Gates",
-                    "",
-                    json.dumps(verification["gates"], indent=2, ensure_ascii=True),
-                    "",
-                    "## Issues",
-                    "",
-                    json.dumps(self.packet.issues, indent=2, ensure_ascii=True),
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        return verification
-
-    def finalize(self, detect_payload: Optional[Dict[str, Any]] = None, verify_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        self.ensure_outputs()
-        if detect_payload is None:
-            if self.detect_path.exists():
-                detect_payload = json.loads(self.detect_path.read_text(encoding="utf-8"))
-            else:
-                detect_payload = self.detect_project()
-        if verify_payload is None:
-            if self.verify_path.exists():
-                verify_payload = json.loads(self.verify_path.read_text(encoding="utf-8"))
-            else:
-                verify_payload = self.verify()
-        ready = verify_payload.get("ready", False)
-        final_status = "READY_FOR_EVALUATION" if ready else "BLOCKED_WITH_REPORT"
-        final_report = {
+    def finalize(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
+        final_status = verification_payload.get("status", "BLOCKED_WITH_REPORT")
+        report = {
             "generated_at": utc_now(),
             "status": final_status,
-            "paths": self.packet.paths.to_dict(),
-            "source_layout": self.packet.source_layout.to_dict() if self.packet.source_layout else {},
-            "detect": detect_payload,
-            "verify": verify_payload,
-            "issues": self.packet.issues,
-            "warnings": self.packet.warnings,
+            "self_check": self_check_payload,
+            "analysis": analysis,
+            "project_generation": project_payload or {},
+            "verification": verification_payload,
+            "packet": packet.to_dict(),
         }
-        self.save_json(self.orchestrator_state_path, final_report)
+        write_json(self.orchestrator_state_path, report)
         lines = [
             "# LoopForge Final Report",
             "",
             f"- status: `{final_status}`",
             f"- generated_at: `{utc_now()}`",
             f"- source_root: `{self.source_root}`",
-            f"- fallback_source_root: `{self.config.get('platform', {}).get('local_fallback_source_dir', '')}`",
             "",
             "## READY Gates",
             "",
         ]
-        for gate_name in ["cargo_build", "cargo_test", "unsafe", "semantic"]:
-            gate = self.packet.gates.get(gate_name)
+        for gate_name in ["cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
+            gate = packet.gates.get(gate_name)
             if gate:
                 lines.append(f"- `{gate_name}`: `{'pass' if gate.passed else 'fail'}`")
         lines.extend(
@@ -600,15 +554,7 @@ class LoopForgeRunner:
                 "",
                 "## Issues",
                 "",
-                json.dumps(self.packet.issues, indent=2, ensure_ascii=True),
-                "",
-                "## Detection",
-                "",
-                json.dumps(detect_payload, indent=2, ensure_ascii=True),
-                "",
-                "## Verification",
-                "",
-                json.dumps(verify_payload, indent=2, ensure_ascii=True),
+                json.dumps(packet.issues, indent=2, ensure_ascii=True),
                 "",
                 "## Gate Events",
                 "",
@@ -620,15 +566,15 @@ class LoopForgeRunner:
         self.record_gate_event("FINALIZE", True, final_status)
         return {"ok": True, "status": final_status, "report": str(self.final_report_path)}
 
-    def write_entrypoint_result(self, detect_payload: Dict[str, Any], verify_payload: Dict[str, Any], finalize_payload: Dict[str, Any]) -> Dict[str, Any]:
-        gates = verify_payload.get("gates", {})
+    def write_entrypoint_result(self, packet: AgentTaskPacket, analysis: Dict[str, Any], verification_payload: Dict[str, Any], finalize_payload: Dict[str, Any]) -> Dict[str, Any]:
+        gates = verification_payload.get("gates", {})
         output_lines = [
             "# Output",
             "",
             f"- status: `{finalize_payload['status']}`",
             f"- source_root: `{self.source_root}`",
-            f"- selected_source_readme: `{detect_payload.get('analysis', {}).get('readme_path') or 'missing'}`",
-            f"- flashdb_root: `{detect_payload.get('analysis', {}).get('flashdb_root') or 'missing'}`",
+            f"- selected_source_readme: `{analysis.get('readme_path') or 'missing'}`",
+            f"- flashdb_root: `{analysis.get('flashdb_root') or 'missing'}`",
             f"- rust_project: `{self.project_dir}`",
             f"- cargo_build: `{gates.get('cargo_build', {}).get('passed', False)}`",
             f"- cargo_test: `{gates.get('cargo_test', {}).get('passed', False)}`",
@@ -637,12 +583,12 @@ class LoopForgeRunner:
             "",
             "## Summary",
             "",
-            "- The execution orchestrator analyzed SOURCE_ROOT, generated a Rust project when the source matched the supported FlashDB fallback template, and evaluated READY gates.",
+            "- The execution orchestrator analyzed SOURCE_ROOT, generated or refreshed flashDB_rust, executed the repair loop, and evaluated semantic/test-mapping gates before declaring READY.",
             "",
         ]
-        if self.packet.issues:
+        if packet.issues:
             output_lines.extend(["## Blocking Details", ""])
-            output_lines.extend([f"- `{item['code']}`: {item['detail']}" for item in self.packet.issues])
+            output_lines.extend([f"- `{item['code']}`: {item['detail']}" for item in packet.issues])
             output_lines.append("")
         self.result_output_path.write_text("\n".join(output_lines), encoding="utf-8")
 
@@ -651,11 +597,11 @@ class LoopForgeRunner:
             "",
             f"- final_status: {finalize_payload['status']}",
             f"- source_root: {self.source_root}",
-            f"- issue_count: {len(self.packet.issues)}",
+            f"- issue_count: {len(packet.issues)}",
             "",
         ]
-        if self.packet.issues:
-            issue_lines.extend([f"- {item['code']}: {item['detail']}" for item in self.packet.issues])
+        if packet.issues:
+            issue_lines.extend([f"- {item['code']}: {item['detail']}" for item in packet.issues])
         else:
             issue_lines.append("- no_blocking_issues: all READY gates passed")
         issue_lines.append("")
@@ -664,38 +610,110 @@ class LoopForgeRunner:
         run_summary = {
             "generated_at": utc_now(),
             "source_root": str(self.source_root),
-            "artifact_dir": str(self.artifact_dir),
-            "detect": detect_payload,
-            "verify": verify_payload,
+            "analysis": analysis,
+            "verification": verification_payload,
             "finalize": finalize_payload,
-            "issues": self.packet.issues,
+            "packet": packet.to_dict(),
         }
-        self.save_json(self.run_summary_path, run_summary)
+        write_json(self.run_summary_path, run_summary)
         return run_summary
 
-    def snapshot(self, name: str) -> Dict[str, Any]:
-        self.ensure_outputs()
-        snapshot_name = name if name.endswith(".json") else f"{name}.json"
-        snapshot_path = self.artifact_dir / snapshot_name
-        self.save_json(snapshot_path, self.packet.to_dict())
-        self.record_gate_event("SNAPSHOT", True, snapshot_name)
-        return {"ok": True, "snapshot": str(snapshot_path)}
+    def snapshot_packet(self, packet: AgentTaskPacket) -> None:
+        write_json(self.packet_snapshot_path, packet.to_dict())
+        self.record_gate_event("SNAPSHOT", True, "packet.json")
 
     def run_entrypoint(self) -> Dict[str, Any]:
         self.ensure_outputs()
-        self_check_payload = self.self_check()
-        detect_payload = self.detect_project()
-        self.snapshot("before-verify")
-        verify_payload = self.verify()
-        finalize_payload = self.finalize(detect_payload, verify_payload)
-        self.write_entrypoint_result(detect_payload, verify_payload, finalize_payload)
+        packet = self.create_packet()
+        self_check_payload = self.self_check(packet)
+        analysis = analyze_source(packet)
+        self.write_source_inventory(analysis)
+        self.record_gate_event("ANALYZE_SOURCE", analysis["ok"], f"support_level={analysis.get('support_level', 'unsupported')}")
+
+        project_payload: Optional[Dict[str, Any]] = None
+        if analysis["ok"]:
+            project_payload = generate_project(packet, analysis)
+            packet.metadata["project_generation"] = project_payload
+            self.write_api_mapping(analysis, project_payload)
+            self.write_migration_plan(analysis, project_payload)
+            self.write_test_mapping(project_payload)
+            self.write_migration_summary(analysis, project_payload)
+            self.record_gate_event("GENERATE_PROJECT", True, project_payload.get("semantic_equivalence_claim", "generated"))
+        else:
+            self.write_api_mapping(analysis, None)
+            self.write_migration_plan(analysis, None)
+            self.write_test_mapping(None)
+            self.write_migration_summary(analysis, None)
+            self.record_gate_event("GENERATE_PROJECT", False, "source analysis failed")
+
+        self.snapshot_packet(packet)
+
+        if project_payload is not None:
+            commands = self.normalize_commands()
+            repair_payload = run_repair_loop(packet, commands, int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600))
+            self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
+            semantic_payload = evaluate_semantic_equivalence(packet, analysis, self.project_dir, project_payload, repair_payload)
+            self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
+            verification_payload = self.verify_generated(packet, project_payload, repair_payload, semantic_payload)
+        else:
+            repair_payload = {"ok": False, "build_ok": False, "test_ok": False, "rounds_executed": 0, "attempts": []}
+            write_json(self.migration_trace_dir / "repair-rounds.json", repair_payload)
+            (self.migration_trace_dir / "repair-rounds.md").write_text("# Repair Rounds\n\n- rounds_executed: `0`\n\n", encoding="utf-8")
+            semantic_payload = {"passed": False, "checks": [], "failing_checks": ["project_generation"], "detail": "semantic gate requires generated project and test mapping"}
+            packet.set_gate("cargo_build", False, "cargo build gate", {})
+            packet.set_gate("cargo_test", False, "cargo test gate", {})
+            packet.set_gate("unsafe", False, "unsafe gate", {"unsafe_ratio": 1.0})
+            packet.set_gate("semantic", False, "semantic gate", semantic_payload)
+            packet.set_gate("test_mapping", False, "test mapping gate", {})
+            packet.set_gate("repair_loop", False, "repair loop gate", repair_payload)
+            verification_payload = {
+                "status": "BLOCKED_WITH_REPORT",
+                "ready": False,
+                "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
+                "issues": packet.issues,
+            }
+            write_json(self.verify_path, verification_payload)
+            self.verification_report_md.write_text(
+                "# Verification Report\n\n- status: `BLOCKED_WITH_REPORT`\n\n## Issues\n\n"
+                + json.dumps(packet.issues, indent=2, ensure_ascii=True)
+                + "\n",
+                encoding="utf-8",
+            )
+
+        finalize_payload = self.finalize(packet, self_check_payload, analysis, project_payload, verification_payload)
+        run_summary = self.write_entrypoint_result(packet, analysis, verification_payload, finalize_payload)
         return {
             "ok": finalize_payload["status"] in {"READY_FOR_EVALUATION", "BLOCKED_WITH_REPORT"},
             "self_check": self_check_payload,
-            "detect": detect_payload,
-            "verify": verify_payload,
+            "analysis": analysis,
+            "project_generation": project_payload or {},
+            "verification": verification_payload,
             "finalize": finalize_payload,
+            "run_summary": run_summary,
         }
+
+    def detect_project(self) -> Dict[str, Any]:
+        self.ensure_outputs()
+        packet = self.create_packet()
+        self.self_check(packet)
+        analysis = analyze_source(packet)
+        self.write_source_inventory(analysis)
+        self.write_api_mapping(analysis, None)
+        self.write_migration_plan(analysis, None)
+        self.write_test_mapping(None)
+        self.write_migration_summary(analysis, None)
+        payload = {"ok": analysis["ok"], "analysis": analysis, "packet": packet.to_dict(), "issues": list(packet.issues)}
+        write_json(self.detect_path, payload)
+        return payload
+
+    def verify(self) -> Dict[str, Any]:
+        return self.run_entrypoint()["verification"]
+
+    def finalize_only(self) -> Dict[str, Any]:
+        if self.orchestrator_state_path.exists():
+            payload = json.loads(self.orchestrator_state_path.read_text(encoding="utf-8"))
+            return {"ok": True, "status": payload.get("status", "BLOCKED_WITH_REPORT"), "report": str(self.final_report_path)}
+        return {"ok": False, "status": "BLOCKED_WITH_REPORT", "report": str(self.final_report_path)}
 
 
 def resolve_path(base: Path, value: str) -> Path:
@@ -714,10 +732,10 @@ def resolve_default_source_root(workspace_root: Path) -> Path:
         ]:
             if candidate.exists():
                 return candidate.resolve()
-    fallback = workspace_root / ".code" / "FlashDB"
-    if fallback.exists():
-        return fallback.resolve()
-    return (workspace_root / "code").resolve()
+    for candidate in [workspace_root / ".code" / "FlashDB", workspace_root / "code" / "FlashDB", workspace_root / "code"]:
+        if candidate.exists():
+            return candidate.resolve()
+    return (workspace_root / ".code" / "FlashDB").resolve()
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
@@ -742,7 +760,7 @@ def print_json(payload: Dict[str, Any]) -> None:
 
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
-    if not any([args.init, args.self_check, args.detect, args.verify, args.finalize, args.run, bool(args.snapshot)]):
+    if not any([args.init, args.self_check, args.detect, args.verify, args.finalize, args.run]):
         print("No action provided.", file=sys.stderr)
         return 2
 
@@ -758,17 +776,18 @@ def main(argv: List[str]) -> int:
     try:
         if args.init:
             runner.ensure_outputs()
-            print_json({"ok": True, "status": "initialized", "source_root": str(source_root), "artifact_dir": str(runner.artifact_dir)})
+            runner.write_templates()
+            print_json({"ok": True, "status": "initialized", "source_root": str(source_root)})
         if args.self_check:
-            print_json(runner.self_check())
+            packet = runner.create_packet()
+            runner.ensure_outputs()
+            print_json(runner.self_check(packet))
         if args.detect:
             print_json(runner.detect_project())
-        if args.snapshot:
-            print_json(runner.snapshot(args.snapshot))
         if args.verify:
             print_json(runner.verify())
         if args.finalize:
-            print_json(runner.finalize())
+            print_json(runner.finalize_only())
         if args.run:
             print_json(runner.run_entrypoint())
     except Exception as exc:

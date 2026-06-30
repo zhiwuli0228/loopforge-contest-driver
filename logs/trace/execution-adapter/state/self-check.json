@@ -23,7 +23,6 @@
   "missing_files": [],
   "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
   "local_fallback_source_dir": ".code/FlashDB",
-  "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\execution-adapter",
-  "work_code_readme_is_source_root": false,
+  "invalid_source_root": false,
   "issues": []
 }

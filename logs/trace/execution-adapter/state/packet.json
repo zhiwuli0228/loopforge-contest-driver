@@ -1,0 +1,66 @@
+{
+  "paths": {
+    "workspace_root": "E:\\009workspace\\codex\\loopforge-contest-driver",
+    "work_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\work",
+    "source_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "result_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\result",
+    "log_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs",
+    "trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace",
+    "artifact_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\execution-adapter",
+    "migration_trace_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\logs\\trace\\c2rust",
+    "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust"
+  },
+  "source_layout": {
+    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
+    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "src_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\src",
+    "tests_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\tests"
+  },
+  "readme_candidates": [
+    "README.md",
+    "README",
+    "READNE.md",
+    "readme.md",
+    "Readme.md"
+  ],
+  "max_repair_rounds": 2,
+  "issues": [],
+  "warnings": [],
+  "metadata": {
+    "source_root_resolution": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
+    "project_generation": {
+      "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
+      "module_name": "flashdb",
+      "mapped_apis": [
+        "flashdb_count",
+        "flashdb_delete",
+        "flashdb_get",
+        "flashdb_new",
+        "flashdb_set"
+      ],
+      "unsupported_apis": [],
+      "source_coverage": {
+        "source_file_count": 2,
+        "test_file_count": 1,
+        "mapped_api_count": 5,
+        "unsupported_api_count": 0
+      },
+      "module_list": [
+        "src/lib.rs",
+        "src/flashdb.rs",
+        "tests/flashdb_semantics.rs"
+      ],
+      "test_mapping": [
+        {
+          "source_test": "tests/test_flashdb.c",
+          "rust_test_file": "tests/flashdb_semantics.rs",
+          "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
+          "coverage_level": "partial_bootstrap"
+        }
+      ],
+      "bootstrap_only": true,
+      "semantic_equivalence_claim": "bootstrap_skeleton_only"
+    }
+  },
+  "gates": {}
+}

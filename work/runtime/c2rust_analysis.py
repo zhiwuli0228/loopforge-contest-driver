@@ -107,7 +107,13 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
     return analysis
 
 
-def evaluate_semantic_equivalence(packet: AgentTaskPacket, analysis: Dict[str, Any], project_dir: Path) -> Dict[str, Any]:
+def evaluate_semantic_equivalence(
+    packet: AgentTaskPacket,
+    analysis: Dict[str, Any],
+    project_dir: Path,
+    project_payload: Dict[str, Any],
+    verification_payload: Dict[str, Any],
+) -> Dict[str, Any]:
     src_files = sorted(path for path in (project_dir / "src").rglob("*.rs") if path.is_file())
     test_files = sorted(path for path in (project_dir / "tests").rglob("*.rs") if path.is_file())
     rust_text = "\n".join(_read_text(path) for path in src_files + test_files)
@@ -126,20 +132,63 @@ def evaluate_semantic_equivalence(packet: AgentTaskPacket, analysis: Dict[str, A
 
     test_assertions_ok = True
     test_assert_count = 0
+    test_functions = 0
     for path in test_files:
         text = _read_text(path)
         file_asserts = text.count("assert!(") + text.count("assert_eq!(") + text.count("assert_ne!(")
+        test_functions += text.count("#[test]")
         if file_asserts == 0:
             test_assertions_ok = False
         test_assert_count += file_asserts
     checks.append({"name": "assertive_tests", "passed": test_assertions_ok and test_assert_count > 0, "detail": "each Rust test file contains assertions", "assert_count": test_assert_count})
 
-    api_matches = [name for name in analysis.get("public_apis", []) if name in rust_text]
-    semantic_map_ok = bool(api_matches) if analysis.get("public_apis") else False
-    checks.append({"name": "api_mapping", "passed": semantic_map_ok, "detail": "source APIs are represented in generated Rust modules", "mapped_apis": api_matches})
+    mapped_apis = project_payload.get("mapped_apis", [])
+    unsupported_apis = project_payload.get("unsupported_apis", [])
+    api_matches = [name for name in mapped_apis if name in rust_text]
+    semantic_map_ok = bool(mapped_apis) and len(api_matches) == len(mapped_apis)
+    checks.append(
+        {
+            "name": "api_mapping",
+            "passed": semantic_map_ok,
+            "detail": "source APIs are represented in generated Rust modules",
+            "mapped_apis": api_matches,
+            "unsupported_apis": unsupported_apis,
+        }
+    )
 
-    coverage_ok = len(test_files) >= 1 and rust_text.count("#[test]") >= max(1, len(analysis.get("test_files", [])))
-    checks.append({"name": "main_path_coverage", "passed": coverage_ok, "detail": "generated tests cover at least the counted C test scenarios"})
+    test_mapping = project_payload.get("test_mapping", [])
+    mapped_source_tests = [item for item in test_mapping if item.get("source_test")]
+    source_test_count = len(analysis.get("test_files", []))
+    coverage_ok = len(test_files) >= 1 and len(mapped_source_tests) >= source_test_count and test_functions >= max(1, len(mapped_source_tests))
+    checks.append(
+        {
+            "name": "test_mapping_gate",
+            "passed": coverage_ok,
+            "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
+            "mapped_source_tests": len(mapped_source_tests),
+            "source_test_count": source_test_count,
+            "rust_test_functions": test_functions,
+        }
+    )
+
+    bootstrap_only = bool(project_payload.get("bootstrap_only", False))
+    bootstrap_gate = not bootstrap_only
+    checks.append(
+        {
+            "name": "bootstrap_only_guard",
+            "passed": bootstrap_gate,
+            "detail": "bootstrap skeletons cannot claim full semantic equivalence",
+        }
+    )
+
+    cargo_gates_ok = bool(verification_payload.get("build_ok")) and bool(verification_payload.get("test_ok"))
+    checks.append(
+        {
+            "name": "verification_dependency",
+            "passed": cargo_gates_ok,
+            "detail": "semantic gate requires successful cargo build and cargo test first",
+        }
+    )
 
     passed = all(check["passed"] for check in checks)
     failing = [check["name"] for check in checks if not check["passed"]]

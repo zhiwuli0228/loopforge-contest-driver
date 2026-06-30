@@ -74,6 +74,7 @@ class AgentTaskPacket:
     gates: Dict[str, GateRecord] = field(default_factory=dict)
     issues: List[Dict[str, str]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def add_issue(self, code: str, detail: str) -> None:
         candidate = {"code": code, "detail": detail}
@@ -98,5 +99,6 @@ class AgentTaskPacket:
             "max_repair_rounds": self.max_repair_rounds,
             "issues": self.issues,
             "warnings": self.warnings,
+            "metadata": self.metadata,
             "gates": {name: gate.to_dict() for name, gate in self.gates.items()},
         }

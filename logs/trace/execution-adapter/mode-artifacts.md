@@ -1,11 +1,12 @@
 # Mode Artifacts
 
 - mode: `migration`
-- generated_at: `2026-06-30T11:52:40Z`
+- generated_at: `2026-06-30T12:04:08Z`
 
-- `01-source-inventory.md`
-- `02-api-mapping.md`
-- `03-migration-plan.md`
-- `04-test-mapping.md`
+- `01-source-inventory.md/json`
+- `02-api-mapping.md/json`
+- `03-migration-plan.md/json`
+- `04-test-mapping.md/json`
 - `05-migration-summary.md`
 - `06-verification-report.md`
+- `repair-rounds.md/json`

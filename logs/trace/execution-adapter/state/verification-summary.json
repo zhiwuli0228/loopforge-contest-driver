@@ -1,70 +1,39 @@
 {
-  "analysis": {
-    "ok": true,
-    "readme_path": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB\\README.md",
-    "flashdb_root": "E:\\009workspace\\codex\\loopforge-contest-driver\\.code\\FlashDB",
-    "src_files": [
-      "src/flashdb.c",
-      "src/flashdb.h"
-    ],
-    "test_files": [
-      "tests/test_flashdb.c"
-    ],
-    "public_apis": [
-      "flashdb_count",
-      "flashdb_delete",
-      "flashdb_get",
-      "flashdb_new",
-      "flashdb_set"
-    ],
-    "structs": [
-      "flashdb_handle",
-      "flashdb_record"
-    ],
-    "macros": [
-      "FLASHDB_H"
-    ],
-    "io_boundaries": [
-      "flashdb_count",
-      "flashdb_delete",
-      "flashdb_get",
-      "flashdb_new",
-      "flashdb_set"
-    ],
-    "support_level": "flashdb-kv-template",
-    "readme_excerpt": "# FlashDB Local Fallback\nThis local fallback source tree exists so the execution orchestrator can self-check and exercise the FlashDB migration flow during repository development.\nScope:\n- `src/flashdb.c` and `src/flashdb.h` define a small key/value-store flavored FlashDB subset.\n- `tests/test_flashdb.c` lists the primary semantic scenarios that the Rust migration must preserve.\nAcceptance for the fallback flow:\n- generate `flashDB_rust/`\n- pass `cargo build`\n- pass `cargo test`\n- keep unsafe usage below 10%\n- pass the semantic equivalence gate"
-  },
-  "commands": [
-    "cargo build",
-    "cargo test"
-  ],
+  "cargo_manifest_exists": true,
+  "src_exists": true,
+  "tests_exists": true,
   "project_generation": {
-    "name": "project_generation",
-    "passed": true,
-    "detail": "generated Rust project from supported fallback template",
-    "payload": {
-      "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-      "module_name": "flashdb",
-      "mapped_apis": [
-        "flashdb_count",
-        "flashdb_delete",
-        "flashdb_get",
-        "flashdb_new",
-        "flashdb_set"
-      ],
-      "module_list": [
-        "src/lib.rs",
-        "src/flashdb.rs",
-        "tests/flashdb_semantics.rs"
-      ],
-      "test_mapping": [
-        {
-          "source_test": "tests/test_flashdb.c",
-          "rust_test_file": "tests/flashdb_semantics.rs",
-          "mapping": "equivalent coverage with assertion-backed integration tests"
-        }
-      ]
-    }
+    "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
+    "module_name": "flashdb",
+    "mapped_apis": [
+      "flashdb_count",
+      "flashdb_delete",
+      "flashdb_get",
+      "flashdb_new",
+      "flashdb_set"
+    ],
+    "unsupported_apis": [],
+    "source_coverage": {
+      "source_file_count": 2,
+      "test_file_count": 1,
+      "mapped_api_count": 5,
+      "unsupported_api_count": 0
+    },
+    "module_list": [
+      "src/lib.rs",
+      "src/flashdb.rs",
+      "tests/flashdb_semantics.rs"
+    ],
+    "test_mapping": [
+      {
+        "source_test": "tests/test_flashdb.c",
+        "rust_test_file": "tests/flashdb_semantics.rs",
+        "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
+        "coverage_level": "partial_bootstrap"
+      }
+    ],
+    "bootstrap_only": true,
+    "semantic_equivalence_claim": "bootstrap_skeleton_only"
   },
   "repair_loop": {
     "ok": true,
@@ -81,7 +50,7 @@
             "stdout_tail": [],
             "stderr_tail": [
               "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-              "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s"
+              "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s"
             ],
             "ok": true,
             "error": ""
@@ -96,9 +65,9 @@
               "",
               "",
               "running 3 tests",
+              "test deleting_a_key_removes_it_from_the_store ... ok",
               "test replacing_a_key_returns_the_previous_value ... ok",
               "test stores_and_reads_values ... ok",
-              "test deleting_a_key_removes_it_from_the_store ... ok",
               "",
               "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
               "",
@@ -109,7 +78,7 @@
             ],
             "stderr_tail": [
               "Compiling flashdb_rust v0.1.0 (E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust)",
-              "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s",
+              "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.50s",
               "     Running unittests src\\lib.rs (target\\debug\\deps\\flashdb_rust-bbd0a51323736fe7.exe)",
               "     Running tests\\flashdb_semantics.rs (target\\debug\\deps\\flashdb_semantics-cd5109fe428454d4.exe)",
               "   Doc-tests flashdb_rust"
@@ -118,20 +87,65 @@
             "error": ""
           }
         ],
-        "repair_action": null
+        "repair_action": null,
+        "repair_task_packet": null
       }
     ]
   },
-  "status": "READY_FOR_EVALUATION",
-  "ready": true,
-  "gates": {
-    "project_generation": {
-      "name": "project_generation",
-      "passed": true,
-      "detail": "generated Rust project from supported fallback template",
-      "payload": {
-        "project_dir": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
-        "module_name": "flashdb",
+  "unsafe": {
+    "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
+    "total_code_lines": 71,
+    "unsafe_lines": 2,
+    "unsafe_ratio": 0.028169014084507043,
+    "max_ratio": 0.1,
+    "passed": true,
+    "files": [
+      {
+        "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\flashdb.rs",
+        "code_lines": 38,
+        "unsafe_lines": 1
+      },
+      {
+        "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\src\\lib.rs",
+        "code_lines": 8,
+        "unsafe_lines": 1
+      },
+      {
+        "file": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust\\tests\\flashdb_semantics.rs",
+        "code_lines": 25,
+        "unsafe_lines": 0
+      }
+    ],
+    "generated_at": "2026-06-30T12:04:09Z"
+  },
+  "semantic": {
+    "passed": false,
+    "checks": [
+      {
+        "name": "cargo_manifest",
+        "passed": true,
+        "detail": "Cargo.toml exists"
+      },
+      {
+        "name": "non_empty_crate",
+        "passed": true,
+        "detail": "crate contains non-trivial Rust source and tests"
+      },
+      {
+        "name": "no_placeholders",
+        "passed": true,
+        "detail": "Rust source does not contain placeholder macros"
+      },
+      {
+        "name": "assertive_tests",
+        "passed": true,
+        "detail": "each Rust test file contains assertions",
+        "assert_count": 11
+      },
+      {
+        "name": "api_mapping",
+        "passed": true,
+        "detail": "source APIs are represented in generated Rust modules",
         "mapped_apis": [
           "flashdb_count",
           "flashdb_delete",
@@ -139,20 +153,35 @@
           "flashdb_new",
           "flashdb_set"
         ],
-        "module_list": [
-          "src/lib.rs",
-          "src/flashdb.rs",
-          "tests/flashdb_semantics.rs"
-        ],
-        "test_mapping": [
-          {
-            "source_test": "tests/test_flashdb.c",
-            "rust_test_file": "tests/flashdb_semantics.rs",
-            "mapping": "equivalent coverage with assertion-backed integration tests"
-          }
-        ]
+        "unsupported_apis": []
+      },
+      {
+        "name": "test_mapping_gate",
+        "passed": true,
+        "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
+        "mapped_source_tests": 1,
+        "source_test_count": 1,
+        "rust_test_functions": 3
+      },
+      {
+        "name": "bootstrap_only_guard",
+        "passed": false,
+        "detail": "bootstrap skeletons cannot claim full semantic equivalence"
+      },
+      {
+        "name": "verification_dependency",
+        "passed": true,
+        "detail": "semantic gate requires successful cargo build and cargo test first"
       }
-    },
+    ],
+    "failing_checks": [
+      "bootstrap_only_guard"
+    ]
+  },
+  "test_mapping_gate": true,
+  "ready": false,
+  "status": "BLOCKED_WITH_REPORT",
+  "gates": {
     "cargo_build": {
       "name": "cargo_build",
       "passed": true,
@@ -172,7 +201,7 @@
     "unsafe": {
       "name": "unsafe",
       "passed": true,
-      "detail": "unsafe gate passed",
+      "detail": "unsafe gate",
       "payload": {
         "project": "E:\\009workspace\\codex\\loopforge-contest-driver\\flashDB_rust",
         "total_code_lines": 71,
@@ -197,15 +226,15 @@
             "unsafe_lines": 0
           }
         ],
-        "generated_at": "2026-06-30T11:52:40Z"
+        "generated_at": "2026-06-30T12:04:09Z"
       }
     },
     "semantic": {
       "name": "semantic",
-      "passed": true,
-      "detail": "semantic equivalence gate",
+      "passed": false,
+      "detail": "semantic gate",
       "payload": {
-        "passed": true,
+        "passed": false,
         "checks": [
           {
             "name": "cargo_manifest",
@@ -238,17 +267,61 @@
               "flashdb_get",
               "flashdb_new",
               "flashdb_set"
-            ]
+            ],
+            "unsupported_apis": []
           },
           {
-            "name": "main_path_coverage",
+            "name": "test_mapping_gate",
             "passed": true,
-            "detail": "generated tests cover at least the counted C test scenarios"
+            "detail": "semantic gate is backed by explicit source-to-Rust test mappings",
+            "mapped_source_tests": 1,
+            "source_test_count": 1,
+            "rust_test_functions": 3
+          },
+          {
+            "name": "bootstrap_only_guard",
+            "passed": false,
+            "detail": "bootstrap skeletons cannot claim full semantic equivalence"
+          },
+          {
+            "name": "verification_dependency",
+            "passed": true,
+            "detail": "semantic gate requires successful cargo build and cargo test first"
           }
         ],
-        "failing_checks": []
+        "failing_checks": [
+          "bootstrap_only_guard"
+        ]
+      }
+    },
+    "test_mapping": {
+      "name": "test_mapping",
+      "passed": true,
+      "detail": "test mapping gate",
+      "payload": {
+        "test_mapping": [
+          {
+            "source_test": "tests/test_flashdb.c",
+            "rust_test_file": "tests/flashdb_semantics.rs",
+            "mapping": "bootstrap skeleton coverage with assertion-backed integration tests",
+            "coverage_level": "partial_bootstrap"
+          }
+        ]
+      }
+    },
+    "repair_loop": {
+      "name": "repair_loop",
+      "passed": true,
+      "detail": "repair loop gate",
+      "payload": {
+        "rounds_executed": 1
       }
     }
   },
-  "issues": []
+  "issues": [
+    {
+      "code": "semantic_gate_failed",
+      "detail": "semantic checks failed: bootstrap_only_guard"
+    }
+  ]
 }

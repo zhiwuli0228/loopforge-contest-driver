@@ -13,6 +13,8 @@ READY gate policy:
 - `cargo test` must pass
 - unsafe gate must pass
 - semantic gate must pass
+- repair loop gate must pass
+- test mapping gate must pass
 
 Required final files:
 
