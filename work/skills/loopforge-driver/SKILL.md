@@ -1,6 +1,6 @@
 ---
 name: loopforge-driver
-description: Execute the contest driver from INSTRUCTION.md using SOURCE_ROOT plus the source README as the primary task context. Use when asked to run LoopForge, start hosted execution, execute the contest task, or perform unattended repair and verification.
+description: Execute the contest driver using the preloaded work/design/README.md contract plus a read-only SOURCE_ROOT.
 ---
 
 # LoopForge Driver Skill
@@ -9,7 +9,7 @@ Use this skill as the entry point for contest execution.
 
 ## Execution Root
 
-- Repository root contains `INSTRUCTION.md` and `work/`; Windows input fixtures may live under `work/code/`
+- Repository root contains `INSTRUCTION.md`, `work/design/README.md`, and the harness assets
 - Framework assets live under `work/`
 - Runtime evidence is written under `work/logs/trace/`
 - Evaluator-facing outputs are written under `work/result/` and `work/logs/`
@@ -18,7 +18,7 @@ Use this skill as the entry point for contest execution.
 
 - `INSTRUCTION.md`
 - `SOURCE_ROOT`
-- `${SOURCE_ROOT}/README.md`, `${SOURCE_ROOT}/README`, `${SOURCE_ROOT}/readme.md`, or `${SOURCE_ROOT}/Readme.md`
+- `work/design/README.md`
 - `work/loopforge.config.yaml`
 - `work/rules/loopforge/core/`
 - `work/rules/loopforge/modes/{task.mode}/`
@@ -27,15 +27,15 @@ Use this skill as the entry point for contest execution.
 
 ## Mission
 
-Drive an unattended contest run from the repository root while treating `SOURCE_ROOT` and its README as the primary task-definition input.
+Drive an unattended contest run using `work/design/README.md` as the task definition and `SOURCE_ROOT` as read-only source input.
 
 ## Hard Constraints
 
 - Do not modify static files in the LoopForge root during execution.
 - Do not require humans to fill placeholder task name, language, objective, or verification commands.
 - Read `work/loopforge.config.yaml` as framework defaults, not as the sole source of task intent.
-- Parse the source README first and record the selected README path.
-- If no source README exists, degrade into `BLOCKED_WITH_REPORT` with explicit evidence in `work/result/issues/00-summary.md` and `work/logs/trace/`.
+- Parse the preloaded design README first and record its path and SHA-256 digest.
+- If the preloaded design README is invalid, degrade into `BLOCKED_WITH_REPORT` with explicit evidence.
 - Do not create commits, pushes, pull requests, or submissions.
 - Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `work/result/`, and `work/logs/`.
 - Stop after verification and report generation.
@@ -49,9 +49,9 @@ Resolve the source root in this order:
 3. `SOURCE_ROOT`
 4. path extracted from natural-language task input and normalized into `SOURCE_ROOT`
 5. Linux fallback `/__CONTEST_PLATFORM_SOURCE_ROOT__/source`
-6. Windows-only default `work/code`; non-Windows contest platform source mount
+6. otherwise block with explicit missing-source evidence
 
-The driver must inspect the source README and use it to infer requirements and constraints before planning work.
+The driver must use only the preloaded design README to infer requirements and constraints before planning work.
 
 ## Entrypoints
 
@@ -80,7 +80,7 @@ For non-delegated modes, continue with the normal contest run.
 
 1. Read `INSTRUCTION.md`.
 2. Resolve `SOURCE_ROOT`.
-3. Detect and read the source README.
+3. Read and validate `work/design/README.md`.
 4. Read `work/loopforge.config.yaml` for framework defaults.
 5. Load core rules and mode rules for the configured mode.
 6. Inspect `SOURCE_ROOT` and plan the smallest valid task flow for the selected mode.

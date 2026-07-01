@@ -7,11 +7,11 @@ LoopForge is a generic contest execution harness.
 The external task input is:
 
 ```text
-SOURCE_ROOT + source README
+work/design/README.md + read-only SOURCE_ROOT
 ```
 
 `SOURCE_ROOT` points to the source tree supplied by the contest platform or by a local evaluator.
-Task requirements, constraints, and acceptance context come from the README under `SOURCE_ROOT`.
+Task requirements, constraints, and acceptance context come only from `work/design/README.md`.
 
 ## Read Order
 

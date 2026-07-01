@@ -19,7 +19,6 @@ class CProjectRootResolverTests(unittest.TestCase):
         project = root / name
         (project / source).mkdir(parents=True)
         (project / tests).mkdir(parents=True)
-        (project / "README.md").write_text(f"# {name}\nsource_dirs: {source}\ntest_dirs: {tests}\n", encoding="utf-8")
         (project / source / "flashdb.h").write_text("int flashdb_open(void);\n", encoding="utf-8")
         (project / source / "flashdb.c").write_text("int flashdb_open(void) { return 0; }\n", encoding="utf-8")
         (project / tests / "test_flashdb.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
@@ -49,11 +48,10 @@ class CProjectRootResolverTests(unittest.TestCase):
             self.assertEqual(result["status"], "RESOLVED")
             self.assertEqual(Path(result["resolved_project_root"]), project.resolve())
 
-    def test_readme_only_input_blocks(self) -> None:
+    def test_source_free_input_blocks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "work" / "code" / "FlashDB"
             root.mkdir(parents=True)
-            (root / "README.md").write_text("Task statement only\n", encoding="utf-8")
             result = resolve_c_project_root(root)
             self.assertEqual(result["status"], "BLOCKED_WITH_REPORT")
             self.assertEqual(result["reason"], "unable to resolve usable C project layout from input_root")
@@ -70,7 +68,7 @@ class CProjectRootResolverTests(unittest.TestCase):
             self.assertEqual(len(usable), 2)
             self.assertTrue(all(isinstance(item["score"], int) for item in usable))
 
-    def test_readme_path_hints_support_nonstandard_layout(self) -> None:
+    def test_filesystem_discovery_supports_nonstandard_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = self.make_project(Path(tmp), source="core", tests="checks")
             result = resolve_c_project_root(project)
@@ -83,7 +81,6 @@ class CProjectRootResolverTests(unittest.TestCase):
             project = Path(tmp) / "OddLayout"
             (project / "engine").mkdir(parents=True)
             (project / "qa").mkdir()
-            (project / "README").write_text("# OddLayout\n", encoding="utf-8")
             (project / "engine" / "db.c").write_text("int db_open(void) { return 0; }\n", encoding="utf-8")
             (project / "engine" / "db.h").write_text("int db_open(void);\n", encoding="utf-8")
             (project / "qa" / "test_db.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
@@ -95,7 +92,6 @@ class CProjectRootResolverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "Library"
             project.mkdir()
-            (project / "README.md").write_text("# Library\n", encoding="utf-8")
             (project / "library.c").write_text("int library_open(void) { return 0; }\n", encoding="utf-8")
             result = resolve_c_project_root(project)
             self.assertEqual(result["status"], "RESOLVED")
@@ -114,14 +110,15 @@ class CProjectRootResolverTests(unittest.TestCase):
             self.assertEqual(packet.paths.source_root, project.resolve())
             self.assertEqual(
                 set(payload),
-                {"input_root", "resolved_project_root", "selected_readme_path", "source_dirs", "test_dirs", "candidate_roots", "resolution_strategy", "status", "reason"},
+                {"input_root", "resolved_project_root", "source_dirs", "test_dirs", "candidate_roots", "resolution_strategy", "status", "reason"},
             )
             self.assertTrue(trace.with_suffix(".md").is_file())
 
-    def test_windows_default_input_is_work_code(self) -> None:
+    def test_windows_default_input_is_platform_placeholder(self) -> None:
         workspace = Path(__file__).resolve().parents[3]
         resolved = loopforge_runner.resolve_default_source_root(workspace, platform_name="nt")
-        self.assertEqual(resolved, (workspace / "work" / "code").resolve())
+        self.assertNotEqual(resolved, (workspace / "work" / "code").resolve())
+        self.assertTrue(str(resolved).replace("\\", "/").endswith("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"))
 
     def test_non_windows_default_does_not_use_work_code(self) -> None:
         workspace = Path(__file__).resolve().parents[3]

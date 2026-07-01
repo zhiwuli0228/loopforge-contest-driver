@@ -9,7 +9,6 @@ $WorkDir = Join-Path $RootDir "work"
 $ResultDir = Join-Path $RootDir "result"
 $LogDir = Join-Path $RootDir "logs"
 $ExperimentDir = Join-Path $LogDir "trace\experiments\run-e2e-win-001"
-$ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
 
 function Write-ExperimentLine {
     param([string]$Message)
@@ -21,11 +20,6 @@ function Test-SourceRootLike {
     if (-not (Test-Path -LiteralPath $Path)) {
         return $false
     }
-    $hasReadme = $false
-    foreach ($candidate in $ReadmeCandidates) {
-        if (Test-Path -LiteralPath (Join-Path $Path $candidate)) { $hasReadme = $true; break }
-    }
-    if (-not $hasReadme) { return $false }
     $sourceFile = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Extension -in @('.c', '.cc', '.cpp', '.cxx') -and $_.FullName -notmatch '[\\/](?:\.git|build|dist|target|out)[\\/]' } |
         Select-Object -First 1

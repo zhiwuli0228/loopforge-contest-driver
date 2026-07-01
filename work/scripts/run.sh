@@ -42,8 +42,6 @@ if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
   elif [[ "$PLATFORM_NAME" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
     SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
-  elif [[ "$PLATFORM_NAME" != "Linux" && -d "${ROOT_DIR}/work/code" ]]; then
-    SOURCE_ROOT_VALUE="${ROOT_DIR}/work/code"
   else
     SOURCE_ROOT_VALUE=""
   fi

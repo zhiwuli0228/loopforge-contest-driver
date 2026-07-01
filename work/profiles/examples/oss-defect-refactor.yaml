@@ -28,7 +28,7 @@ execution:
   allow_unrelated_refactor: false
 
 verification:
-  strategy: "source-readme-or-framework-default"
+  strategy: "preloaded-design-or-framework-default"
   working_directory_hint: "code"
   evidence_focus:
     - "bug reproduction addressed"

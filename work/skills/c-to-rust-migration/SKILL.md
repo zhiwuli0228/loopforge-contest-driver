@@ -1,6 +1,6 @@
 ---
 name: c-to-rust-migration
-description: Convert a README-described C source project and its tests into a buildable Rust project. Use for source-readme-driven C-to-Rust migration tasks where SOURCE_ROOT is read-only.
+description: Convert a C source project described by the preloaded design README into a buildable Rust project while SOURCE_ROOT remains read-only.
 ---
 
 # C-To-Rust Migration Skill
@@ -16,8 +16,8 @@ Read, in order:
 1. `INSTRUCTION.md`
 2. `work/loopforge.config.yaml`
 3. `work/profiles/examples/c-to-rust-migration.yaml`
-4. `SOURCE_ROOT/README.md` or `SOURCE_ROOT/READNE.md` or another configured README candidate
-5. the source and test directories resolved from the active README contract
+4. `work/design/README.md`
+5. the source and test directories resolved from filesystem evidence under `SOURCE_ROOT`
 6. `work/rules/loopforge/adapters/c-to-rust/`
 
 ## Write Scope
@@ -46,7 +46,7 @@ Produce:
 
 Must include:
 
-- selected README path
+- preloaded design README path and SHA-256 digest
 - resolved source project root
 - C source files under resolved source directories
 - C test files under resolved test directories

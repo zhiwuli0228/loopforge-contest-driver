@@ -4,5 +4,5 @@
 - Platform-provided source paths take priority when available.
 - Explicit `--source-root` or `SOURCE_ROOT` overrides local fallback behavior.
 - Linux may use the contest platform source mount when present.
-- Windows defaults to `work/code/`; non-Windows execution uses explicit `SOURCE_ROOT` or the contest platform mount.
-- The resolved source tree is the only mutable business-code area during execution.
+- Windows and non-Windows execution use explicit `SOURCE_ROOT` or the contest platform mount; production execution has no `work/code/` fallback.
+- The resolved source tree is read-only during execution.

@@ -9,21 +9,9 @@ $WorkDir = Join-Path $RootDir "work"
 $ResultDir = Join-Path $RootDir "result"
 $LogDir = Join-Path $RootDir "logs"
 
-$ReadmeCandidates = @("README.md", "README", "READNE.md", "readme.md", "Readme.md")
-
 function Write-LoopForgeError {
     param([string]$Message)
     Write-Host "[LoopForge] ERROR: $Message"
-}
-
-function Test-ReadmeCandidate {
-    param([Parameter(Mandatory = $true)][string]$Path)
-    foreach ($candidate in $ReadmeCandidates) {
-        if (Test-Path -LiteralPath (Join-Path $Path $candidate)) {
-            return $true
-        }
-    }
-    return $false
 }
 
 function Test-SourceRootLike {
@@ -33,7 +21,6 @@ function Test-SourceRootLike {
         return $false
     }
 
-    if (-not (Test-ReadmeCandidate -Path $Path)) { return $false }
     $sourceFile = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Extension -in @('.c', '.cc', '.cpp', '.cxx') -and $_.FullName -notmatch '[\\/](?:\.git|build|dist|target|out)[\\/]' } |
         Select-Object -First 1

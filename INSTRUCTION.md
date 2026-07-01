@@ -22,10 +22,10 @@ SOURCE_ROOT="/absolute/path/to/source-or-input-container" bash work/scripts/run.
 ```
 
 `SOURCE_ROOT` may identify either the evaluator-provided C project or an input
-container whose child directory is the project. Project discovery uses the
-README/READNE and actual C/C++ translation units; it does not require `src`,
-`source`, `test`, or `tests` directory names. The harness does not write into
-`SOURCE_ROOT`.
+container whose child directory is the project. Requirements come only from
+the preloaded `work/design/README.md`; project discovery uses C/C++ translation
+units, build metadata, tests, and directory evidence. The harness does not
+require a source README and never writes into `SOURCE_ROOT`.
 
 ## Generated Rust project
 

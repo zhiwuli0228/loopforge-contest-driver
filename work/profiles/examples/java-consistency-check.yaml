@@ -25,7 +25,7 @@ execution:
   require_repair_plan: true
 
 verification:
-  strategy: "source-readme-or-framework-default"
+  strategy: "preloaded-design-or-framework-default"
   command_source: "loopforge.config.yaml"
   working_directory_hint: "SOURCE_ROOT"
   allow_degraded_verification: true

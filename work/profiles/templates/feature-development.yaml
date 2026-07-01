@@ -26,7 +26,7 @@ execution:
   patch_style: "incremental"
 
 verification:
-  strategy: "source-readme-or-framework-default"
+  strategy: "preloaded-design-or-framework-default"
   evidence_focus:
     - "acceptance criteria coverage"
     - "behavior verification"

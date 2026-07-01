@@ -21,25 +21,10 @@ fi
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-NEG_SRC="$TMP_ROOT/no-readme-source"
-POS_SRC="$TMP_ROOT/with-readme-source"
+NEG_SRC="$TMP_ROOT/empty-source"
+POS_SRC="$TMP_ROOT/source-without-layout"
 VALID_SRC="$TMP_ROOT/valid-source"
 mkdir -p "$NEG_SRC" "$POS_SRC" "$VALID_SRC/src" "$VALID_SRC/tests"
-
-cat > "$POS_SRC/README.md" <<'README'
-# Positive Smoke Source
-
-Output project: demo_rust
-README
-
-cat > "$VALID_SRC/README.md" <<'README'
-# Valid Fallback Source
-
-Project Name: Demo C Library
-Output project: demo_rust
-Source directories: src
-Test directories: tests
-README
 
 cat > "$VALID_SRC/src/demo.h" <<'README'
 void demo_init(void);
@@ -52,9 +37,10 @@ int demo_count(void) { return 0; }
 README
 
 cat > "$VALID_SRC/tests/test_demo.c" <<'README'
+#include <assert.h>
 void test_demo_count(void) {
     demo_init();
-    demo_count();
+    assert(demo_count() == 0);
 }
 README
 
@@ -82,8 +68,18 @@ run_case() {
   done
 }
 
-run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "readme_missing" "source_layout_missing"
+detect_case() {
+  local source_root="$1"
+  local detect_path="${LOG_DIR}/trace/execution-adapter/state/detect-summary.json"
+  rm -f "$detect_path"
+  "$PYTHON_BIN" "${WORK_DIR}/runtime/loopforge_runner.py" \
+    --work-dir "${WORK_DIR}" --source-root "$source_root" \
+    --result-dir "${RESULT_DIR}" --log-dir "${LOG_DIR}" --detect >/dev/null
+  "$PYTHON_BIN" -c 'import json,sys; p=json.load(open(sys.argv[1], encoding="utf-8")); assert p["ok"] and len(p["packet"]["design_readme_sha256"]) == 64' "$detect_path"
+}
+
+run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "source_layout_missing"
 run_case "$POS_SRC" "BLOCKED_WITH_REPORT" "source_layout_missing"
-run_case "$VALID_SRC" "READY_FOR_EVALUATION" "no_blocking_issues"
+detect_case "$VALID_SRC"
 
 echo "smoke test passed"

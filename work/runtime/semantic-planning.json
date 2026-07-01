@@ -1,0 +1,14 @@
+{
+  "schema_version": "semantic-migration-planning-config/v2",
+  "planning_schema_version": "semantic-migration-planning/v3",
+  "accepted_analysis_schema_versions": ["c-source-analysis/v2"],
+  "required_analysis_files": [
+    "source-inventory.json",
+    "public-api-map.json",
+    "type-map.json",
+    "call-graph.json",
+    "global-state-map.json",
+    "preprocessor-variants.json",
+    "analysis-verification.json"
+  ]
+}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,7 +22,7 @@ FRAMEWORK_DEFAULTS: Dict[str, Any] = {
 
 README_NAME_RE = re.compile(r"(?im)^(?:#\s+)?(?:project name|题目名称|项目名称)\s*[:：]?\s*(.+)$")
 README_OUTPUT_RE = re.compile(r"(?i)\b([A-Za-z0-9][A-Za-z0-9_-]*_rust)\b")
-README_COMMAND_RE = re.compile(r"(?im)^\s*(cargo\s+(?:build|test)(?:\s+[^\n`]+)?)\s*$")
+README_COMMAND_RE = re.compile(r"(?im)^[ \t]*(cargo[ \t]+(?:build|test)(?:[ \t]+[^\r\n`]*)?)[ \t]*$")
 README_CODE_IDENT_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 README_FUNCTION_HINT_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*_[A-Za-z0-9_]+)\s*\(")
 README_SOURCE_LINE_RE = re.compile(r"(?im)^\s*(?:source (?:dir|dirs|directory|directories)|源码目录)\s*[:：]\s*(.+)$")
@@ -129,65 +130,62 @@ def _coerce_float(value: Any, fallback: float) -> float:
 
 
 def resolve_runtime_contract(
-    source_root: Path,
-    work_dir: Path,
-    readme_candidates: List[str],
+    design_readme: Path,
     profile: Dict[str, Any],
 ) -> Dict[str, Any]:
-    source_readme: Optional[Path] = None
-    for name in readme_candidates:
-        candidate = source_root / name
-        if candidate.is_file():
-            source_readme = candidate.resolve()
-            break
-
-    fallback_readme = (work_dir / "code" / "README.md").resolve()
-    fallback_readme = fallback_readme if fallback_readme.is_file() else None
-
-    source_text = _read_text(source_readme)
-    fallback_text = _read_text(fallback_readme)
+    design_readme = design_readme.resolve()
+    design_error = ""
+    design_text = ""
+    design_digest = ""
+    if not design_readme.exists():
+        design_error = "design_readme_missing"
+    elif not design_readme.is_file():
+        design_error = "design_readme_not_regular_file"
+    else:
+        try:
+            design_bytes = design_readme.read_bytes()
+            design_text = design_bytes.decode("utf-8", errors="ignore")
+            if not design_text.strip():
+                design_error = "design_readme_empty"
+            else:
+                design_digest = hashlib.sha256(design_bytes).hexdigest()
+        except OSError:
+            design_error = "design_readme_unreadable"
     profile_defaults = profile.get("migration_defaults", {})
 
     source_dirs = _dedupe(
-        _parse_dir_hints(source_text, ["src", "source"])
-        or _parse_dir_hints(fallback_text, ["src", "source"])
+        _parse_dir_hints(design_text, ["src", "source"])
         or [str(item) for item in profile_defaults.get("source_dirs", [])]
         or FRAMEWORK_DEFAULTS["source_dirs"]
     )
     test_dirs = _dedupe(
-        _parse_dir_hints(source_text, ["tests", "test"])
-        or _parse_dir_hints(fallback_text, ["tests", "test"])
+        _parse_dir_hints(design_text, ["tests", "test"])
         or [str(item) for item in profile_defaults.get("test_dirs", [])]
         or FRAMEWORK_DEFAULTS["test_dirs"]
     )
     build_commands = (
-        _parse_build_commands(source_text)
-        or _parse_build_commands(fallback_text)
+        _parse_build_commands(design_text)
         or [str(item) for item in profile_defaults.get("build_commands", [])]
         or list(FRAMEWORK_DEFAULTS["build_commands"])
     )
     api_name_hints = _dedupe(
-        _parse_api_hints(source_text)
-        or _parse_api_hints(fallback_text)
+        _parse_api_hints(design_text)
         or [str(item) for item in profile_defaults.get("api_name_hints", [])]
         or list(FRAMEWORK_DEFAULTS["api_name_hints"])
     )
     module_hints = _dedupe(
-        _parse_module_hints(source_text)
-        or _parse_module_hints(fallback_text)
+        _parse_module_hints(design_text)
         or [str(item) for item in profile_defaults.get("module_hints", [])]
         or list(FRAMEWORK_DEFAULTS["module_hints"])
     )
 
     output_project_name = (
-        _parse_output_project_name(source_text)
-        or _parse_output_project_name(fallback_text)
+        _parse_output_project_name(design_text)
         or str(profile_defaults.get("output_project_name", ""))
         or str(FRAMEWORK_DEFAULTS["output_project_name"])
     )
     source_project_name = (
-        _parse_project_name(source_text)
-        or _parse_project_name(fallback_text)
+        _parse_project_name(design_text)
         or str(profile_defaults.get("source_project_name", ""))
         or str(FRAMEWORK_DEFAULTS["source_project_name"])
     )
@@ -205,8 +203,9 @@ def resolve_runtime_contract(
     )
 
     return {
-        "selected_readme_path": str(source_readme) if source_readme else "",
-        "fallback_readme_path": str(fallback_readme) if fallback_readme else "",
+        "design_readme_path": str(design_readme),
+        "design_readme_sha256": design_digest,
+        "design_readme_error": design_error,
         "source_project_name": source_project_name,
         "source_language": source_language,
         "target_language": target_language,
@@ -268,16 +267,14 @@ class RuntimePaths:
 
 @dataclass
 class SourceLayout:
-    readme_path: Optional[Path]
-    fallback_readme_path: Optional[Path]
+    design_readme_path: Optional[Path]
     project_root: Optional[Path]
     source_dirs: List[Path]
     test_dirs: List[Path]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "readme_path": str(self.readme_path) if self.readme_path else "",
-            "fallback_readme_path": str(self.fallback_readme_path) if self.fallback_readme_path else "",
+            "design_readme_path": str(self.design_readme_path) if self.design_readme_path else "",
             "project_root": str(self.project_root) if self.project_root else "",
             "source_dirs": [str(path) for path in self.source_dirs],
             "test_dirs": [str(path) for path in self.test_dirs],
@@ -289,7 +286,8 @@ class AgentTaskPacket:
     paths: RuntimePaths
     config: Dict[str, Any]
     profile: Dict[str, Any]
-    readme_candidates: List[str]
+    design_readme_path: Path
+    design_readme_sha256: str
     max_repair_rounds: int
     source_project_name: str
     source_language: str
@@ -322,6 +320,8 @@ class AgentTaskPacket:
     def ready(self) -> bool:
         required = [
             "source_analysis",
+            "semantic_planning",
+            "rust_generation",
             "project_layout",
             "trace_artifacts",
             "cargo_build",
@@ -337,7 +337,8 @@ class AgentTaskPacket:
         return {
             "paths": self.paths.to_dict(),
             "source_layout": self.source_layout.to_dict() if self.source_layout else {},
-            "readme_candidates": self.readme_candidates,
+            "design_readme_path": str(self.design_readme_path),
+            "design_readme_sha256": self.design_readme_sha256,
             "max_repair_rounds": self.max_repair_rounds,
             "source_project_name": self.source_project_name,
             "source_language": self.source_language,

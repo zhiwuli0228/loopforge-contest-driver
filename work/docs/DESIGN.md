@@ -7,11 +7,11 @@ LoopForge is a generic contest execution framework.
 The framework operates on:
 
 ```text
-SOURCE_ROOT + source README
+work/design/README.md + read-only SOURCE_ROOT
 ```
 
 `SOURCE_ROOT` resolves to the source tree under evaluation.
-The source README provides requirements, constraints, and acceptance context.
+The preloaded design README provides requirements, constraints, and acceptance context.
 
 ## Stable Components
 

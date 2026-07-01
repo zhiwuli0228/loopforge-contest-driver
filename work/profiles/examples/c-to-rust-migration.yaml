@@ -1,7 +1,7 @@
 profile:
   name: "c-to-rust-migration"
   mode: "migration"
-  intent: "Convert a README-described C source project and its tests into a buildable Rust project."
+  intent: "Convert the read-only C source project described by the preloaded design into a buildable Rust project."
 
 migration_defaults:
   source_project_name: "source_project"
@@ -22,16 +22,9 @@ migration_defaults:
   module_hints: []
 
 source_contract:
-  source_strategy: "source-readme-driven-execution"
-  readme_candidates:
-    - "README.md"
-    - "README"
-    - "READNE.md"
-    - "readme.md"
-    - "Readme.md"
+  source_strategy: "filesystem-evidence-driven-execution"
+  design_readme: "work/design/README.md"
   source_readonly: true
-  invalid_source_root:
-    - "work/code/README.md"
 
 migration_contract:
   semantic_gate_required: true

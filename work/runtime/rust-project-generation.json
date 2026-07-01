@@ -1,0 +1,19 @@
+{
+  "schema_version": "c-to-rust-project-generation/v1",
+  "accepted_analysis_schema_versions": ["c-source-analysis/v2"],
+  "accepted_planning_schema_versions": ["semantic-migration-planning/v3"],
+  "rust": {
+    "edition": "2021",
+    "minimum_version": "1.70",
+    "lock_policy": "cargo build --locked"
+  },
+  "required_outputs": [
+    "implementation-map.json",
+    "unsupported-functions.json",
+    "module-edge-map.json",
+    "unsafe-audit.json",
+    "generation-verification.json"
+  ],
+  "unsafe_metric": "unsafe_syntax_nodes / rust_item_nodes",
+  "unsafe_ratio_limit_exclusive": 0.10
+}

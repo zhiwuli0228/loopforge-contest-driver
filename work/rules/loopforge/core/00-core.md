@@ -17,8 +17,8 @@ LoopForge is a generic contest execution framework.
 LoopForge should:
 
 - read platform instructions from the repository root
-- read task context from the README under `SOURCE_ROOT`
-- inspect or modify only the resolved source tree
+- read task context only from `work/design/README.md`
+- inspect the resolved source tree without modifying it
 - leave evaluator-facing outputs under `work/result/` and `work/logs/`
 
 LoopForge must not:

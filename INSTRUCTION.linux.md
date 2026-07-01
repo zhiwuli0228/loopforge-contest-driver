@@ -12,7 +12,7 @@ Required in `PATH`: `bash`, `python3`, `cargo`, and `rustc`.
 SOURCE_ROOT="/absolute/path/to/source/project" bash work/scripts/run.sh --run
 ```
 
-The harness never writes into `SOURCE_ROOT`.
+Requirements come from the preloaded `work/design/README.md`. The harness does not require a README under `SOURCE_ROOT` and never writes into it.
 
 ## Generated Rust project
 

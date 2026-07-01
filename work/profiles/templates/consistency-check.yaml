@@ -30,7 +30,7 @@ execution:
     - "design ambiguity"
 
 verification:
-  strategy: "source-readme-or-framework-default"
+  strategy: "preloaded-design-or-framework-default"
   evidence_focus:
     - "traceability quality"
     - "drift classification"

@@ -15,12 +15,7 @@ The driver accepts one external runtime input:
 
 - `SOURCE_ROOT`
 
-Requirements, constraints, and acceptance context are read from the source README near `SOURCE_ROOT`, using the first matching file from:
-
-- `README.md`
-- `README`
-- `readme.md`
-- `Readme.md`
+Requirements, constraints, and acceptance context are read only from the submission asset `work/design/README.md`. `SOURCE_ROOT` is read-only and does not need a README. `work/code/` is a local test fixture and is absent from the formal submission package.
 
 `work/loopforge.config.yaml` provides framework defaults only. It is not the place to manually fill per-task objectives or placeholder verification commands.
 

@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set
 
+from source_analysis import build_complete_analysis, validate_written_evidence, write_complete_analysis
+
 
 STAGES = ("requirement", "structure", "data_model", "api_behavior", "capability", "state_model", "test_coverage")
 ARTIFACTS = {
@@ -56,6 +58,16 @@ def _result(stage: str, checks: Dict[str, bool], metrics: Dict[str, Any]) -> Dic
 def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trace_dir: Path) -> Dict[str, Any]:
     """Produce source-analysis maps and independently recompute strict gate checks."""
     trace_dir.mkdir(parents=True, exist_ok=True)
+    complete_bundle = build_complete_analysis(packet, analysis)
+    write_complete_analysis(complete_bundle, trace_dir)
+    evidence_failures = validate_written_evidence(trace_dir, Path(analysis.get("project_root", ".")))
+    if evidence_failures:
+        complete_bundle["verification"]["passed"] = False
+        complete_bundle["verification"]["status"] = "BLOCKED_WITH_REPORT"
+        complete_bundle["verification"]["failures"] = sorted(set(complete_bundle["verification"].get("failures", []) + evidence_failures))
+        complete_bundle["verification"]["first_blocking_point"] = "C_SOURCE_ANALYSIS"
+        complete_bundle["artifacts"]["analysis-verification.json"] = complete_bundle["verification"]
+        write_complete_analysis(complete_bundle, trace_dir)
     functions = analysis.get("functions", [])
     public = set(analysis.get("public_apis", []))
     definitions = {item["name"]: item for item in functions if item.get("decl_kind") == "definition"}
@@ -66,15 +78,15 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     requirement = {
         "input_root": str(packet.paths.input_root),
         "source_root": str(packet.paths.source_root),
-        "source_readme": analysis.get("readme_path", ""),
-        "task_requirement_readme": str(packet.paths.work_dir / "code" / "README.md"),
+        "design_readme": analysis.get("design_readme_path", ""),
+        "design_readme_sha256": analysis.get("design_readme_sha256", ""),
         "source_dirs": analysis.get("source_dirs", []),
         "test_dirs": analysis.get("test_dirs", []),
         "output_project_name": packet.output_project_name,
         "output_project_dir": str(packet.output_project_dir),
         "build_commands": packet.build_commands,
         "unsafe_limit": packet.unsafe_ratio_max,
-        "evidence": [{"file": analysis.get("readme_path", ""), "kind": "source_readme"}],
+        "evidence": [{"file": analysis.get("design_readme_path", ""), "kind": "design_readme", "sha256": analysis.get("design_readme_sha256", "")}],
     }
     structure = {
         "core_files": [path for path in analysis.get("src_files", []) if path.endswith(".c")],
@@ -138,7 +150,7 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
 
     output_expected = packet.paths.work_dir / "output" / packet.output_project_name
     verifications = {
-        "requirement": _result("requirement", {"resolved_project_root_exists": packet.paths.source_root.is_dir() and bool(packet.metadata.get("layout_resolution", {}).get("resolved_project_root")), "source_readme_identified": bool(requirement["source_readme"]), "source_dirs_exist": bool(requirement["source_dirs"]), "test_dirs_exist": bool(requirement["test_dirs"]), "output_name_has_evidence": bool(requirement["output_project_name"] and requirement["evidence"]), "output_dir_is_canonical": packet.output_project_dir.resolve() == output_expected.resolve()}, {}),
+        "requirement": _result("requirement", {"resolved_project_root_exists": packet.paths.source_root.is_dir() and bool(packet.metadata.get("layout_resolution", {}).get("resolved_project_root")), "design_readme_identified": bool(requirement["design_readme"]), "design_readme_digest_recorded": len(requirement["design_readme_sha256"]) == 64, "source_dirs_exist": bool(requirement["source_dirs"]), "test_dirs_exist": bool(requirement["test_dirs"]), "output_name_has_evidence": bool(requirement["output_project_name"] and requirement["evidence"]), "output_dir_is_canonical": packet.output_project_dir.resolve() == output_expected.resolve()}, {}),
         "structure": _result("structure", {"core_c_files_present": bool(structure["core_files"]), "public_apis_present": bool(public), "all_public_apis_defined": not structure["unresolved_declarations"], "all_public_apis_have_evidence": all(item.get("file") and item.get("symbol") for item in structure["evidence"])}, {"public_api_count": len(public), "definition_count": len(public & set(definitions))}),
         "data_model": _result("data_model", {"all_struct_fields_named": all(field.get("name") for item in structs for field in item["fields"]), "all_structs_have_evidence": all(item["evidence"] for item in structs)}, {"struct_count": len(structs)}),
         "api_behavior": _result("api_behavior", {"behavior_coverage_100_percent": _names(behaviors) == public, "all_apis_classified": all(item["kind"] for item in behaviors), "mutations_have_side_effects": all(item["side_effects"] for item in mutating), "all_behaviors_have_evidence": all(item["evidence"] for item in behaviors)}, {"coverage": len(_names(behaviors)) / len(public) if public else 0.0}),
@@ -149,11 +161,15 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     for stage, payload in verifications.items():
         _write_json(trace_dir / ARTIFACTS[stage][1], payload)
     failed = [stage for stage in STAGES if not verifications[stage]["passed"]]
+    if not complete_bundle["verification"]["passed"]:
+        failed.append("complete_source_analysis")
     layout_resolved = packet.metadata.get("layout_resolution", {}).get("status") == "RESOLVED"
-    gate = {"passed": not failed, "status": "PASSED" if not failed else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not failed else ("A_SOURCE_ROOT" if not layout_resolved or "requirement" in failed else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "verifications": verifications}
+    gate = {"passed": not failed, "status": "PASSED" if not failed else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not failed else ("A_SOURCE_ROOT" if not layout_resolved or "requirement" in failed else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "verifications": verifications, "complete_source_analysis": complete_bundle["verification"]}
     missing_lines = ["# Missing Capability Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", f"- missing public APIs: `{', '.join(structure['unresolved_declarations']) or 'none'}`", f"- missing capabilities: `{', '.join(capability['unmapped_public_apis']) or 'none'}`", "- missing data invariants: `none detected by structural gate`", "- missing state transitions: `" + (", ".join(sorted({item['name'] for item in mutating} - {item['api'] for item in state_model['transitions']})) or "none") + "`", f"- missing boundary tests: `{', '.join(uncovered) or 'none'}`", f"- missing error-path tests: `{', '.join(uncovered) or 'none'}`", f"- severity: `{'P1' if failed else 'none'}`", ""]
     (trace_dir / "01g-missing-capability-report.md").write_text("\n".join(missing_lines), encoding="utf-8")
     report = ["# Source Analysis Verify Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", "", "| Stage | Result | Failed checks |", "|---|---|---|"]
     report.extend(f"| {stage} | {'PASS' if verifications[stage]['passed'] else 'FAIL'} | {', '.join(verifications[stage]['failures']) or 'none'} |" for stage in STAGES)
+    complete = complete_bundle["verification"]
+    report.append(f"| complete_source_analysis | {'PASS' if complete['passed'] else 'FAIL'} | {', '.join(complete.get('failures', [])) or 'none'} |")
     (trace_dir / "source-analysis-verify-report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     return gate

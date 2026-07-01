@@ -4,7 +4,7 @@
 
 Adapt the framework to a source tree by supplying `SOURCE_ROOT`.
 
-The framework should read the task context from the README under `SOURCE_ROOT` instead of from manual configuration fields.
+The framework reads task context only from the preloaded `work/design/README.md`; `SOURCE_ROOT` supplies read-only implementation evidence.
 
 ## Adaptation Rules
 

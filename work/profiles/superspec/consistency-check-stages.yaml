@@ -33,7 +33,7 @@ stages:
       - "INSTRUCTION.md"
       - "loopforge.config.yaml"
       - "skills/loopforge-driver/SKILL.md"
-      - "SOURCE_ROOT/README.md"
+      - "work/design/README.md"
     output: "work/logs/trace/consistency/00-preflight-report.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DESIGN_READ"
@@ -45,7 +45,7 @@ stages:
     name: "Design Read"
     subagent: "opencode-design-read-subagent"
     input:
-      - "SOURCE_ROOT/README.md"
+      - "work/design/README.md"
     output: "work/logs/trace/consistency/01-design-summary.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_IMPLEMENTATION_MAPPING"

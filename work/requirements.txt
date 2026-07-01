@@ -1,1 +1,1 @@
-# No third-party Python dependencies are required currently.
+pycparser==2.22

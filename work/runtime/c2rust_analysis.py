@@ -554,16 +554,15 @@ def _referenced_apis(text: str, public_apis: List[str], function_table: List[Dic
 
 
 def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
-    readme_path = Path(packet.metadata.get("selected_readme_path", "")).resolve() if packet.metadata.get("selected_readme_path") else None
-    fallback_readme = Path(packet.metadata.get("fallback_readme_path", "")).resolve() if packet.metadata.get("fallback_readme_path") else None
+    design_readme_path = Path(packet.metadata.get("design_readme_path", "")).resolve() if packet.metadata.get("design_readme_path") else None
+    design_readme_valid = bool(design_readme_path and not packet.metadata.get("design_readme_error"))
 
     resolution = packet.metadata.get("layout_resolution", {})
     project_root = Path(resolution["resolved_project_root"]).resolve() if resolution.get("resolved_project_root") else None
     source_dirs = [Path(path).resolve() for path in resolution.get("source_dirs", [])]
     test_dirs = [Path(path).resolve() for path in resolution.get("test_dirs", [])]
     packet.source_layout = SourceLayout(
-        readme_path=readme_path,
-        fallback_readme_path=fallback_readme,
+        design_readme_path=design_readme_path,
         project_root=project_root,
         source_dirs=source_dirs,
         test_dirs=test_dirs,
@@ -696,9 +695,9 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
     support_level = "source-driven-c" if src_files else "unsupported"
 
     analysis = {
-        "ok": readme_path is not None and project_root is not None and bool(src_files) and bool(test_files),
-        "readme_path": str(readme_path) if readme_path else "",
-        "fallback_readme_path": str(fallback_readme) if fallback_readme else "",
+        "ok": design_readme_valid and project_root is not None and bool(src_files) and bool(test_files),
+        "design_readme_path": str(design_readme_path) if design_readme_path else "",
+        "design_readme_sha256": packet.metadata.get("design_readme_sha256", ""),
         "project_root": str(project_root) if project_root else "",
         "source_dirs": [str(path.relative_to(project_base)).replace("\\", "/") for path in source_dirs] if project_root else [],
         "test_dirs": [str(path.relative_to(project_base)).replace("\\", "/") for path in test_dirs] if project_root else [],
@@ -720,12 +719,13 @@ def analyze_source(packet: AgentTaskPacket) -> Dict[str, Any]:
         "io_boundaries": _dedupe(sorted(name for name in function_names if any(token in name.lower() for token in ["read", "write", "open", "close", "get", "set", "io"]))),
         "module_hints": _dedupe(packet.module_hints + [item["module_hint"] for item in source_file_records]),
         "support_level": support_level,
-        "readme_excerpt": "\n".join(line.strip() for line in (_read_text(readme_path) if readme_path else "").splitlines()[:20] if line.strip()),
+        "design_readme_excerpt": "\n".join(line.strip() for line in (_read_text(design_readme_path) if design_readme_valid else "").splitlines()[:20] if line.strip()),
     }
     analysis["semantic_invariants"] = extract_semantic_invariants(analysis)
 
-    if readme_path is None:
-        packet.add_issue("readme_missing", f"README candidate not found under {project_root or packet.paths.input_root}")
+    if not design_readme_valid:
+        code = str(packet.metadata.get("design_readme_error") or "design_readme_missing")
+        packet.add_issue(code, f"invalid preloaded design contract: {design_readme_path or packet.paths.work_dir / 'design' / 'README.md'}")
     if project_root is None:
         packet.add_issue("source_layout_missing", resolution.get("reason", "unable to resolve usable C project layout from input_root"))
     if not src_files:

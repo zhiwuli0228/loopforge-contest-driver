@@ -132,6 +132,9 @@ def _map_param_type(type_text: str, type_index: Dict[str, Dict[str, Any]]) -> st
         return rust_name
     if "char" in lowered and "*" in lowered:
         return "&str"
+    if "*" in normalized:
+        pointee = _map_value_type(normalized.replace("*", " "), type_index)
+        return f"&{'mut ' if 'const' not in lowered else ''}{pointee}".replace("& ", "&")
     return _map_value_type(normalized, type_index)
 
 
@@ -432,50 +435,78 @@ def _render_function(function: Dict[str, Any], type_index: Dict[str, Dict[str, A
     lines = [signature + " {"]
     lines.append(f"    // Derived from {function['file']}")
     body_kind = function.get("body_kind")
-    raw_body = function.get("raw_body", "")
-    # The lightweight assignment analyzer cannot safely render declarations,
-    # casts, pointer dereferences, macro calls, or multi-statement RHS values.
-    # Those used to be copied verbatim into Rust and made the whole generated
-    # crate fail to parse. Emit a safe opaque-handle adapter for such complex C
-    # bodies. The original body remains recorded in source-analysis artifacts.
-    complex_c = body_kind in {"assignment_then_return", "state_mutation_then_return"} and bool(
-        re.search(r"(?:\*|->|\b(?:struct|const|size_t|uint\d*_t|bool|void|fdb_[A-Za-z0-9_]*_t)\b|\([A-Za-z_][A-Za-z0-9_\s*]*\)\s*[A-Za-z_])", raw_body)
-    )
-    if complex_c:
-        arg_names = [_sanitize_ident(param.get("name", "arg"), "arg") for param in function.get("params", [])]
-        if arg_names:
-            lines.append(f"    let _ = ({', '.join('&' + name for name in arg_names)},);" )
-        defaults = {
-            "()": None,
-            "bool": "false",
-            "String": "String::new()",
-            "Option<String>": "None",
-            "usize": "0",
-            "u32": "0",
-            "i32": "0",
-            "i64": "0",
-        }
-        fallback = defaults.get(rust_return, "Default::default()")
-        if fallback is not None:
-            lines.append(f"    {fallback}")
-        lines.append("}")
-        return ("\n".join(lines), True)
-    if body_kind == "loop_find_then_return":
-        rendered = _render_loop_find_then_return(function, type_index)
-    elif body_kind == "loop_find_then_mutate_return":
-        rendered = _render_loop_find_then_mutate_return(function, type_index)
-    elif body_kind == "loop_find_then_shift_delete":
-        rendered = _render_loop_find_then_shift_delete(function, type_index)
-    else:
-        rendered = _render_direct_body(function, rust_return, type_index)
+    # Try source-derived generic renderers first.  The fail-closed path is only
+    # the final fallback after the parsed body shape cannot be rendered; it is
+    # not a reason to skip provable assignment, pointer-output, or state-update
+    # patterns that happen to come from syntactically complex C.
+    try:
+        if body_kind == "loop_find_then_return":
+            rendered = _render_loop_find_then_return(function, type_index)
+        elif body_kind == "loop_find_then_mutate_return":
+            rendered = _render_loop_find_then_mutate_return(function, type_index)
+        elif body_kind == "loop_find_then_shift_delete":
+            rendered = _render_loop_find_then_shift_delete(function, type_index)
+        else:
+            rendered = _render_direct_body(function, rust_return, type_index)
+    except (KeyError, TypeError, ValueError):
+        return ("", False)
     lines.extend(f"    {line}" for line in rendered)
     lines.append("}")
     return ("\n".join(lines), True)
 
 
-def _render_module(module_name: str, functions: List[Dict[str, Any]], macros: List[Dict[str, Any]], types: List[Dict[str, Any]], type_index: Dict[str, Dict[str, Any]]) -> Tuple[str, int]:
+def _diagnostic_for_function(function: Dict[str, Any], module_name: str, stage: str, reason: str, resolved: bool = False) -> Dict[str, Any]:
+    return {
+        "symbol": function.get("name", "unknown"),
+        "module": module_name,
+        "stage": stage,
+        "reason": reason,
+        "source": f"{function.get('file', 'unknown')}:{function.get('line', 'unknown')}",
+        "body_kind": function.get("body_kind", "unknown"),
+        "resolved": resolved,
+    }
+
+
+def _repair_summary(diagnostics: List[Dict[str, Any]]) -> Dict[str, Any]:
+    final_repair = [item for item in diagnostics if item.get("stage") == "final_repair_pass"]
+    resolved = [item for item in final_repair if item.get("resolved")]
+    unresolved = [item for item in final_repair if not item.get("resolved")]
+    return {
+        "attempted_count": len(final_repair),
+        "resolved_count": len(resolved),
+        "unresolved_count": len(unresolved),
+        "attempted_symbols": [item.get("symbol", "unknown") for item in final_repair],
+        "resolved_symbols": [item.get("symbol", "unknown") for item in resolved],
+        "unresolved_symbols": [item.get("symbol", "unknown") for item in unresolved],
+    }
+
+
+def _attempt_final_function_repair(function: Dict[str, Any], type_index: Dict[str, Dict[str, Any]]) -> Tuple[str, bool, str]:
+    """Last generic repair attempt before reporting an unsupported function."""
+    if function.get("decl_kind") != "definition":
+        return ("", False, "not a function definition")
+    if function.get("translation_status") != "translated":
+        raw_body = " ".join(str(function.get("raw_body", "")).split())
+        repaired = dict(function)
+        return_number = re.fullmatch(r"return\s+(-?\d+)\s*;", raw_body)
+        return_identifier = re.fullmatch(r"return\s+([A-Za-z_][A-Za-z0-9_]*)\s*;", raw_body)
+        if return_number:
+            repaired.update({"translation_status": "translated", "body_kind": "return_number", "body_value": return_number.group(1)})
+        elif return_identifier:
+            repaired.update({"translation_status": "translated", "body_kind": "return_identifier", "body_value": return_identifier.group(1)})
+        else:
+            return ("", False, function.get("unsupported_reason") or "no generic repair pattern matched")
+        rendered, translated = _render_function(repaired, type_index)
+        return (rendered, translated, "repaired from raw source return statement" if translated else "raw source repair did not render")
+    rendered, translated = _render_function(function, type_index)
+    return (rendered, translated, "re-rendered after main module generation")
+
+
+def _render_module(module_name: str, functions: List[Dict[str, Any]], macros: List[Dict[str, Any]], types: List[Dict[str, Any]], type_index: Dict[str, Dict[str, Any]]) -> Tuple[str, int, List[Dict[str, Any]], List[Dict[str, Any]]]:
     translated_count = 0
     chunks = ["#![forbid(unsafe_code)]", ""]
+    rendered_functions: List[Dict[str, Any]] = []
+    diagnostics: List[Dict[str, Any]] = []
 
     module_macros = [item for item in macros if Path(item["file"]).stem == module_name]
     seen_macros: Set[str] = set()
@@ -508,18 +539,31 @@ def _render_module(module_name: str, functions: List[Dict[str, Any]], macros: Li
         chunks.append("}")
         chunks.append("")
 
+    unresolved: List[Dict[str, Any]] = []
     for function in functions:
         rendered, translated = _render_function(function, type_index)
         if translated:
             translated_count += 1
+            rendered_functions.append(function)
         if rendered:
             chunks.append(rendered)
+            chunks.append("")
+        elif function.get("decl_kind") == "definition":
+            unresolved.append(function)
+
+    for function in unresolved:
+        repaired, translated, reason = _attempt_final_function_repair(function, type_index)
+        diagnostics.append(_diagnostic_for_function(function, module_name, "final_repair_pass", reason, translated))
+        if translated and repaired:
+            translated_count += 1
+            rendered_functions.append(function)
+            chunks.append(repaired)
             chunks.append("")
 
     if len(chunks) == 2:
         chunks.extend(["pub fn module_inventory() -> usize {", "    0", "}"])
 
-    return ("\n".join(chunks).rstrip() + "\n", translated_count)
+    return ("\n".join(chunks).rstrip() + "\n", translated_count, rendered_functions, diagnostics)
 
 
 def _render_lib_rs(module_names: List[str], exported_functions: List[Tuple[str, str]]) -> str:
@@ -535,6 +579,27 @@ def _render_lib_rs(module_names: List[str], exported_functions: List[Tuple[str, 
     lines.append(f"    {len(module_names)}")
     lines.append("}")
     return "\n".join(lines) + "\n"
+
+
+def _render_ports(migration_plan: Optional[Dict[str, Any]]) -> str:
+    """Render only source-derived boundaries; no benchmark-specific ports."""
+    lines = ["#![forbid(unsafe_code)]", ""]
+    ports = (migration_plan or {}).get("ports", [])
+    for port in sorted(ports, key=lambda item: str(item.get("id", ""))):
+        trait_name = _rust_type_name(str(port.get("id") or "external_port"))
+        operations = port.get("operations") or ["call"]
+        lines.extend([
+            f"// boundary={port.get('boundary_id', '')}; error={port.get('error_semantics', '')}; atomicity={port.get('atomicity', '')}",
+            f"pub trait {trait_name} {{",
+            "    type Error;",
+        ])
+        for operation in operations:
+            method = _sanitize_ident(str(operation), "call")
+            lines.append(f"    fn {method}(&mut self) -> Result<(), Self::Error>;")
+        lines.extend(["}", ""])
+    if not ports:
+        lines.extend(["// This source analysis contains no external boundaries.", ""])
+    return "\n".join(lines)
 
 
 def _select_semantic_roles(mapped_functions: List[Tuple[Dict[str, Any], str]]) -> Dict[str, Optional[Tuple[Dict[str, Any], str]]]:
@@ -624,7 +689,16 @@ def _render_fallback_call_test(crate_ident: str, function: Dict[str, Any], modul
     state_var = "state"
     if state_type:
         lines.append(f"let mut {state_var} = {crate_ident}::{module_name}::{state_type}::default();")
-    args = [_sample_arg_for_param(param, type_index, crate_ident, module_name, state_var) for param in function.get("params", [])]
+    args: List[str] = []
+    for index, param in enumerate(function.get("params", [])):
+        rust_type = _map_param_type(param.get("type", ""), type_index)
+        if (rust_type.startswith("&mut ") or rust_type.startswith("&")) and "struct " not in param.get("type", "") and rust_type != "&str":
+            pointee = rust_type.replace("&mut ", "").replace("&", "").strip()
+            local_name = f"arg{index}_value"
+            lines.append(f"let mut {local_name}: {pointee} = Default::default();")
+            args.append(f"&mut {local_name}" if rust_type.startswith("&mut ") else f"&{local_name}")
+        else:
+            args.append(_sample_arg_for_param(param, type_index, crate_ident, module_name, state_var))
     call = f"{function['name']}({', '.join(args)})"
     rust_return = _map_return_type(function, type_index)
     if rust_return == "()":
@@ -719,7 +793,7 @@ def _render_tests(
     return ("\n".join(lines).rstrip() + "\n", test_mapping)
 
 
-def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[str, Any]:
+def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any], migration_plan: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     output_base = packet.paths.output_base_dir.resolve()
     project_dir = packet.output_project_dir.resolve()
     if project_dir.parent != output_base:
@@ -736,7 +810,7 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         cargo_manifest.unlink()
 
     grouped = _group_functions_by_module(analysis)
-    module_names = _dedupe(list(grouped.keys()) + [_sanitize_ident(item.get("module_hint", ""), "module") for item in analysis.get("source_files", [])])
+    module_names = _dedupe(list(grouped.keys()) + [_sanitize_ident(item.get("module_hint", ""), "module") for item in analysis.get("source_files", [])] + ["ports"])
     macros = analysis.get("macro_table", [])
     types = analysis.get("type_table", [])
     type_index = _build_type_index(analysis)
@@ -744,15 +818,18 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
     total_definitions = len([item for item in analysis.get("functions", []) if item.get("decl_kind") == "definition"])
     exported_functions: List[Tuple[str, str]] = []
     mapped_functions: List[Tuple[Dict[str, Any], str]] = []
+    generation_diagnostics: List[Dict[str, Any]] = []
 
     for module_name in module_names:
+        if module_name == "ports":
+            _write(project_dir / "src" / "ports.rs", _render_ports(migration_plan))
+            continue
         module_functions = grouped.get(module_name, [])
-        module_rs, translated_count = _render_module(module_name, module_functions, macros, types, type_index)
+        module_rs, translated_count, rendered_functions, diagnostics = _render_module(module_name, module_functions, macros, types, type_index)
         translated_functions += translated_count
+        generation_diagnostics.extend(diagnostics)
         _write(project_dir / "src" / f"{module_name}.rs", module_rs)
-        for function in module_functions:
-            if function.get("translation_status") != "translated" or function.get("decl_kind") != "definition":
-                continue
+        for function in rendered_functions:
             if function.get("name") not in [name for name, _ in exported_functions]:
                 exported_functions.append((function["name"], module_name))
                 mapped_functions.append((function, module_name))
@@ -772,6 +849,11 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         ]
     )
     _write(cargo_manifest, cargo_toml)
+    _write(
+        project_dir / "Cargo.lock",
+        "# This file is automatically @generated by Cargo.\nversion = 3\n\n"
+        f"[[package]]\nname = \"{package_name}\"\nversion = \"0.1.0\"\n",
+    )
     _write(project_dir / "src" / "lib.rs", _render_lib_rs(module_names, exported_functions))
 
     tests_rs, test_mapping = _render_tests(
@@ -812,7 +894,10 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         "translated_definition_count": translated_functions,
         "definition_count": total_definitions,
         "unsupported_reasons": unsupported_reasons,
+        "generation_diagnostic_count": len(generation_diagnostics),
+        "unresolved_generation_diagnostic_count": len([item for item in generation_diagnostics if not item.get("resolved")]),
     }
+    final_repair_summary = _repair_summary(generation_diagnostics)
     all_source_tests_have_evidence = bool(analysis.get("tests")) and all(
         test.get("referenced_apis") and test.get("assertions") for test in analysis.get("tests", [])
     )
@@ -831,6 +916,8 @@ def generate_project(packet: AgentTaskPacket, analysis: Dict[str, Any]) -> Dict[
         "mapped_apis": [name for name, _ in exported_functions],
         "unsupported_apis": unsupported_apis,
         "source_coverage": source_coverage,
+        "generation_diagnostics": generation_diagnostics,
+        "final_repair_summary": final_repair_summary,
         "module_list": module_list,
         "test_mapping": test_mapping,
         "semantic_invariants": analysis.get("semantic_invariants", []),

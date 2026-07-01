@@ -26,7 +26,7 @@ stage_id: "01-design-read"
 executed_by_subagent: "opencode-design-read-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "SOURCE_ROOT/README.md"
+  - "work/design/README.md"
 output_artifact: "work/logs/trace/consistency/01-design-summary.md"
 gate: "READY_FOR_IMPLEMENTATION_MAPPING | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"

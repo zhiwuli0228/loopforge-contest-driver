@@ -2,7 +2,7 @@
 
 ## Source Of Truth
 
-Verification intent comes from the source README first and framework defaults second.
+Verification intent comes from `work/design/README.md` first and framework defaults second.
 
 The runner may read:
 

@@ -1,6 +1,6 @@
 framework:
   name: "loopforge-contest-driver"
-  input_model: "source-readme"
+  input_model: "preloaded-design-plus-source"
   default_mode: "migration"
 
 platform:
@@ -16,19 +16,16 @@ platform:
 
 source:
   root_env: "SOURCE_ROOT"
-  readme_required: true
-  readme_candidates:
-    - "README.md"
-    - "README"
-    - "READNE.md"
-    - "readme.md"
-    - "Readme.md"
+
+design:
+  readme: "work/design/README.md"
+  required: true
+  authoritative: true
 
 task:
-  name: "source-readme-driven-execution"
+  name: "preloaded-design-driven-execution"
   mode: "migration"
-  source: "source-readme"
-  readme_required: true
+  source: "preloaded-design"
   profile: "profiles/examples/c-to-rust-migration.yaml"
 
 language:
@@ -36,7 +33,7 @@ language:
   secondary:
     - "rust"
 
-objective: "derive generic C-to-Rust migration requirements from SOURCE_ROOT README/READNE and generate a runtime-derived Rust output project"
+objective: "derive C-to-Rust migration requirements from work/design/README.md and migrate the read-only SOURCE_ROOT project"
 
 execution:
   unattended: true
@@ -58,7 +55,7 @@ execution:
   create_pr: false
 
 mode_selection:
-  source: "source-readme"
+  source: "preloaded-design"
   fallback: "migration"
 
 coding_skill:
@@ -76,7 +73,7 @@ coding_skill:
 
 verification:
   source: "profile-or-framework-default"
-  working_directory: "SOURCE_README_DERIVED_OUTPUT_PROJECT"
+  working_directory: "DESIGN_DERIVED_OUTPUT_PROJECT"
   timeout_seconds: 600
   commands:
     default:

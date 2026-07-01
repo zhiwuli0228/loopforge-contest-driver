@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LoopForge execution orchestrator for generic README-driven C-to-Rust migration."""
+"""LoopForge execution orchestrator using a preloaded design contract."""
 
 from __future__ import annotations
 
@@ -16,13 +16,15 @@ from agent_task_packet import AgentTaskPacket, RuntimePaths, resolve_runtime_con
 from c2rust_analysis import analyze_source, evaluate_semantic_equivalence
 from c_project_root_resolver import resolve_c_project_root, write_resolution_trace
 from c2rust_project_generator import generate_project
+from rust_project_generation import GenerationBlocked, build_evidence, load_generation_inputs, write_evidence
 from c2rust_repair import run_repair_loop
 from c2rust_semantic_repair import run_semantic_repair_loop
+from semantic_planning import PlanningBlocked, plan_from_trace
 from source_analysis_verify_gate import build_and_verify_source_analysis
+from test_migration_validation import TestValidationBlocked, verify_and_publish as verify_test_migration
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-README_CANDIDATES = ["README.md", "README", "READNE.md", "readme.md", "Readme.md"]
 TRACE_NAMESPACE = "c-to-rust"
 REQUIRED_RUNTIME_FILES = [
     "work/runtime/loopforge_runner.py",
@@ -36,6 +38,12 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c2rust_semantic_audit.py",
     "work/runtime/c2rust_invariant_tests.py",
     "work/runtime/source_analysis_verify_gate.py",
+    "work/runtime/source_analysis.py",
+    "work/runtime/semantic_planning.py",
+    "work/runtime/semantic-planning.json",
+    "work/runtime/rust_project_generation.py",
+    "work/runtime/rust-project-generation.json",
+    "work/runtime/test_migration_validation.py",
 ]
 REQUIRED_ADAPTER_FILES = [
     "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
@@ -49,7 +57,7 @@ REQUIRED_ADAPTER_FILES = [
 REQUIRED_MISC_FILES = [
     "INSTRUCTION.md",
     "README.md",
-    "work/code/README.md",
+    "work/design/README.md",
     "work/loopforge.config.yaml",
     "work/profiles/examples/c-to-rust-migration.yaml",
     "work/skills/c-to-rust-migration/SKILL.md",
@@ -210,6 +218,9 @@ class LoopForgeRunner:
         self.trace_dir = self.log_dir / "trace"
         self.artifact_dir = self.trace_dir / "execution-adapter"
         self.migration_trace_dir = self.trace_dir / TRACE_NAMESPACE
+        for writable_root in (self.result_dir, self.log_dir, self.work_dir / "output"):
+            if path_is_relative_to(writable_root, self.input_root):
+                raise ValueError(f"writable destination must be outside SOURCE_ROOT: {writable_root}")
         self.layout_resolution = resolve_c_project_root(self.input_root)
         write_resolution_trace(self.layout_resolution, self.migration_trace_dir)
         resolved = self.layout_resolution.get("resolved_project_root", "")
@@ -217,14 +228,7 @@ class LoopForgeRunner:
         self.config = parse_simple_yaml((self.work_dir / "loopforge.config.yaml").read_text(encoding="utf-8"))
         profile_rel = str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)
         self.profile = parse_simple_yaml((self.work_dir / profile_rel).read_text(encoding="utf-8"))
-        self.runtime_contract = resolve_runtime_contract(
-            self.source_root,
-            self.work_dir,
-            list(self.config.get("source", {}).get("readme_candidates", README_CANDIDATES)),
-            self.profile,
-        )
-        if not self.runtime_contract["selected_readme_path"] and self.layout_resolution.get("selected_readme_path"):
-            self.runtime_contract["selected_readme_path"] = self.layout_resolution["selected_readme_path"]
+        self.runtime_contract = resolve_runtime_contract(self.work_dir / "design" / "README.md", self.profile)
         self.output_base_dir = self.work_dir / "output"
         self.project_dir = self.output_base_dir / sanitize_dirname(self.runtime_contract["output_project_name"])
         self.result_output_path = self.result_dir / "output.md"
@@ -284,7 +288,8 @@ class LoopForgeRunner:
             ),
             config=self.config,
             profile=self.profile,
-            readme_candidates=list(self.config.get("source", {}).get("readme_candidates", README_CANDIDATES)),
+            design_readme_path=Path(self.runtime_contract["design_readme_path"]),
+            design_readme_sha256=str(self.runtime_contract["design_readme_sha256"]),
             max_repair_rounds=int(self.config.get("execution", {}).get("max_repair_rounds", 2) or 2),
             source_project_name=str(self.runtime_contract["source_project_name"]),
             source_language=str(self.runtime_contract["source_language"]),
@@ -301,8 +306,9 @@ class LoopForgeRunner:
         packet.metadata["source_root_resolution"] = str(self.source_root)
         packet.metadata["input_root"] = str(self.input_root)
         packet.metadata["layout_resolution"] = self.layout_resolution
-        packet.metadata["selected_readme_path"] = self.runtime_contract["selected_readme_path"]
-        packet.metadata["fallback_readme_path"] = self.runtime_contract["fallback_readme_path"]
+        packet.metadata["design_readme_path"] = self.runtime_contract["design_readme_path"]
+        packet.metadata["design_readme_sha256"] = self.runtime_contract["design_readme_sha256"]
+        packet.metadata["design_readme_error"] = self.runtime_contract["design_readme_error"]
         return packet
 
     def create_packet(self) -> AgentTaskPacket:
@@ -346,7 +352,7 @@ class LoopForgeRunner:
                     "",
                     "- status: `NOT_RUN`",
                     "- input_root: `NOT_RUN`",
-                    "- selected_source_readme: `NOT_RUN`",
+                    "- design_readme: `NOT_RUN`",
                     "- resolved_project_root: `NOT_RUN`",
                     "- rust_project: `NOT_RUN`",
                     "- cargo_toml: `NOT_RUN`",
@@ -394,6 +400,7 @@ class LoopForgeRunner:
         required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES
         missing = [path for path in required_files if not (self.workspace_root / path).exists()]
         invalid_source = self.layout_resolution["status"] != "RESOLVED"
+        design_error = str(packet.metadata.get("design_readme_error", ""))
         if invalid_source:
             detail = self.layout_resolution["reason"]
             candidates = self.layout_resolution.get("candidate_roots", [])
@@ -402,14 +409,17 @@ class LoopForgeRunner:
             packet.add_issue("source_layout_missing", detail)
         for item in missing:
             packet.add_issue("required_asset_missing", item)
+        if design_error:
+            packet.add_issue(design_error, f"invalid preloaded design contract: {packet.design_readme_path}")
         payload = {
-            "ok": not missing and not invalid_source,
+            "ok": not missing and not invalid_source and not design_error,
             "required_files_checked": required_files,
             "missing_files": missing,
             "input_root": str(self.input_root),
             "source_root": str(self.source_root),
-            "selected_readme_path": packet.metadata.get("selected_readme_path", ""),
-            "fallback_readme_path": packet.metadata.get("fallback_readme_path", ""),
+            "design_readme_path": packet.metadata.get("design_readme_path", ""),
+            "design_readme_sha256": packet.metadata.get("design_readme_sha256", ""),
+            "design_readme_error": design_error,
             "invalid_source_root": invalid_source,
             "layout_resolution": self.layout_resolution,
             "issues": list(packet.issues),
@@ -422,8 +432,8 @@ class LoopForgeRunner:
         lines = [
             "# Source Inventory",
             "",
-            f"- selected_readme: `{self.display_path(analysis.get('readme_path') or 'missing')}`",
-            f"- fallback_readme: `{self.display_path(analysis.get('fallback_readme_path') or 'missing')}`",
+            f"- design_readme: `{self.display_path(analysis.get('design_readme_path') or 'missing')}`",
+            f"- design_readme_sha256: `{analysis.get('design_readme_sha256') or 'missing'}`",
             f"- source_root: `{self.display_path(self.source_root)}`",
             f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
             f"- source_project_name: `{packet.source_project_name}`",
@@ -452,6 +462,8 @@ class LoopForgeRunner:
             "mapped_apis": project_payload.get("mapped_apis", []) if project_payload else [],
             "unsupported_apis": project_payload.get("unsupported_apis", analysis.get("public_apis", [])) if project_payload else analysis.get("public_apis", []),
             "source_coverage": project_payload.get("source_coverage", {}) if project_payload else {},
+            "generation_diagnostics": project_payload.get("generation_diagnostics", []) if project_payload else [],
+            "final_repair_summary": project_payload.get("final_repair_summary", {}) if project_payload else {},
             "semantic_equivalence_claim": project_payload.get("semantic_equivalence_claim", "not_generated") if project_payload else "not_generated",
         }
         lines = [
@@ -469,6 +481,22 @@ class LoopForgeRunner:
         lines.extend(["", "## Source Coverage", ""])
         for key, value in mapping_payload["source_coverage"].items():
             lines.append(f"- `{key}`: `{value}`")
+        summary = mapping_payload["final_repair_summary"]
+        lines.extend(["", "## Final Repair Summary", ""])
+        lines.append(f"- `attempted_count`: `{summary.get('attempted_count', 0)}`")
+        lines.append(f"- `resolved_count`: `{summary.get('resolved_count', 0)}`")
+        lines.append(f"- `unresolved_count`: `{summary.get('unresolved_count', 0)}`")
+        lines.append(f"- `attempted_symbols`: `{', '.join(summary.get('attempted_symbols', [])) or 'none'}`")
+        lines.append(f"- `resolved_symbols`: `{', '.join(summary.get('resolved_symbols', [])) or 'none'}`")
+        lines.append(f"- `unresolved_symbols`: `{', '.join(summary.get('unresolved_symbols', [])) or 'none'}`")
+        lines.extend(["", "## Generation Diagnostics", ""])
+        for item in mapping_payload["generation_diagnostics"]:
+            status = "resolved" if item.get("resolved") else "unresolved"
+            lines.append(
+                f"- `{item.get('symbol', 'unknown')}` ({status}): {item.get('stage', 'unknown')} - {item.get('reason', 'unknown')}"
+            )
+        if not mapping_payload["generation_diagnostics"]:
+            lines.append("- none")
         lines.append("")
         self.api_mapping_md.write_text("\n".join(lines), encoding="utf-8")
         self.write_json(self.api_mapping_json, mapping_payload)
@@ -537,7 +565,7 @@ class LoopForgeRunner:
         lines.append("")
         self.migration_summary_md.write_text("\n".join(lines), encoding="utf-8")
 
-    def verify_generated(self, packet: AgentTaskPacket, project_payload: Dict[str, Any], repair_payload: Dict[str, Any], semantic_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def verify_generated(self, packet: AgentTaskPacket, project_payload: Dict[str, Any], repair_payload: Dict[str, Any], semantic_payload: Dict[str, Any], test_validation_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         project_dir = packet.output_project_dir
         cargo_manifest_exists = (project_dir / "Cargo.toml").is_file()
         src_exists = (project_dir / "src").is_dir()
@@ -581,13 +609,15 @@ class LoopForgeRunner:
         packet.set_gate("project_layout", cargo_manifest_exists and src_exists and tests_exists, "generated Cargo.toml/src/tests layout", {})
         packet.set_gate(
             "trace_artifacts",
-            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
+            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "implementation-map.json", self.migration_trace_dir / "unsupported-functions.json", self.migration_trace_dir / "module-edge-map.json", self.migration_trace_dir / "unsafe-audit.json", self.migration_trace_dir / "generation-verification.json", self.migration_trace_dir / "test-ir.json", self.migration_trace_dir / "source-test-map.json", self.migration_trace_dir / "semantic-invariant-test-map.json", self.migration_trace_dir / "differential-test-vectors.json", self.migration_trace_dir / "differential-test-report.json", self.migration_trace_dir / "mutation-test-report.json", self.migration_trace_dir / "anti-customization-report.json", self.migration_trace_dir / "test-validation-report.json", self.migration_trace_dir / "cargo-test.log", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
             "required trace artifacts exist",
             {},
         )
         packet.set_gate("cargo_build", bool(repair_payload.get("build_ok")), "cargo build gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
         packet.set_gate("cargo_test", bool(repair_payload.get("test_ok")), "cargo test gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
         packet.set_gate("unsafe", unsafe_payload["passed"], "unsafe gate", unsafe_payload)
+        if test_validation_payload is not None:
+            packet.set_gate("test_validation", bool(test_validation_payload.get("passed")), "source test migration and differential validation gate", test_validation_payload)
         packet.set_gate("semantic", bool(semantic_payload.get("passed")), "semantic gate", semantic_payload)
         packet.set_gate("test_mapping", test_mapping_gate, "test mapping gate", test_mapping_payload)
         packet.set_gate("repair_loop", bool(repair_payload.get("ok")), "repair loop gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
@@ -600,6 +630,7 @@ class LoopForgeRunner:
             "repair_loop": repair_payload,
             "unsafe": unsafe_payload,
             "semantic": semantic_payload,
+            "test_validation": test_validation_payload or {},
             "test_mapping_gate": test_mapping_gate,
             "ready": packet.ready(),
             "status": "READY_FOR_EVALUATION" if packet.ready() else "BLOCKED_WITH_REPORT",
@@ -656,7 +687,7 @@ class LoopForgeRunner:
             "## READY Gates",
             "",
         ]
-        for gate_name in ["source_analysis", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
+        for gate_name in ["source_analysis", "semantic_planning", "rust_generation", "test_validation", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
             gate = packet.gates.get(gate_name)
             if gate:
                 lines.append(f"- `{gate_name}`: `{'pass' if gate.passed else 'fail'}`")
@@ -676,7 +707,8 @@ class LoopForgeRunner:
             f"- status: `{finalize_payload['status']}`",
             f"- first_blocking_point: `{verification_payload.get('first_blocking_point') or 'none'}`",
             f"- input_root: `{self.display_path(self.input_root)}`",
-            f"- selected_source_readme: `{self.display_path(analysis.get('readme_path') or 'missing')}`",
+            f"- design_readme: `{self.display_path(analysis.get('design_readme_path') or 'missing')}`",
+            f"- design_readme_sha256: `{analysis.get('design_readme_sha256') or 'missing'}`",
             f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
             f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
             f"- cargo_toml: `{self.display_path(packet.output_project_dir / 'Cargo.toml')}`",
@@ -713,6 +745,7 @@ class LoopForgeRunner:
             for item in packet.issues:
                 issue_lines.extend(
                     [
+                        f"- issue_code: {item['code']}",
                         f"- failed_gate: {', '.join(failed_gates) or 'analysis'}",
                         f"- root_cause: {item['detail']}",
                         f"- evidence_file: work/logs/trace/c-to-rust/06-verification-report.md",
@@ -757,26 +790,104 @@ class LoopForgeRunner:
         if not source_gate["passed"]:
             packet.add_issue("source_analysis_gate_failed", f"failed stages: {', '.join(source_gate['failed_stages'])}")
 
+        semantic_planning_gate: Dict[str, Any] = {
+            "passed": False, "status": "BLOCKED_WITH_REPORT",
+            "failures": ["source_analysis_not_passed"],
+            "first_blocking_point": "C_SOURCE_ANALYSIS",
+        }
+        if source_gate["passed"]:
+            try:
+                semantic_planning_gate = plan_from_trace(self.migration_trace_dir)
+            except PlanningBlocked as exc:
+                semantic_planning_gate = {
+                    "passed": False, "status": "BLOCKED_WITH_REPORT",
+                    "failures": exc.failures,
+                    "first_blocking_point": "SEMANTIC_MIGRATION_PLANNING",
+                }
+        packet.set_gate("semantic_planning", semantic_planning_gate["passed"], "semantic migration planning gate", semantic_planning_gate)
+        self.record_gate_event("SEMANTIC_MIGRATION_PLANNING", semantic_planning_gate["passed"], ",".join(semantic_planning_gate.get("failures", [])) or "passed")
+        if not semantic_planning_gate["passed"]:
+            packet.add_issue("semantic_planning_gate_failed", f"failed checks: {', '.join(semantic_planning_gate.get('failures', []))}")
+
         project_payload: Optional[Dict[str, Any]] = None
-        if analysis["ok"] and source_gate["passed"]:
-            project_payload = generate_project(packet, analysis)
-            packet.metadata["project_generation"] = project_payload
-            self.write_api_mapping(analysis, project_payload)
-            self.write_migration_plan(packet, analysis, project_payload)
-            self.write_test_mapping(project_payload)
-            self.write_json(self.migration_trace_dir / "semantic-test-plan.json", {"scenarios": project_payload.get("semantic_test_plan", [])})
-            self.write_migration_summary(packet, analysis, project_payload)
-            self.record_gate_event("GENERATE_PROJECT", True, project_payload.get("semantic_equivalence_claim", "generated"))
+        generation_gate: Dict[str, Any] = {
+            "passed": False, "status": "BLOCKED_WITH_REPORT",
+            "failures": ["generation_not_run"], "first_blocking_point": "RUST_PROJECT_GENERATION",
+        }
+        test_validation_gate: Dict[str, Any] = {
+            "passed": False, "status": "BLOCKED_WITH_REPORT",
+            "failures": ["test_validation_not_run"], "first_blocking_point": "SOURCE_TEST_MIGRATION_DIFFERENTIAL_VALIDATION",
+        }
+        if analysis["ok"] and source_gate["passed"] and semantic_planning_gate["passed"]:
+            try:
+                generation_inputs = load_generation_inputs(self.migration_trace_dir)
+                project_payload = generate_project(
+                    packet,
+                    analysis,
+                    generation_inputs["planning"]["rust-migration-plan.json"],
+                )
+                packet.metadata["project_generation"] = project_payload
+                self.write_api_mapping(analysis, project_payload)
+                self.write_migration_plan(packet, analysis, project_payload)
+                self.write_test_mapping(project_payload)
+                self.write_json(self.migration_trace_dir / "semantic-test-plan.json", {"scenarios": project_payload.get("semantic_test_plan", [])})
+                self.write_migration_summary(packet, analysis, project_payload)
+                generation_bundle = build_evidence(
+                    packet.output_project_dir,
+                    generation_inputs,
+                    generation_diagnostics=project_payload.get("generation_diagnostics", []),
+                )
+                write_evidence(generation_bundle, self.migration_trace_dir)
+                generation_gate = generation_bundle["verification"]
+            except GenerationBlocked as exc:
+                generation_gate = {
+                    "passed": False, "status": "BLOCKED_WITH_REPORT", "failures": exc.failures,
+                    "first_blocking_point": "RUST_PROJECT_GENERATION", **exc.report,
+                }
+            packet.set_gate("rust_generation", bool(generation_gate.get("passed")), "complete Rust project generation gate", generation_gate)
+            self.record_gate_event("GENERATE_PROJECT", bool(generation_gate.get("passed")), ",".join(generation_gate.get("failures", [])) or "passed")
+            if not generation_gate.get("passed"):
+                packet.add_issue("rust_generation_gate_failed", f"failed checks: {', '.join(generation_gate.get('failures', []))}")
         else:
+            packet.set_gate("rust_generation", False, "complete Rust project generation gate", generation_gate)
             self.write_api_mapping(analysis, None)
             self.write_migration_plan(packet, analysis, None)
             self.write_test_mapping(None)
             self.write_migration_summary(packet, analysis, None)
-            self.record_gate_event("GENERATE_PROJECT", False, "source analysis failed")
+            self.record_gate_event("GENERATE_PROJECT", False, "source analysis or semantic planning failed")
+
+        if project_payload is not None and generation_gate.get("passed"):
+            try:
+                customization_paths = [
+                    self.work_dir / "runtime" / "test_migration_validation.py",
+                    self.work_dir / "runtime" / "c2rust_project_generator.py",
+                    self.work_dir / "runtime" / "rust_project_generation.py",
+                    self.work_dir / "runtime" / "loopforge_runner.py",
+                    *(packet.output_project_dir / "tests").rglob("*.rs"),
+                ]
+                test_validation_gate = verify_test_migration(
+                    self.migration_trace_dir,
+                    packet.output_project_dir,
+                    customization_paths=customization_paths,
+                )
+            except TestValidationBlocked as exc:
+                test_validation_gate = {
+                    "passed": False,
+                    "status": "BLOCKED_WITH_REPORT",
+                    "failures": exc.failures,
+                    "first_blocking_point": "SOURCE_TEST_MIGRATION_DIFFERENTIAL_VALIDATION",
+                    **exc.report,
+                }
+            packet.set_gate("test_validation", bool(test_validation_gate.get("passed")), "source test migration and differential validation gate", test_validation_gate)
+            self.record_gate_event("TEST_MIGRATION_DIFFERENTIAL_VALIDATION", bool(test_validation_gate.get("passed")), ",".join(test_validation_gate.get("failures", [])) or "passed")
+            if not test_validation_gate.get("passed"):
+                packet.add_issue("test_validation_gate_failed", f"failed checks: {', '.join(test_validation_gate.get('failures', []))}")
+        else:
+            packet.set_gate("test_validation", False, "source test migration and differential validation gate", test_validation_gate)
 
         self.snapshot_packet(packet)
 
-        if project_payload is not None:
+        if project_payload is not None and generation_gate.get("passed") and test_validation_gate.get("passed"):
             commands = self.normalize_commands(packet)
             repair_payload = run_repair_loop(packet, commands, int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600))
             self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
@@ -791,12 +902,12 @@ class LoopForgeRunner:
             audit_lines = ["# Semantic Audit Report", "", f"- passed: `{semantic_payload['passed']}`", "", "```json", json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True), "```", ""]
             (self.migration_trace_dir / "semantic-audit-report.md").write_text("\n".join(audit_lines), encoding="utf-8")
             self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
-            verification_payload = self.verify_generated(packet, project_payload, repair_payload, semantic_payload)
+            verification_payload = self.verify_generated(packet, project_payload, repair_payload, semantic_payload, test_validation_gate)
         else:
             repair_payload = {"ok": False, "build_ok": False, "test_ok": False, "rounds_executed": 0, "attempts": []}
             self.write_json(self.migration_trace_dir / "repair-rounds.json", repair_payload)
             (self.migration_trace_dir / "repair-rounds.md").write_text("# Repair Rounds\n\n- rounds_executed: `0`\n\n", encoding="utf-8")
-            semantic_payload = {"passed": False, "checks": [], "failing_checks": ["project_generation"], "detail": "semantic gate requires generated project and test mapping"}
+            semantic_payload = {"passed": False, "checks": [], "failing_checks": ["project_generation_or_test_validation"], "detail": "semantic gate requires generated project and source test differential validation"}
             packet.set_gate("cargo_build", False, "cargo build gate", {})
             packet.set_gate("cargo_test", False, "cargo test gate", {})
             packet.set_gate("unsafe", False, "unsafe gate", {"unsafe_ratio": 1.0})
@@ -808,7 +919,7 @@ class LoopForgeRunner:
                 "ready": False,
                 "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
                 "issues": packet.issues,
-                "first_blocking_point": source_gate.get("first_blocking_point") or "C_SOURCE_ANALYSIS",
+                "first_blocking_point": source_gate.get("first_blocking_point") or semantic_planning_gate.get("first_blocking_point") or generation_gate.get("first_blocking_point") or test_validation_gate.get("first_blocking_point") or "C_SOURCE_ANALYSIS",
             }
             self.write_json(self.verify_path, verification_payload)
             self.verification_report_md.write_text(
@@ -863,9 +974,7 @@ def resolve_path(base: Path, value: str) -> Path:
 
 def _candidate_source_roots(workspace_root: Path) -> List[Path]:
     candidates: List[Path] = []
-    if os.name == "nt":
-        candidates.append(workspace_root / "work" / "code")
-    else:
+    if os.name != "nt":
         for candidate in [
             Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"),
             Path("/__CONTEST_PLATFORM_SOURCE_ROOT__"),
@@ -879,7 +988,7 @@ def _candidate_source_roots(workspace_root: Path) -> List[Path]:
 def resolve_default_source_root(workspace_root: Path, platform_name: Optional[str] = None) -> Path:
     current_platform = platform_name or os.name
     if current_platform == "nt":
-        return (workspace_root / "work" / "code").resolve()
+        return (workspace_root / "__CONTEST_PLATFORM_SOURCE_ROOT__" / "source").resolve()
     for candidate in [Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"), Path("/__CONTEST_PLATFORM_SOURCE_ROOT__")]:
         if candidate.is_dir():
             return candidate.resolve()
