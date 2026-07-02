@@ -13,7 +13,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 SCHEMA_VERSION = "semantic-migration-planning/v3"
 ANALYSIS_SCHEMA_VERSION = "c-source-analysis/v2"
-LEGACY_SCHEMA_VERSIONS = {"flashdb-semantic-planning/v1", "semantic-migration-planning/v2"}
+LEGACY_SCHEMA_VERSIONS = {"semantic-migration-planning/v1", "semantic-migration-planning/v2"}
 OUTPUT_FILES = (
     "behavior-contracts.json", "state-transitions.json", "semantic-invariants.json",
     "rust-migration-plan.json", "semantic-planning-verification.json",

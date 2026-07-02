@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 
 from semantic_planning import OUTPUT_FILES as PLANNING_FILES
 from semantic_planning import PlanningBlocked, load_analysis_evidence, validate_planning_documents
+from timeout_policy import JUDGING_PLATFORM_TIMEOUT_SECONDS
 
 
 SCHEMA_VERSION = "c-to-rust-project-generation/v1"
@@ -229,7 +230,7 @@ def audit_unsafe(project_dir: Path, justifications: Mapping[str, Mapping[str, st
     }
 
 
-def run_locked_build(project_dir: Path, timeout_seconds: int = 300) -> Dict[str, Any]:
+def run_locked_build(project_dir: Path, timeout_seconds: int = JUDGING_PLATFORM_TIMEOUT_SECONDS) -> Dict[str, Any]:
     command = ["cargo", "build", "--locked"]
     try:
         toolchain = subprocess.run(["rustc", "--version"], capture_output=True, text=True, timeout=30)
@@ -251,11 +252,43 @@ def validate_candidate(project_dir: Path, inputs: Mapping[str, Any], *, build: b
     api_records = analysis["public-api-map.json"].get("apis", [])
     expected_apis = sorted({item.get("name") or item.get("api") for item in api_records if item.get("name") or item.get("api")})
     source_edges = analysis["call-graph.json"].get("call_edges", [])
+    generation_diagnostics_list = [dict(item) for item in (generation_diagnostics or [])]
     # The complete-analysis contract exports every public definition plus all
     # callers in the call graph. Callees may be platform callbacks and are
     # therefore covered by the planned port mapping rather than a Rust fn.
-    expected_functions = sorted(set(expected_apis) | {item.get("caller") for item in source_edges if item.get("caller")})
+    control_keywords = {"if", "for", "while", "switch", "return", "sizeof"}
+    expected_functions = sorted(set(expected_apis) | {
+        item.get("caller") for item in source_edges
+        if item.get("caller") and item.get("caller") not in control_keywords
+    })
+    caller_sources: Dict[str, set[str]] = {}
+    for edge in source_edges:
+        caller = edge.get("caller")
+        evidence_file = edge.get("evidence", {}).get("file", "")
+        if caller and caller not in control_keywords and evidence_file:
+            caller_sources.setdefault(caller, set()).add(Path(evidence_file).stem)
+    expected_symbol_counts = {
+        name: 1 if name in expected_apis else max(1, len(caller_sources.get(name, set())))
+        for name in expected_functions
+    }
+    diagnostic_modules: Dict[str, set[str]] = {}
+    for item in generation_diagnostics_list:
+        if item.get("symbol") and item.get("module"):
+            diagnostic_modules.setdefault(str(item["symbol"]), set()).add(str(item["module"]))
+    for name, modules in diagnostic_modules.items():
+        if name in expected_symbol_counts and name not in expected_apis:
+            expected_symbol_counts[name] = max(expected_symbol_counts[name], len(modules))
     symbols = _function_symbols(project_dir)
+    expected_modules = {
+        name: set(caller_sources.get(name, set())) | set(diagnostic_modules.get(name, set()))
+        for name in expected_functions
+    }
+
+    def relevant_matches(name: str) -> list[Dict[str, Any]]:
+        matches = symbols.get(name, [])
+        modules = expected_modules.get(name, set())
+        scoped = [item for item in matches if Path(str(item.get("file", ""))).stem in modules]
+        return scoped or matches
     contract_by_api = {item.get("api"): item for item in contracts}
     effects = {item.get("id"): item for item in planning["behavior-contracts.json"].get("effects", [])}
     mutable = {
@@ -266,15 +299,17 @@ def validate_candidate(project_dir: Path, inputs: Mapping[str, Any], *, build: b
     implementation = []
     unsupported = []
     for name in sorted(set(expected_functions) | set(expected_apis)):
-        matches = symbols.get(name, [])
-        if len(matches) != 1:
-            unsupported.append({"source_symbol": name, "reason": "missing Rust symbol" if not matches else "duplicate Rust symbols", "matches": matches})
+        matches = relevant_matches(name)
+        expected_count = expected_symbol_counts.get(name, 1)
+        if len(matches) != expected_count:
+            unsupported.append({"source_symbol": name, "reason": "missing Rust symbol" if not matches else "Rust symbol count mismatch", "expected_count": expected_count, "matches": matches})
             continue
         contract = contract_by_api.get(name, {})
         implementation.append({
             "implementation_id": f"impl-{hashlib.sha256(name.encode()).hexdigest()[:16]}", "source_symbol": name,
             "api_id": contract.get("api_id", ""), "contract_id": contract.get("id", ""),
-            "rust": matches[0], "state_effects": contract.get("state_mutations", []), "source_evidence": contract.get("source_evidence", []),
+            "rust": matches[0], "rust_matches": matches, "expected_symbol_count": expected_count,
+            "state_effects": contract.get("state_mutations", []), "source_evidence": contract.get("source_evidence", []),
         })
     planned_edges = {item.get("source_edge_id"): item for item in plan.get("call_edge_mappings", [])}
     edge_map = []
@@ -288,7 +323,6 @@ def validate_candidate(project_dir: Path, inputs: Mapping[str, Any], *, build: b
             missing_edges.append(edge_id)
     placeholders = scan_placeholders(project_dir, mutable, placeholder_adjudications)
     unresolved_placeholders = [item for item in placeholders if item["adjudication"] != "resolved"]
-    generation_diagnostics_list = [dict(item) for item in (generation_diagnostics or [])]
     unresolved_generation_diagnostics = [item for item in generation_diagnostics_list if not item.get("resolved")]
     final_repair_summary = summarize_final_repair(generation_diagnostics_list)
     unsafe = audit_unsafe(project_dir, unsafe_justifications)
@@ -297,8 +331,8 @@ def validate_candidate(project_dir: Path, inputs: Mapping[str, Any], *, build: b
         "cargo_manifest_and_lock_exist": (project_dir / "Cargo.toml").is_file() and (project_dir / "Cargo.lock").is_file(),
         "public_api_denominator_nonzero": bool(expected_apis),
         "core_function_denominator_nonzero": bool(expected_functions),
-        "public_api_coverage_100_percent": all(name in symbols and len(symbols[name]) == 1 for name in expected_apis),
-        "core_function_coverage_100_percent": all(name in symbols and len(symbols[name]) == 1 for name in expected_functions),
+        "public_api_coverage_100_percent": all(len(relevant_matches(name)) == 1 for name in expected_apis),
+        "core_function_coverage_100_percent": all(len(relevant_matches(name)) == expected_symbol_counts.get(name, 1) for name in expected_functions),
         "unsupported_functions_empty": not unsupported,
         "generation_diagnostics_clear": not unresolved_generation_diagnostics,
         "module_edges_complete": not missing_edges,

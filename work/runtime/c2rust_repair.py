@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from agent_task_packet import AgentTaskPacket
+from self_healing_loop import RepairConfig, SelfHealingOrchestrator, normalize_diagnostic
 
 
 def _run_command(command: List[str], cwd: Path, timeout_seconds: int) -> Dict[str, Any]:
@@ -51,25 +52,6 @@ def _run_command(command: List[str], cwd: Path, timeout_seconds: int) -> Dict[st
         }
 
 
-def _write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
-
-def _load_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def _sanitize_lib_name(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", value).strip("_").lower()
-    return cleaned or "c_to_rust_output"
-
-
-def _sanitize_package_name(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9_-]", "-", value).strip("-").lower()
-    return cleaned or "c-to-rust-output"
-
-
 def _sanitize_text(text: str, workspace_root: Path) -> str:
     normalized_text = text.replace("\\", "/")
     roots = {str(workspace_root), str(workspace_root).replace("\\", "/")}
@@ -89,107 +71,6 @@ def _sanitize_value(value: Any, workspace_root: Path) -> Any:
     return value
 
 
-def _remove_duplicate_pub_use(project_dir: Path, symbol: str) -> bool:
-    lib_rs = project_dir / "src" / "lib.rs"
-    if not lib_rs.is_file():
-        return False
-    lines = lib_rs.read_text(encoding="utf-8").splitlines()
-    matches = [index for index, line in enumerate(lines) if "pub use " in line and symbol in line]
-    if len(matches) <= 1:
-        return False
-    first = matches[0]
-    kept = []
-    for index, line in enumerate(lines):
-        if index in matches and index != first:
-            continue
-        kept.append(line)
-    lib_rs.write_text("\n".join(kept) + "\n", encoding="utf-8")
-    return True
-
-
-def _ensure_module_decl(project_dir: Path, module_name: str) -> bool:
-    lib_rs = project_dir / "src" / "lib.rs"
-    module_rs = project_dir / "src" / f"{module_name}.rs"
-    if not lib_rs.is_file() or not module_rs.is_file():
-        return False
-    text = _load_text(lib_rs)
-    decl = f"pub mod {module_name};"
-    if decl in text:
-        return False
-    lines = text.splitlines()
-    insert_at = 1 if lines else 0
-    lines.insert(insert_at, decl)
-    lib_rs.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return True
-
-
-def _ensure_missing_file(project_dir: Path, missing_path: str) -> bool:
-    candidate = project_dir / missing_path
-    if candidate.exists():
-        return False
-    if candidate.suffix == ".rs":
-        _write(candidate, "#![forbid(unsafe_code)]\n\n")
-        return True
-    return False
-
-
-def _fix_missing_import(project_dir: Path, symbol: str) -> bool:
-    for candidate in (project_dir / "src").glob("*.rs"):
-        text = _load_text(candidate)
-        if symbol == "c_char" and "use std::ffi::c_char;" not in text:
-            candidate.write_text("use std::ffi::c_char;\n" + text, encoding="utf-8")
-            return True
-        if symbol == "c_void" and "use std::ffi::c_void;" not in text:
-            candidate.write_text("use std::ffi::c_void;\n" + text, encoding="utf-8")
-            return True
-    return False
-
-
-def _ensure_cargo_manifest(packet: AgentTaskPacket, project_dir: Path) -> bool:
-    cargo_toml = project_dir / "Cargo.toml"
-    if cargo_toml.is_file():
-        return False
-    content = "\n".join(
-        [
-            "[package]",
-            f'name = "{_sanitize_package_name(packet.output_project_name)}"',
-            'version = "0.1.0"',
-            'edition = "2021"',
-            "",
-            "[lib]",
-            f'name = "{_sanitize_lib_name(packet.output_project_name)}"',
-            'path = "src/lib.rs"',
-            "",
-        ]
-    )
-    _write(cargo_toml, content)
-    return True
-
-
-def _repair_reset_storage(project_dir: Path) -> bool:
-    """Repair a count-only reset for a generated Vec-backed C array model."""
-    for candidate in (project_dir / "src").glob("*.rs"):
-        text = _load_text(candidate)
-        struct_match = re.search(r"pub struct\s+\w+\s*\{(?P<body>.*?)\n\}", text, re.DOTALL)
-        if not struct_match:
-            continue
-        vec_match = re.search(r"pub\s+(\w+)\s*:\s*Vec<", struct_match.group("body"))
-        count_match = re.search(r"pub\s+(\w+)\s*:\s*usize", struct_match.group("body"))
-        if not vec_match or not count_match:
-            continue
-        records, count = vec_match.group(1), count_match.group(1)
-        reset = re.compile(rf"(?P<indent>\s*)(?P<state>\w+)\.{re.escape(count)}\s*=\s*0;")
-        match = reset.search(text)
-        if not match:
-            continue
-        clear_line = f"{match.group('indent')}{match.group('state')}.{records}.clear();"
-        if clear_line.strip() in text:
-            continue
-        candidate.write_text(text[:match.start()] + clear_line + "\n" + text[match.start():], encoding="utf-8")
-        return True
-    return False
-
-
 def _external_repair_command(packet: AgentTaskPacket) -> Any:
     """Return the configured agent/repair executor command, if available."""
     provider = packet.config.get("execution", {}).get("repair_provider", {}) or {}
@@ -200,9 +81,9 @@ def _external_repair_command(packet: AgentTaskPacket) -> Any:
         return override
     if provider.get("command"):
         return provider["command"]
-    if provider.get("enabled", "auto") in {True, "auto"} and not os.environ.get("LOOPFORGE_CODEX_REPAIR_ACTIVE"):
-        if any(shutil.which(name) for name in ("codex", "codex.exe", "codex.ps1")):
-            adapter = Path(__file__).with_name("codex_repair_provider.py")
+    if provider.get("enabled", "auto") in {True, "auto"} and not os.environ.get("LOOPFORGE_REPAIR_AGENT_ACTIVE"):
+        if any(shutil.which(name) for name in ("opencode", "opencode.exe", "opencode.ps1")):
+            adapter = Path(__file__).with_name("opencode_repair_provider.py")
             if adapter.is_file():
                 return [sys.executable, str(adapter)]
     return None
@@ -267,41 +148,6 @@ def invoke_external_repair_provider(packet: AgentTaskPacket, project_dir: Path, 
                 "task_packet": str(task_path), "error": str(exc)}
 
 
-def _repair_action(packet: AgentTaskPacket, project_dir: Path, command_result: Dict[str, Any],
-                   round_number: int, timeout_seconds: int) -> Dict[str, Any]:
-    stderr_text = "\n".join(command_result.get("stderr_tail", []))
-    output_text = "\n".join(command_result.get("stdout_tail", []) + command_result.get("stderr_tail", []))
-    if "test_reset_after_mutation" in output_text and _repair_reset_storage(project_dir):
-        return {"applied": True, "detail": "synchronized_logical_storage_on_reset", "failed_test": "test_reset_after_mutation"}
-    module_match = re.search(r"file not found for module `([^`]+)`", stderr_text)
-    if module_match:
-        module_name = module_match.group(1)
-        if _ensure_missing_file(project_dir, f"src/{module_name}.rs"):
-            return {"applied": True, "detail": "created_missing_module_file", "module": module_name}
-
-    duplicate_match = re.search(r"the name `([^`]+)` is defined multiple times", stderr_text)
-    if duplicate_match:
-        symbol = duplicate_match.group(1)
-        if _remove_duplicate_pub_use(project_dir, symbol):
-            return {"applied": True, "detail": "removed_duplicate_export", "symbol": symbol}
-
-    unresolved_import_match = re.search(r"unresolved import `[^`]*::([^`]+)`", stderr_text)
-    if unresolved_import_match and _fix_missing_import(project_dir, unresolved_import_match.group(1)):
-        return {"applied": True, "detail": "added_missing_import", "symbol": unresolved_import_match.group(1)}
-
-    missing_module_decl_match = re.search(r"use of undeclared crate or module `([^`]+)`", stderr_text)
-    if missing_module_decl_match:
-        module_name = missing_module_decl_match.group(1)
-        if _ensure_module_decl(project_dir, module_name):
-            return {"applied": True, "detail": "added_missing_module_decl", "module": module_name}
-
-    missing_manifest = re.search(r"could not find `Cargo\.toml`", stderr_text) or "could not find `cargo.toml`" in stderr_text.lower()
-    if missing_manifest and _ensure_cargo_manifest(packet, project_dir):
-        return {"applied": True, "detail": "created_missing_cargo_manifest"}
-
-    return _run_external_repair_provider(packet, project_dir, command_result, round_number, timeout_seconds)
-
-
 def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) -> None:
     json_path = packet.paths.migration_trace_dir / "repair-rounds.json"
     md_path = packet.paths.migration_trace_dir / "repair-rounds.md"
@@ -335,52 +181,96 @@ def _write_repair_artifacts(packet: AgentTaskPacket, payload: Dict[str, Any]) ->
 
 
 def run_repair_loop(packet: AgentTaskPacket, commands: List[str], timeout_seconds: int) -> Dict[str, Any]:
+    """Run build/test verification through the isolated self-healing boundary.
+
+    The compatibility payload remains stable for existing gates, while detailed
+    repair evidence is emitted by ``SelfHealingOrchestrator``.
+    """
     attempts: List[Dict[str, Any]] = []
     project_dir = packet.output_project_dir
-    rounds = 0
     build_ok = False
     test_ok = False
+    run_id = str(packet.metadata.get("run_id") or packet.design_readme_sha256)
+    provider_round = 0
 
-    while rounds <= packet.max_repair_rounds:
-        round_record: Dict[str, Any] = {"round": rounds, "commands": [], "repair_action": None, "repair_task_packet": None}
-        all_ok = True
+    def isolated_provider(task: Dict[str, Any], isolated_project: Path) -> Dict[str, Any]:
+        nonlocal provider_round
+        result = invoke_external_repair_provider(
+            packet, isolated_project, task, "isolated-repair", provider_round, timeout_seconds,
+        )
+        provider_round += 1
+        return result
+
+    verification_commands = [shlex.split(command, posix=os.name != "nt") for command in commands]
+    targeted = tuple(verification_commands[0]) if verification_commands else (sys.executable, "-c", "pass")
+    regression = tuple(verification_commands[1]) if len(verification_commands) > 1 else targeted
+    orchestrator = SelfHealingOrchestrator(
+        run_id=run_id,
+        project_root=project_dir,
+        trace_dir=packet.paths.migration_trace_dir,
+        provider=isolated_provider,
+        config=RepairConfig(
+            max_local_rounds=max(1, packet.max_repair_rounds),
+            timeout_seconds=timeout_seconds,
+            targeted_command=targeted,
+            regression_command=regression,
+        ),
+    )
+
+    initial_record: Dict[str, Any] = {"round": 0, "commands": [], "repair_action": None, "repair_task_packet": None}
+    failed: Dict[str, Any] | None = None
+    for index, command in enumerate(commands):
+        command_result = _run_command(shlex.split(command, posix=os.name != "nt"), project_dir, timeout_seconds)
+        initial_record["commands"].append(command_result)
+        if command_result["ok"]:
+            build_ok = build_ok or index == 0
+            test_ok = test_ok or index == 1
+            continue
+        failed = command_result
+        evidence_path = packet.paths.migration_trace_dir / "compiler-or-test-error.log"
+        raw_diagnostic = "\n".join(command_result.get("stdout_tail", []) + command_result.get("stderr_tail", [])) or command_result.get("error", "unknown command failure")
+        evidence_path.write_text(raw_diagnostic + "\n", encoding="utf-8")
+        repair_ir = normalize_diagnostic(
+            run_id=run_id,
+            source="compiler" if index == 0 else "targeted-test",
+            tool="cargo",
+            text=raw_diagnostic,
+            project_root=project_dir,
+            evidence_path=evidence_path,
+        )
+        repaired = orchestrator.process(repair_ir)
+        initial_record["repair_action"] = {"applied": repaired, "detail": "isolated_verified_repair" if repaired else "deferred_for_final_retry"}
+        break
+    attempts.append(initial_record)
+
+    if failed is not None:
+        orchestrator.final_retry()
+        final_record: Dict[str, Any] = {"round": 1, "commands": [], "repair_action": None, "repair_task_packet": None}
+        build_ok = False
+        test_ok = False
         for index, command in enumerate(commands):
-            command_result = _run_command(command.split(), project_dir, timeout_seconds)
-            round_record["commands"].append(command_result)
-            if not command_result["ok"]:
-                all_ok = False
-                issue_code = "cargo_build_failed" if index == 0 else "cargo_test_failed"
-                repair_action = _repair_action(packet, project_dir, command_result, rounds, timeout_seconds)
-                round_record["repair_action"] = repair_action
-                if not repair_action["applied"]:
-                    round_record["repair_task_packet"] = {
-                        "reason": repair_action["detail"],
-                        "failed_command": command_result["command"],
-                        "stderr_tail": command_result["stderr_tail"],
-                    }
+            result = _run_command(shlex.split(command, posix=os.name != "nt"), project_dir, timeout_seconds)
+            final_record["commands"].append(result)
+            if not result["ok"]:
                 break
-            if index == 0:
-                build_ok = True
-            if index == 1:
-                test_ok = True
-
-        attempts.append(round_record)
-        if all_ok:
-            break
-        if rounds >= packet.max_repair_rounds or not round_record["repair_action"] or not round_record["repair_action"]["applied"]:
-            break
-        rounds += 1
+            build_ok = build_ok or index == 0
+            test_ok = test_ok or index == 1
+        attempts.append(final_record)
+    else:
+        orchestrator.final_retry()
+    integrity_report = orchestrator.publish()
 
     payload = {
         "ok": build_ok and test_ok,
         "build_ok": build_ok,
         "test_ok": test_ok,
-        "rounds_executed": rounds + 1,
+        "rounds_executed": len(attempts),
         "attempts": attempts,
         "unresolved_failures": [] if build_ok and test_ok else [
             {"kind": "cargo_verification_failed", "command": command["command"], "stderr_tail": command.get("stderr_tail", [])}
             for attempt in attempts for command in attempt["commands"] if not command.get("ok")
         ][-1:],
+        "repair_integrity": integrity_report,
     }
     if not payload["ok"]:
         packet.add_issue("cargo_verification_failed", "build or test failure remained after the repair loop")

@@ -26,6 +26,7 @@ class SemanticRepairLoopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); (root / "trace").mkdir(); packet = self.packet(root)
             with patch("c2rust_semantic_repair.invoke_external_repair_provider", return_value={"applied": True}), \
+                 patch("self_healing_loop.run_command", return_value={"passed": True, "returncode": 0, "stdout": "", "stderr": ""}), \
                  patch("c2rust_semantic_repair.render_invariant_tests", return_value=("#[test]\nfn invariant() {}\n", [])), \
                  patch("c2rust_semantic_repair.run_repair_loop", return_value={"build_ok": True, "test_ok": True}), \
                  patch("c2rust_semantic_repair.evaluate_semantic_equivalence", return_value=semantic(True)):
@@ -46,12 +47,13 @@ class SemanticRepairLoopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); (root / "trace").mkdir(); packet = self.packet(root, 2)
             with patch("c2rust_semantic_repair.invoke_external_repair_provider", return_value={"applied": True}), \
+                 patch("self_healing_loop.run_command", return_value={"passed": True, "returncode": 0, "stdout": "", "stderr": ""}), \
                  patch("c2rust_semantic_repair.render_invariant_tests", return_value=("", [])), \
                  patch("c2rust_semantic_repair.run_repair_loop", return_value={"build_ok": True, "test_ok": True}), \
                  patch("c2rust_semantic_repair.evaluate_semantic_equivalence", return_value=semantic(False)):
                 result = run_semantic_repair_loop(packet, {}, {"test_mapping": []}, semantic(), [], 10)
             self.assertFalse(result["passed"])
-            self.assertEqual(result["rounds_executed"], 2)
+            self.assertEqual(result["rounds_executed"], 1)
 
 
 if __name__ == "__main__":

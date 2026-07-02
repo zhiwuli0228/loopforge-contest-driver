@@ -46,16 +46,16 @@ class SemanticPlanningTests(unittest.TestCase):
         self.assertTrue(all(item["derivation_kind"] == "source-derived" for item in plan["artifacts"]["semantic-ir"]["api_contracts"]))
 
     def test_no_bundled_project_profile_or_domain_classifier_exists(self):
-        self.assertFalse((RUNTIME / "profiles" / "flashdb-acceptance.json").exists())
+        self.assertFalse((RUNTIME / "profiles" / "generic_store-acceptance.json").exists())
         source = (RUNTIME / "semantic_planning.py").read_text(encoding="utf-8")
-        for token in ("FDB_OK", "FDB_ERROR", "def _capability_api", "flashdb-acceptance", "if \"kv\" in", "if \"ts\" in"):
+        for token in ("GST_OK", "GST_ERROR", "def _capability_api", "generic_store-acceptance", "if \"kv\" in", "if \"ts\" in"):
             self.assertNotIn(token, source)
 
     def test_non_database_fixture_gets_no_database_or_device_concepts(self):
         with tempfile.TemporaryDirectory() as temp:
             plan = build_semantic_plan(_analysis_docs(temp))
         encoded = json.dumps(plan["artifacts"]).lower()
-        for token in ("kvdb", "tsdb", "sector", "reopen", "flash-port"):
+        for token in ("collection", "series", "sector", "reopen", "flash-port"):
             self.assertNotIn(token, encoded)
 
     def test_modules_come_from_source_location_not_api_name(self):
@@ -96,7 +96,7 @@ class SemanticPlanningTests(unittest.TestCase):
         self.assertEqual(first["metadata"]["semantic_ir_digest"], second["metadata"]["semantic_ir_digest"])
 
     def test_legacy_and_profile_based_schema_are_rejected(self):
-        for schema in ("flashdb-semantic-planning/v1", "semantic-migration-planning/v2"):
+        for schema in ("semantic-migration-planning/v1", "semantic-migration-planning/v2"):
             with tempfile.TemporaryDirectory() as temp:
                 root = Path(temp)
                 for name in OUTPUT_FILES:

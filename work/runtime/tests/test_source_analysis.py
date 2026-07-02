@@ -19,7 +19,7 @@ from source_analysis import (  # noqa: E402
 )
 
 
-FIXTURE = Path(__file__).parent / "fixtures" / "flashdb-real-layout"
+FIXTURE = Path(__file__).parent / "fixtures" / "generic-store-layout"
 
 
 def packet(root):
@@ -32,11 +32,11 @@ def packet(root):
 def legacy(root):
     return {
         "project_root": str(root),
-        "public_apis": ["fdb_kv_set"],
-        "test_files": ["tests/test_flashdb.c"],
+        "public_apis": ["gst_kv_set"],
+        "test_files": ["tests/test_generic_store.c"],
         "functions": [
-            {"name": "fdb_kv_set", "decl_kind": "prototype", "file": "inc/flashdb.h", "line": 16},
-            {"name": "fdb_kv_set", "decl_kind": "definition", "file": "src/flashdb.c", "line": 10},
+            {"name": "gst_kv_set", "decl_kind": "prototype", "file": "inc/generic_store.h", "line": 16},
+            {"name": "gst_kv_set", "decl_kind": "definition", "file": "src/generic_store.c", "line": 10},
         ],
     }
 
@@ -47,14 +47,14 @@ class SourceAnalysisTests(unittest.TestCase):
         artifacts = bundle["artifacts"]
         types = artifacts["type-map.json"]["types"]
         self.assertTrue(any(item["kind"] == "struct" and {m["name"] for m in item["members"]} == {"capacity", "write"} for item in types))
-        self.assertTrue(any(item["kind"] == "enum" and {m["name"] for m in item["members"]} == {"FDB_OK", "FDB_ERROR"} for item in types))
+        self.assertTrue(any(item["kind"] == "enum" and {m["name"] for m in item["members"]} == {"GST_OK", "GST_ERROR"} for item in types))
         self.assertTrue(any(item["name"] == "write_count" for item in artifacts["global-state-map.json"]["globals"]))
         self.assertTrue(artifacts["preprocessor-variants.json"]["variants"])
 
     def test_independent_scanner_returns_nonempty_sets(self):
         result = independent_scan(FIXTURE, [FIXTURE / "src", FIXTURE / "inc"], [FIXTURE / "tests"])
-        self.assertEqual({item["name"] for item in result["public_apis"]}, {"fdb_kv_set"})
-        self.assertEqual({item["path"] for item in result["source_tests"]}, {"tests/test_flashdb.c"})
+        self.assertEqual({item["name"] for item in result["public_apis"]}, {"gst_kv_set"})
+        self.assertEqual({item["path"] for item in result["source_tests"]}, {"tests/test_generic_store.c"})
 
     def test_missing_api_is_fail_closed(self):
         incomplete = legacy(FIXTURE)
@@ -67,14 +67,14 @@ class SourceAnalysisTests(unittest.TestCase):
     def test_unresolved_declaration_is_fail_closed(self):
         incomplete = legacy(FIXTURE)
         incomplete["functions"] = incomplete["functions"][:1]
-        source = (FIXTURE / "src" / "flashdb.c").read_text(encoding="utf-8")
+        source = (FIXTURE / "src" / "generic_store.c").read_text(encoding="utf-8")
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for directory in ("src", "inc", "tests"):
                 (root / directory).mkdir()
-            (root / "inc" / "flashdb.h").write_text((FIXTURE / "inc" / "flashdb.h").read_text(), encoding="utf-8")
-            (root / "src" / "flashdb.c").write_text(source.replace("fdb_kv_set", "private_set"), encoding="utf-8")
-            (root / "tests" / "test_flashdb.c").write_text((FIXTURE / "tests" / "test_flashdb.c").read_text(), encoding="utf-8")
+            (root / "inc" / "generic_store.h").write_text((FIXTURE / "inc" / "generic_store.h").read_text(), encoding="utf-8")
+            (root / "src" / "generic_store.c").write_text(source.replace("gst_kv_set", "private_set"), encoding="utf-8")
+            (root / "tests" / "test_generic_store.c").write_text((FIXTURE / "tests" / "test_generic_store.c").read_text(), encoding="utf-8")
             incomplete["project_root"] = str(root)
             bundle = build_complete_analysis(packet(root), incomplete)
         self.assertIn("all_public_apis_resolved", bundle["verification"]["failures"])
@@ -112,11 +112,11 @@ class SourceAnalysisTests(unittest.TestCase):
             root = Path(temp)
             for directory in ("src", "inc", "tests"):
                 (root / directory).mkdir()
-            header = (FIXTURE / "inc" / "flashdb.h").read_text().replace("int capacity;", "int;")
-            source = (FIXTURE / "src" / "flashdb.c").read_text().replace("int capacity;", "int;")
-            (root / "inc" / "flashdb.h").write_text(header, encoding="utf-8")
-            (root / "src" / "flashdb.c").write_text(source, encoding="utf-8")
-            (root / "tests" / "test_flashdb.c").write_text((FIXTURE / "tests" / "test_flashdb.c").read_text(), encoding="utf-8")
+            header = (FIXTURE / "inc" / "generic_store.h").read_text().replace("int capacity;", "int;")
+            source = (FIXTURE / "src" / "generic_store.c").read_text().replace("int capacity;", "int;")
+            (root / "inc" / "generic_store.h").write_text(header, encoding="utf-8")
+            (root / "src" / "generic_store.c").write_text(source, encoding="utf-8")
+            (root / "tests" / "test_generic_store.c").write_text((FIXTURE / "tests" / "test_generic_store.c").read_text(), encoding="utf-8")
             model = legacy(root)
             bundle = build_complete_analysis(packet(root), model)
         self.assertIn("all_core_types_complete", bundle["verification"]["failures"])
@@ -126,10 +126,10 @@ class SourceAnalysisTests(unittest.TestCase):
             root = Path(temp)
             for directory in ("src", "inc", "tests"):
                 (root / directory).mkdir()
-            (root / "inc" / "flashdb.h").write_text((FIXTURE / "inc" / "flashdb.h").read_text(), encoding="utf-8")
-            source = (FIXTURE / "src" / "flashdb.c").read_text() + "\nvoid broken(void) {\n"
-            (root / "src" / "flashdb.c").write_text(source, encoding="utf-8")
-            (root / "tests" / "test_flashdb.c").write_text((FIXTURE / "tests" / "test_flashdb.c").read_text(), encoding="utf-8")
+            (root / "inc" / "generic_store.h").write_text((FIXTURE / "inc" / "generic_store.h").read_text(), encoding="utf-8")
+            source = (FIXTURE / "src" / "generic_store.c").read_text() + "\nvoid broken(void) {\n"
+            (root / "src" / "generic_store.c").write_text(source, encoding="utf-8")
+            (root / "tests" / "test_generic_store.c").write_text((FIXTURE / "tests" / "test_generic_store.c").read_text(), encoding="utf-8")
             bundle = build_complete_analysis(packet(root), legacy(root))
         self.assertIn("core_parse_succeeded", bundle["verification"]["failures"])
 

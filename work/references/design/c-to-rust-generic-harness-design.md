@@ -317,7 +317,7 @@ coding_skill:
 verification:
   source: "profile-or-source-readme"
   working_directory: "SOURCE_README_DERIVED_OUTPUT_PROJECT"
-  timeout_seconds: 600
+  timeout_seconds: 36000
   commands:
     default:
       - "cargo build"

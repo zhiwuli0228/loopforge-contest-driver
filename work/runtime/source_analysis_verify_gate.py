@@ -148,7 +148,7 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     for stage, payload in maps.items():
         _write_json(trace_dir / ARTIFACTS[stage][0], payload)
 
-    output_expected = packet.paths.work_dir / "output" / packet.output_project_name
+    output_expected = packet.paths.output_base_dir / packet.output_project_name
     verifications = {
         "requirement": _result("requirement", {"resolved_project_root_exists": packet.paths.source_root.is_dir() and bool(packet.metadata.get("layout_resolution", {}).get("resolved_project_root")), "design_readme_identified": bool(requirement["design_readme"]), "design_readme_digest_recorded": len(requirement["design_readme_sha256"]) == 64, "source_dirs_exist": bool(requirement["source_dirs"]), "test_dirs_exist": bool(requirement["test_dirs"]), "output_name_has_evidence": bool(requirement["output_project_name"] and requirement["evidence"]), "output_dir_is_canonical": packet.output_project_dir.resolve() == output_expected.resolve()}, {}),
         "structure": _result("structure", {"core_c_files_present": bool(structure["core_files"]), "public_apis_present": bool(public), "all_public_apis_defined": not structure["unresolved_declarations"], "all_public_apis_have_evidence": all(item.get("file") and item.get("symbol") for item in structure["evidence"])}, {"public_api_count": len(public), "definition_count": len(public & set(definitions))}),

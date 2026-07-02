@@ -22,6 +22,9 @@ from c2rust_semantic_repair import run_semantic_repair_loop
 from semantic_planning import PlanningBlocked, plan_from_trace
 from source_analysis_verify_gate import build_and_verify_source_analysis
 from test_migration_validation import TestValidationBlocked, verify_and_publish as verify_test_migration
+from self_healing_loop import audit_neutrality, atomic_json, run_fault_injection_campaign
+from generation_agent_provider import repair_generation, write_report as write_generation_agent_report
+from timeout_policy import JUDGING_PLATFORM_TIMEOUT_SECONDS
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -33,7 +36,7 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/c_project_root_resolver.py",
     "work/runtime/c2rust_project_generator.py",
     "work/runtime/c2rust_repair.py",
-    "work/runtime/codex_repair_provider.py",
+    "work/runtime/opencode_repair_provider.py",
     "work/runtime/c2rust_semantic_repair.py",
     "work/runtime/c2rust_semantic_audit.py",
     "work/runtime/c2rust_invariant_tests.py",
@@ -44,6 +47,11 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/rust_project_generation.py",
     "work/runtime/rust-project-generation.json",
     "work/runtime/test_migration_validation.py",
+    "work/runtime/timeout_policy.py",
+    "work/runtime/self_healing_loop.py",
+    "work/runtime/generation_agent_provider.py",
+    "work/vendor/pycparser/__init__.py",
+    "work/vendor/PYCPARSER-LICENSE",
 ]
 REQUIRED_ADAPTER_FILES = [
     "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
@@ -229,7 +237,9 @@ class LoopForgeRunner:
         profile_rel = str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)
         self.profile = parse_simple_yaml((self.work_dir / profile_rel).read_text(encoding="utf-8"))
         self.runtime_contract = resolve_runtime_contract(self.work_dir / "design" / "README.md", self.profile)
-        self.output_base_dir = self.work_dir / "output"
+        self.output_base_dir = Path(os.environ.get("LOOPFORGE_OUTPUT_DIR", str(self.work_dir / "output"))).resolve()
+        if path_is_relative_to(self.output_base_dir, self.input_root):
+            raise ValueError(f"writable destination must be outside SOURCE_ROOT: {self.output_base_dir}")
         self.project_dir = self.output_base_dir / sanitize_dirname(self.runtime_contract["output_project_name"])
         self.result_output_path = self.result_dir / "output.md"
         self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
@@ -609,7 +619,7 @@ class LoopForgeRunner:
         packet.set_gate("project_layout", cargo_manifest_exists and src_exists and tests_exists, "generated Cargo.toml/src/tests layout", {})
         packet.set_gate(
             "trace_artifacts",
-            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "implementation-map.json", self.migration_trace_dir / "unsupported-functions.json", self.migration_trace_dir / "module-edge-map.json", self.migration_trace_dir / "unsafe-audit.json", self.migration_trace_dir / "generation-verification.json", self.migration_trace_dir / "test-ir.json", self.migration_trace_dir / "source-test-map.json", self.migration_trace_dir / "semantic-invariant-test-map.json", self.migration_trace_dir / "differential-test-vectors.json", self.migration_trace_dir / "differential-test-report.json", self.migration_trace_dir / "mutation-test-report.json", self.migration_trace_dir / "anti-customization-report.json", self.migration_trace_dir / "test-validation-report.json", self.migration_trace_dir / "cargo-test.log", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
+            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "implementation-map.json", self.migration_trace_dir / "unsupported-functions.json", self.migration_trace_dir / "module-edge-map.json", self.migration_trace_dir / "unsafe-audit.json", self.migration_trace_dir / "generation-verification.json", self.migration_trace_dir / "test-ir.json", self.migration_trace_dir / "source-test-map.json", self.migration_trace_dir / "semantic-invariant-test-map.json", self.migration_trace_dir / "differential-test-vectors.json", self.migration_trace_dir / "differential-test-report.json", self.migration_trace_dir / "mutation-test-report.json", self.migration_trace_dir / "anti-customization-report.json", self.migration_trace_dir / "test-validation-report.json", self.migration_trace_dir / "cargo-test.log", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "repair-integrity-report.json", self.migration_trace_dir / "repair-fault-injection-report.json", self.migration_trace_dir / "repair-neutrality-report.json", self.migration_trace_dir / "exception-ledger.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
             "required trace artifacts exist",
             {},
         )
@@ -621,6 +631,15 @@ class LoopForgeRunner:
         packet.set_gate("semantic", bool(semantic_payload.get("passed")), "semantic gate", semantic_payload)
         packet.set_gate("test_mapping", test_mapping_gate, "test mapping gate", test_mapping_payload)
         packet.set_gate("repair_loop", bool(repair_payload.get("ok")), "repair loop gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
+        repair_integrity = packet.metadata.get("repair_integrity", {})
+        semantic_integrity = repair_integrity.get("semantic_repair", {})
+        integrity_passed = bool(
+            repair_integrity.get("fault_injection", {}).get("passed")
+            and repair_integrity.get("neutrality", {}).get("passed")
+            and repair_payload.get("repair_integrity", {}).get("compliance_status") == "satisfied"
+            and (not semantic_integrity or semantic_integrity.get("compliance_status") == "satisfied")
+        )
+        packet.set_gate("repair_integrity", integrity_passed, "repair integrity, fault injection, and zero-customization gate", repair_integrity)
 
         verification_payload = {
             "cargo_manifest_exists": cargo_manifest_exists,
@@ -628,6 +647,7 @@ class LoopForgeRunner:
             "tests_exists": tests_exists,
             "project_generation": project_payload,
             "repair_loop": repair_payload,
+            "repair_integrity": repair_integrity,
             "unsafe": unsafe_payload,
             "semantic": semantic_payload,
             "test_validation": test_validation_payload or {},
@@ -687,7 +707,7 @@ class LoopForgeRunner:
             "## READY Gates",
             "",
         ]
-        for gate_name in ["source_analysis", "semantic_planning", "rust_generation", "test_validation", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop"]:
+        for gate_name in ["source_analysis", "semantic_planning", "rust_generation", "test_validation", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop", "repair_integrity"]:
             gate = packet.gates.get(gate_name)
             if gate:
                 lines.append(f"- `{gate_name}`: `{'pass' if gate.passed else 'fail'}`")
@@ -826,6 +846,25 @@ class LoopForgeRunner:
                     analysis,
                     generation_inputs["planning"]["rust-migration-plan.json"],
                 )
+                generation_diagnostics = project_payload.get("generation_diagnostics", [])
+                generation_agent_enabled = os.environ.get(
+                    "LOOPFORGE_ENABLE_GENERATION_AGENT", "1" if sys.platform.startswith("linux") else "0"
+                ).lower() not in {"0", "false", "no"}
+                if generation_agent_enabled and any(not item.get("resolved") for item in generation_diagnostics):
+                    generation_diagnostics, generation_agent_report = repair_generation(
+                        packet.output_project_dir,
+                        packet.paths.source_root,
+                        self.migration_trace_dir,
+                        generation_inputs,
+                        generation_diagnostics,
+                        model=str(os.environ.get("LOOPFORGE_GENERATION_MODEL", "")),
+                        timeout_seconds=int(os.environ.get(
+                            "LOOPFORGE_GENERATION_AGENT_TIMEOUT",
+                            str(JUDGING_PLATFORM_TIMEOUT_SECONDS),
+                        )),
+                    )
+                    project_payload["generation_diagnostics"] = generation_diagnostics
+                    write_generation_agent_report(self.migration_trace_dir, generation_agent_report)
                 packet.metadata["project_generation"] = project_payload
                 self.write_api_mapping(analysis, project_payload)
                 self.write_migration_plan(packet, analysis, project_payload)
@@ -888,17 +927,40 @@ class LoopForgeRunner:
         self.snapshot_packet(packet)
 
         if project_payload is not None and generation_gate.get("passed") and test_validation_gate.get("passed"):
+            packet.metadata["run_id"] = str(analysis.get("run_id") or packet.design_readme_sha256)
             commands = self.normalize_commands(packet)
-            repair_payload = run_repair_loop(packet, commands, int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600))
+            verification_timeout = int(
+                self.config.get("verification", {}).get(
+                    "timeout_seconds", JUDGING_PLATFORM_TIMEOUT_SECONDS
+                ) or JUDGING_PLATFORM_TIMEOUT_SECONDS
+            )
+            repair_payload = run_repair_loop(packet, commands, verification_timeout)
             self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
             semantic_payload = evaluate_semantic_equivalence(packet, analysis, packet.output_project_dir, project_payload, repair_payload)
             if not semantic_payload["passed"]:
                 semantic_repair = run_semantic_repair_loop(
                     packet, analysis, project_payload, semantic_payload, commands,
-                    int(self.config.get("verification", {}).get("timeout_seconds", 600) or 600),
+                    verification_timeout,
                 )
                 semantic_payload = semantic_repair["semantic"]
                 packet.metadata["semantic_repair"] = semantic_repair
+            fault_report = run_fault_injection_campaign(self.migration_trace_dir, packet.metadata["run_id"])
+            repair_assets = [
+                self.work_dir / "runtime" / "self_healing_loop.py",
+                self.work_dir / "runtime" / "c2rust_repair.py",
+                self.work_dir / "runtime" / "c2rust_semantic_repair.py",
+                self.work_dir / "runtime" / "opencode_repair_provider.py",
+            ]
+            project_terms = set(analysis.get("public_apis", []))
+            project_terms.update(Path(item.get("path", "")).stem for item in analysis.get("source_files", []))
+            project_terms = {term for term in project_terms if len(term) >= 4}
+            neutrality_report = audit_neutrality(repair_assets, project_terms)
+            atomic_json(self.migration_trace_dir / "repair-neutrality-report.json", neutrality_report)
+            packet.metadata["repair_integrity"] = {
+                "fault_injection": fault_report,
+                "neutrality": neutrality_report,
+                "semantic_repair": packet.metadata.get("semantic_repair", {}).get("repair_integrity", {}),
+            }
             audit_lines = ["# Semantic Audit Report", "", f"- passed: `{semantic_payload['passed']}`", "", "```json", json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True), "```", ""]
             (self.migration_trace_dir / "semantic-audit-report.md").write_text("\n".join(audit_lines), encoding="utf-8")
             self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
@@ -914,6 +976,7 @@ class LoopForgeRunner:
             packet.set_gate("semantic", False, "semantic gate", semantic_payload)
             packet.set_gate("test_mapping", False, "test mapping gate", {})
             packet.set_gate("repair_loop", False, "repair loop gate", repair_payload)
+            packet.set_gate("repair_integrity", False, "repair integrity gate", {"reason": "upstream_generation_or_test_validation"})
             verification_payload = {
                 "status": "BLOCKED_WITH_REPORT",
                 "ready": False,
@@ -1028,9 +1091,8 @@ def main(argv: List[str]) -> int:
     source_root = resolve_path(workspace_root, source_arg) if source_arg else resolve_default_source_root(workspace_root)
     result_dir = resolve_path(cwd, args.result_dir)
     log_dir = resolve_path(cwd, args.log_dir)
-    runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
-
     try:
+        runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
         if args.init:
             runner.ensure_outputs()
             runner.write_templates()
@@ -1048,8 +1110,27 @@ def main(argv: List[str]) -> int:
         if args.run:
             print_json(runner.run_entrypoint())
     except Exception as exc:
-        print_json({"ok": False, "error": str(exc)})
-        return 1
+        fallback = {
+            "ok": True,
+            "execution_status": "completed_with_recorded_exception",
+            "compliance_status": "not_satisfied",
+            "status": "BLOCKED_WITH_REPORT",
+            "exception": {"kind": type(exc).__name__, "detail": str(exc)},
+        }
+        try:
+            trace_dir = log_dir / TRACE_NAMESPACE
+            trace_dir.mkdir(parents=True, exist_ok=True)
+            atomic_json(trace_dir / "entrypoint-exception.json", fallback)
+            result_dir.mkdir(parents=True, exist_ok=True)
+            (result_dir / "output.md").write_text(
+                "# Output\n\n- status: `BLOCKED_WITH_REPORT`\n- execution_status: `completed_with_recorded_exception`\n\n"
+                f"## Exception\n\n```json\n{json.dumps(fallback['exception'], indent=2, ensure_ascii=True)}\n```\n",
+                encoding="utf-8",
+            )
+        except Exception as report_exc:
+            fallback["report_error"] = f"{type(report_exc).__name__}: {report_exc}"
+        print_json(fallback)
+        return 0
     return 0
 
 

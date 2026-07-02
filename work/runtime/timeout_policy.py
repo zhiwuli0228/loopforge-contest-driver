@@ -1,0 +1,4 @@
+"""Shared timeout policy aligned with the judging platform."""
+
+JUDGING_PLATFORM_TIMEOUT_MINUTES = 600
+JUDGING_PLATFORM_TIMEOUT_SECONDS = JUDGING_PLATFORM_TIMEOUT_MINUTES * 60

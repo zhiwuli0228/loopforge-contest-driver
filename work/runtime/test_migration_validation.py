@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
 from rust_project_generation import EVIDENCE_FILES as GENERATION_FILES
 from rust_project_generation import GenerationBlocked, load_generation_inputs, project_digest
+from timeout_policy import JUDGING_PLATFORM_TIMEOUT_SECONDS
 
 
 SCHEMA_VERSION = "source-test-differential-validation/v1"
@@ -466,7 +467,7 @@ def project_terms_from_inputs(inputs: Mapping[str, Any]) -> List[str]:
     return sorted(set(apis + files + prefixes))
 
 
-def run_cargo_tests(project_dir: Path, timeout_seconds: int = 300) -> Dict[str, Any]:
+def run_cargo_tests(project_dir: Path, timeout_seconds: int = JUDGING_PLATFORM_TIMEOUT_SECONDS) -> Dict[str, Any]:
     command = ["cargo", "test", "--locked", "--", "--nocapture"]
     try:
         toolchain = subprocess.run(["rustc", "--version"], capture_output=True, text=True, timeout=30)

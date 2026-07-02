@@ -259,7 +259,7 @@ class TestMigrationValidationTests(unittest.TestCase):
             inputs = load_validation_inputs(trace, project)
             terms = project_terms_from_inputs(inputs)
         self.assertIn("counter_increment", terms)
-        self.assertNotIn("kvdb", " ".join(terms).lower())
+        self.assertNotIn("collection", " ".join(terms).lower())
 
     def test_cargo_test_execution_and_zero_test_rejection(self):
         with tempfile.TemporaryDirectory() as temp:

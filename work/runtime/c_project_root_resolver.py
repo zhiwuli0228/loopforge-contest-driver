@@ -8,6 +8,7 @@ from typing import Any, Dict, Iterable, List
 
 
 SOURCE_NAMES = ("src", "source")
+HEADER_NAMES = ("inc", "include")
 TEST_NAMES = ("tests", "test", "testing", "checks")
 EXCLUDED_NAMES = {"runtime", "scripts", "skills", "result", "logs", "output"}
 DISCOVERY_EXCLUDED_NAMES = EXCLUDED_NAMES | {".git", ".github", "build", "dist", "target", "out"}
@@ -92,18 +93,27 @@ def _discover_dirs(root: Path, suffixes: tuple[str, ...], tests: bool) -> List[P
 
 
 def _score_candidate(root: Path, input_root: Path) -> Dict[str, Any]:
-    source_dirs = _resolve_dirs(root, [], SOURCE_NAMES, SOURCE_SUFFIXES) or _discover_dirs(root, SOURCE_SUFFIXES, tests=False)
-    test_dirs = _resolve_dirs(root, [], TEST_NAMES, TEST_SOURCE_SUFFIXES) or _discover_dirs(root, TEST_SOURCE_SUFFIXES, tests=True)
+    conventional_sources = [*_resolve_dirs(root, [], SOURCE_NAMES, SOURCE_SUFFIXES), *_resolve_dirs(root, [], HEADER_NAMES, SOURCE_SUFFIXES)]
+    source_dirs = list(dict.fromkeys(conventional_sources or _discover_dirs(root, SOURCE_SUFFIXES, tests=False)))
+    conventional_tests = _resolve_dirs(root, [], TEST_NAMES, TEST_SOURCE_SUFFIXES)
+    test_dirs = list(dict.fromkeys(conventional_tests or _discover_dirs(root, TEST_SOURCE_SUFFIXES, tests=True)))
     source_files = sorted({path for directory in source_dirs for path in _files(directory, SOURCE_SUFFIXES) if not _is_test_file(path, root)})
     test_files = sorted({path for directory in test_dirs for path in _files(directory, TEST_SOURCE_SUFFIXES) if _is_test_file(path, root)})
     translation_units = [path for path in source_files if path.suffix.lower() in TEST_SOURCE_SUFFIXES]
     headers = [path for path in source_files if path.suffix.lower() == ".h"]
     public_api = any(PUBLIC_DECL_RE.search(path.read_text(encoding="utf-8", errors="ignore")) for path in headers)
+    direct_source_layout = any(
+        len(path.relative_to(root).parts) <= 2
+        and (len(path.relative_to(root).parts) == 1 or path.relative_to(root).parts[0].lower() in SOURCE_NAMES)
+        for path in translation_units
+    )
+    direct_test_layout = any(len(path.relative_to(root).parts) <= 2 for path in test_files)
     score = 0
     score += 6 if any((root / name).is_file() for name in BUILD_MANIFESTS) else 0
     score += 5 if translation_units else 0
     score += 3 if test_files else 0
     score += 3 if public_api else 0
+    score += 8 if direct_source_layout and direct_test_layout else 0
     score += max(0, 4 - min((len(path.relative_to(root).parts) for path in translation_units), default=4))
     score -= 10 if root.name.lower() in EXCLUDED_NAMES else 0
     has_build_manifest = any((root / name).is_file() for name in BUILD_MANIFESTS)
@@ -114,6 +124,8 @@ def _score_candidate(root: Path, input_root: Path) -> Dict[str, Any]:
         "test_dirs": [str(path) for path in test_dirs],
         "usable": bool(translation_units and (root == input_root or test_files or has_build_manifest)),
         "public_api_declarations": public_api,
+        "direct_source_layout": direct_source_layout,
+        "direct_test_layout": direct_test_layout,
     }
 
 
@@ -126,15 +138,16 @@ def resolve_c_project_root(input_root: Path, max_depth: int = 3) -> Dict[str, An
             item for item in candidates
             if item["usable"] and Path(item["root"]) != candidate_root and candidate_root in Path(item["root"]).parents
         ]
-        if len(viable_descendants) > 1:
+        if len(viable_descendants) > 1 and not (candidate["direct_source_layout"] and candidate["direct_test_layout"]):
             candidate["usable"] = False
             candidate["container_only"] = True
     viable = [item for item in candidates if item["usable"]]
     def rank(item: Dict[str, Any]) -> tuple[int, int]:
         depth = len(Path(item["root"]).relative_to(input_root).parts)
         return item["score"], -depth
+    direct_input = [item for item in viable if Path(item["root"]) == input_root and item["direct_source_layout"] and item["direct_test_layout"]]
     best_rank = max((rank(item) for item in viable), default=None)
-    winners = [item for item in viable if rank(item) == best_rank]
+    winners = direct_input or [item for item in viable if rank(item) == best_rank]
     if len(winners) == 1:
         winner = winners[0]
         status = "RESOLVED"

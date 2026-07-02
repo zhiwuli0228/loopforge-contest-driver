@@ -9,9 +9,14 @@ import re
 import shlex
 import stat
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+
+_VENDOR_DIR = Path(__file__).resolve().parents[1] / "vendor"
+if _VENDOR_DIR.is_dir() and str(_VENDOR_DIR) not in sys.path:
+    sys.path.append(str(_VENDOR_DIR))
 
 try:
     import pycparser
@@ -60,7 +65,8 @@ def snapshot_source_tree(root: Path) -> Dict[str, Dict[str, Any]]:
 
 
 def _stable_id(kind: str, path: str, name: str) -> str:
-    return f"{kind}:{_sha256(f'{path}\0{name}'.encode())[:16]}"
+    identity = f"{path}\0{name}".encode()
+    return f"{kind}:{_sha256(identity)[:16]}"
 
 
 def _line(text: str, offset: int) -> int:

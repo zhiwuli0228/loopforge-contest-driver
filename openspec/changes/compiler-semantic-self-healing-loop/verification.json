@@ -1,0 +1,17 @@
+{
+  "schema_version": "repair-integrity/v1",
+  "passed": true,
+  "findings": [],
+  "branch_findings": [],
+  "scanned_file_count": 112,
+  "scope": [
+    "work\\runtime",
+    "work\\rules",
+    "work\\profiles",
+    "work\\skills",
+    "work/loopforge.config.yaml"
+  ],
+  "test_command": "python -m unittest discover -s work/runtime/tests -p 'test_*.py' -v",
+  "test_count": 98,
+  "tests_passed": true
+}

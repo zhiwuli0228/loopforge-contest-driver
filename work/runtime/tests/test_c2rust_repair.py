@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from c2rust_repair import _external_repair_command, _run_external_repair_provider
-from codex_repair_provider import build_codex_command
+from opencode_repair_provider import build_opencode_command
 
 
 class ExternalRepairProviderTests(unittest.TestCase):
@@ -44,24 +44,24 @@ class ExternalRepairProviderTests(unittest.TestCase):
             self.assertEqual(task["stderr_tail"], ["boom"])
             self.assertTrue((trace / "repair-provider-01.json").is_file())
 
-    def test_auto_provider_selects_adapter_when_codex_exists(self):
+    def test_auto_provider_selects_adapter_when_opencode_exists(self):
         packet = SimpleNamespace(config={"execution": {"repair_provider": {"enabled": "auto", "command": None}}})
-        with patch("c2rust_repair.shutil.which", side_effect=lambda name: "codex" if name == "codex" else None):
+        with patch("c2rust_repair.shutil.which", side_effect=lambda name: "opencode" if name == "opencode" else None):
             command = _external_repair_command(packet)
         self.assertEqual(command[0], sys.executable)
-        self.assertTrue(command[1].endswith("codex_repair_provider.py"))
+        self.assertTrue(command[1].endswith("opencode_repair_provider.py"))
 
-    def test_auto_provider_is_unavailable_without_codex(self):
+    def test_auto_provider_is_unavailable_without_opencode(self):
         packet = SimpleNamespace(config={"execution": {"repair_provider": {"enabled": "auto", "command": None}}})
         with patch("c2rust_repair.shutil.which", return_value=None):
             self.assertIsNone(_external_repair_command(packet))
 
     def test_windows_powershell_command_is_argv_not_shell_text(self):
-        with patch("codex_repair_provider.shutil.which", return_value="pwsh.exe"):
-            command = build_codex_command(r"C:\\tools\\codex.ps1", Path(r"C:\\project with spaces"))
-        self.assertEqual(command[:6], ["pwsh.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", r"C:\\tools\\codex.ps1"])
-        self.assertIn("workspace-write", command)
-        self.assertEqual(command[-1], "-")
+        with patch("opencode_repair_provider.shutil.which", return_value="pwsh.exe"):
+            command = build_opencode_command(r"C:\\tools\\opencode.ps1", Path(r"C:\\project with spaces"), "repair")
+        self.assertEqual(command[:6], ["pwsh.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", r"C:\\tools\\opencode.ps1"])
+        self.assertIn("--dangerously-skip-permissions", command)
+        self.assertEqual(command[-1], "repair")
 
 
 if __name__ == "__main__":

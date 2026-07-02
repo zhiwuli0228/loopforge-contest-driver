@@ -15,13 +15,22 @@ import loopforge_runner
 
 
 class CProjectRootResolverTests(unittest.TestCase):
-    def make_project(self, root: Path, name: str = "FlashDB", source: str = "src", tests: str = "tests") -> Path:
+    def test_library_root_outranks_nested_buildable_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.make_project(Path(temp), "Library")
+            example = self.make_project(root / "examples", "demo")
+            (example / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+            resolved = resolve_c_project_root(root)
+            self.assertEqual(resolved["status"], "RESOLVED")
+            self.assertEqual(Path(resolved["resolved_project_root"]), root.resolve())
+
+    def make_project(self, root: Path, name: str = "GenericStore", source: str = "src", tests: str = "tests") -> Path:
         project = root / name
         (project / source).mkdir(parents=True)
         (project / tests).mkdir(parents=True)
-        (project / source / "flashdb.h").write_text("int flashdb_open(void);\n", encoding="utf-8")
-        (project / source / "flashdb.c").write_text("int flashdb_open(void) { return 0; }\n", encoding="utf-8")
-        (project / tests / "test_flashdb.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
+        (project / source / "generic_store.h").write_text("int generic_store_open(void);\n", encoding="utf-8")
+        (project / source / "generic_store.c").write_text("int generic_store_open(void) { return 0; }\n", encoding="utf-8")
+        (project / tests / "test_generic_store.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
         return project
 
     def test_project_root_resolves(self) -> None:
@@ -50,7 +59,7 @@ class CProjectRootResolverTests(unittest.TestCase):
 
     def test_source_free_input_blocks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / "work" / "code" / "FlashDB"
+            root = Path(tmp) / "work" / "code" / "GenericStore"
             root.mkdir(parents=True)
             result = resolve_c_project_root(root)
             self.assertEqual(result["status"], "BLOCKED_WITH_REPORT")
@@ -59,7 +68,7 @@ class CProjectRootResolverTests(unittest.TestCase):
     def test_multiple_projects_are_ambiguous_and_scored(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "work" / "code"
-            self.make_project(root, "FlashDB")
+            self.make_project(root, "GenericStore")
             self.make_project(root, "OtherDB")
             result = resolve_c_project_root(root)
             self.assertEqual(result["status"], "BLOCKED_WITH_REPORT")

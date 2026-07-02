@@ -18,10 +18,10 @@ int real_api(int value) { return value; }
         self.assertEqual([item[1] for item in definitions], ["real_api"])
 
     def test_header_prototype_and_c_definition_share_name(self):
-        header = "fdb_err_t fdb_kvdb_init(fdb_kvdb_t db, const char *name);"
-        source = """fdb_err_t fdb_kvdb_init(fdb_kvdb_t db,
+        header = "gst_err_t gst_collection_init(gst_collection_t db, const char *name);"
+        source = """gst_err_t gst_collection_init(gst_collection_t db,
             const char *name)
-        { return FDB_NO_ERR; }
+        { return GST_NO_ERR; }
         """
         prototypes = []
         for prefix, params in PROTOTYPE_RE.findall(_parseable_c(header)):
@@ -29,8 +29,8 @@ int real_api(int value) { return value; }
             if signature:
                 prototypes.append(signature[1])
         definitions = [item[1] for item in _iter_definitions(_parseable_c(source))]
-        self.assertEqual(prototypes, ["fdb_kvdb_init"])
-        self.assertEqual(definitions, ["fdb_kvdb_init"])
+        self.assertEqual(prototypes, ["gst_collection_init"])
+        self.assertEqual(definitions, ["gst_collection_init"])
 
     def test_url_inside_string_is_not_treated_as_comment(self):
         source = '''void finish(void) {

@@ -330,6 +330,7 @@ class AgentTaskPacket:
             "semantic",
             "test_mapping",
             "repair_loop",
+            "repair_integrity",
         ]
         return not self.issues and all(self.gates.get(name) and self.gates[name].passed for name in required)
 

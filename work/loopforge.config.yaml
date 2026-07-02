@@ -74,11 +74,11 @@ coding_skill:
 verification:
   source: "profile-or-framework-default"
   working_directory: "DESIGN_DERIVED_OUTPUT_PROJECT"
-  timeout_seconds: 600
+  timeout_seconds: 36000
   commands:
     default:
-      - "cargo build"
-      - "cargo test"
+      - "cargo build --locked"
+      - "cargo test --locked -- --nocapture"
 
 outputs:
   result_report: "work/result/output.md"

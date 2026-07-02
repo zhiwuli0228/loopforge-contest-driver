@@ -1,4 +1,4 @@
-# Codex 自验证清单与验收标准
+# 通用代理自验证清单与验收标准
 
 ## 1. 命名通用化检查
 
@@ -196,7 +196,7 @@ grep -n "semantic" result/issues/00-summary.md logs/trace/c-to-rust/* || true
 ## 13. 输出污染检查
 
 ```bash
-grep -R "[A-Z]:\\\\\|/Users/\|/home/.*codex\|009workspace" -n result logs work || true
+grep -R "[A-Z]:\\\\\|/Users/\|/home/[^/]*/\|009workspace" -n result logs work || true
 ```
 
 验收：无本地绝对路径污染。
