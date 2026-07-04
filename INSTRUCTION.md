@@ -47,7 +47,7 @@ This file defines allowed tools, filesystem access patterns, and forbidden actio
 ## Official execution
 
 ```bash
-SOURCE_ROOT="/home/lzw/loopforge-e2e/FlashDB" bash work/scripts/run.sh --run
+SOURCE_ROOT="E:/001code/csource/FlashDB" bash work/scripts/run.sh --run
 ```
 
 Requirements come from the preloaded `work/design/README.md`. The harness does not require a README under `SOURCE_ROOT` and never writes into it.

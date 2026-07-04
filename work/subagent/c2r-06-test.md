@@ -2,58 +2,113 @@
 
 ## Role
 
-Write and run Rust tests for one batch of the migration. Write phase — produces test files. **Must verify C test coverage.**
+Write Rust tests for ONE batch. Must verify complete C test coverage per the test migration spec. Write phase — produces test files under `OUTPUT_DIR/tests/`.
 
-## Context
+## Context You Receive
 
-You receive:
-- `OPENSPEC_CHANGE` — the OpenSpec change name
-- `SOURCE_ROOT` — path to the C source tree
-- `OUTPUT_DIR` — path to the Rust output project
-- `BATCH_ID` — which batch to test
-- Phase 1 output: source inventory with `test_functions` (C test function list)
-- Phase 3 output: `specs/test-migration/spec.md` (C→Rust test mapping)
-- Phase 4 output: `implement-plan.md` and `specs/` locations
-- Phase 5 output: list of implemented modules/functions
+- `OPENSPEC_CHANGE` — OpenSpec change name
+- `SOURCE_ROOT` — path to C source tree (contains original C tests)
+- `OUTPUT_DIR` — path to Rust output project
+- `BATCH_ID` — which test batch from implement-plan you are executing (e.g., "6.1")
+- `PRIOR_OUTPUTS.implement_plan` — path to `implement-plan.md`
+- `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
+- `PRIOR_OUTPUTS.test_migration_spec` — path to `specs/test-migration/spec.md`
+- `PRIOR_OUTPUTS.inventory` — path to `source-inventory.json` (for `test_functions` list)
 
-## SuperPower Rules
-
-Read `work/profiles/superpower/c-to-rust-migration-guards.yaml`, section `test`.
+## SuperPower Rules (this phase only)
 
 - **Allowed tools**: `run-verification`
-- **Allowed filesystem**: read `**`, write `tests/**/*.rs`, write `src/**/*.rs`, create `tests/**/*.rs`
+- **Allowed filesystem**: read `**`, write `tests/**/*.rs`, write `src/**/*.rs` (only for test-related fixes), create `tests/**/*.rs`
 - **Forbidden**: modify tools.py, modify profiles, modify openspec/, modify work/skills/, modify work/subagent/
 
 ## Steps
 
-1. Read `specs/test-migration/spec.md` for the **C→Rust test mapping table**
-2. Read the relevant `specs/*/spec.md` for additional test requirements and scenarios
-3. Read the C test source files to understand the original test logic
-4. Write Rust test files under `OUTPUT_DIR/tests/`:
-   - **For each C test function in the mapping table**: write a corresponding Rust test (or confirm it's covered by an existing test)
-   - Each spec scenario maps to at least one test
-   - Include boundary conditions, error cases, and state preservation tests
-   - Tests must contain assertions
-5. **Verify C test coverage**: After writing tests, go through the `test_functions` list from the source inventory and confirm every entry has:
-   - A corresponding Rust test that covers the same behavior, OR
-   - An explicit N/A reason documented in the test file
-6. Run test verification:
-   ```
-   python tools.py run-verification --project-dir OUTPUT_DIR --commands '["cargo test --locked"]'
-   ```
-7. If tests fail, diagnose: is it a test bug or an implementation bug?
-   - Test bug: fix the test
-   - Implementation bug: note it for the repair phase
+### 1. Read Your Batch Assignment
+
+Read `implement-plan.md`. Find your test batch by `BATCH_ID`. Note:
+- Which modules you are testing
+- Which C test functions this batch covers
+- The expected test command
+
+### 2. Read Test Migration Spec
+
+Read `specs/test-migration/spec.md`. Find the C→Rust mapping table rows for your batch. For each C test function in your batch, confirm:
+- The target Rust test function name
+- The target Rust test file
+- Any special requirements or N/A designations
+
+### 3. Read C Test Source
+
+For each C test function in your batch, read the C test source file to understand:
+- What behavior the test validates
+- Input values and expected outputs
+- Setup and teardown patterns
+- Assertions
+
+### 4. Write Rust Tests
+
+For each C test function in your batch, write the corresponding Rust test:
+
+```rust
+#[test]
+fn test_<name>() {
+    // Setup — mirrors C test setup
+    // Exercise — mirrors C test execution
+    // Assert — mirrors C test assertions, using Rust assert! macros
+}
+```
+
+**Test structure rules**:
+- Each `#[test]` function tests one behavior
+- Use `assert_eq!`, `assert!`, `assert_ne!` — every test must have at least one assertion
+- If the C test uses a harness/setup, replicate it in Rust (helper functions, before-each pattern)
+- If a C test is marked N/A in the mapping table, write a comment in the test file explaining why
+
+### 5. Add Spec-Scenario Tests
+
+Beyond the C test mapping, add tests for scenarios from the module specs:
+- Boundary conditions (empty input, max size, edge values)
+- Error paths (invalid input, out-of-memory simulation where possible)
+- State preservation (operation fails → state unchanged)
+
+### 6. Run Tests
+
+```
+python WORK_DIR/runtime/tools.py run-verification \
+  --project-dir "OUTPUT_DIR" \
+  --commands '["cargo test --locked"]'
+```
+
+### 7. Diagnose Failures
+
+If tests fail:
+- **Test bug** (wrong assertion, bad setup): fix the test
+- **Implementation bug** (function returns wrong value): note it for Phase 7 (repair), do NOT weaken the test to make it pass
+- Record implementation bugs clearly so Phase 7 can find them
+
+### 8. Verify C Test Coverage
+
+After all tests are written, produce a coverage report for your batch:
+
+```
+C Test Coverage Report — Batch BATCH_ID
+========================================
+C: test_flashdb_init    → Rust: test_init              ✓ written
+C: test_flashdb_deinit  → Rust: test_deinit            ✓ written
+C: test_legacy_api      → Rust: —                      ✓ N/A (deprecated API)
+C: test_kv_basic        → Rust: test_kv_set_get        ✓ written
+```
+
+Every C test function from the inventory that falls in this batch must appear in this report with a status.
 
 ## Output
 
-- Rust test files under `OUTPUT_DIR/tests/`
-- Test result from tools.py
-- **C test coverage report**: list of C test functions and their Rust coverage status
+1. Rust test files under `OUTPUT_DIR/tests/` for your batch
+2. Test run result from tools.py
+3. C test coverage report for your batch (in your return message)
 
 ## Gate
 
-Return one of:
-- `PHASE_PASS` — tests written, `cargo test` passes, all C tests have Rust equivalents or explicit N/A
-- `PHASE_BLOCKED` — critical test infrastructure failure
-- `PHASE_DEGRADED` — some tests failing (implementation issues, noted for repair), or some C tests lack coverage
+- `PHASE_PASS` — all tests in batch written and pass, every C test function covered (mapped or N/A)
+- `PHASE_BLOCKED` — critical test infrastructure failure (can't compile tests at all)
+- `PHASE_DEGRADED` — some tests fail (implementation bugs noted for repair), or some C tests lack coverage

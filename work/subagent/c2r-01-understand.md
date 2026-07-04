@@ -2,45 +2,98 @@
 
 ## Role
 
-Parse the C source tree AND test tree, produce a structured source inventory and test inventory. Read-only phase — no writes allowed.
+Parse the C source tree and test tree into a structured inventory. Read-only phase. Produces `source-inventory.json`.
 
-## Context
+## Context You Receive
 
-You receive:
-- `SOURCE_ROOT` — path to the C source tree
-- `WORK_DIR` — path to the work directory
+- `SOURCE_ROOT` — path to C source tree
+- `WORK_DIR` — path to work directory (write inventory here)
 
-## SuperPower Rules
-
-Read `work/profiles/superpower/c-to-rust-migration-guards.yaml`, section `understand`.
+## SuperPower Rules (this phase only)
 
 - **Allowed tools**: `parse-source`
-- **Allowed filesystem**: read `**` (everything)
-- **Forbidden**: any write operations, any source modification
+- **Allowed filesystem**: read `**` (everything under SOURCE_ROOT)
+- **Forbidden**: any write operations (tools.py writes the inventory, not you), any source modification
 
 ## Steps
 
-1. **Discover test directories**: Look under `SOURCE_ROOT` for directories named `tests`, `test`, `unit`, `spec`, or similar. Common patterns: `tests/`, `tests/unit/`, `test/`.
-2. Run `python tools.py parse-source --source-root SOURCE_ROOT --test-dirs "dir1,dir2" --work-dir WORK_DIR`
-   - Pass all discovered test directories as comma-separated values to `--test-dirs`
-   - If no test directory found, omit `--test-dirs` but report this as a warning
-3. Read the generated output. Confirm both `source_tests` (test file list) and `test_functions` (individual test function names) are populated.
-4. Review the inventory: public APIs, structs, macros, include graph, file and I/O boundaries
-5. **Review the test inventory**: For each `test_function`, note its name and source file. This becomes the **Test Migration Checklist** — every entry must have a Rust equivalent or an explicit N/A reason.
+### 1. Discover Test Directories
+
+Search under `SOURCE_ROOT` for test directories. Common patterns:
+
+```
+tests/  test/  unit/  spec/  t/  testing/
+```
+
+Check each with:
+
+```
+test -d "SOURCE_ROOT/tests" && echo "tests/"
+test -d "SOURCE_ROOT/test" && echo "test/"
+test -d "SOURCE_ROOT/unit" && echo "unit/"
+```
+
+Build a comma-separated list of discovered test directory names (not full paths — tools.py resolves them relative to SOURCE_ROOT).
+
+If no test directories found, proceed without `--test-dirs` but flag this as a warning.
+
+### 2. Run parse-source
+
+```
+python WORK_DIR/runtime/tools.py parse-source \
+  --source-root "SOURCE_ROOT" \
+  --test-dirs "tests,test" \
+  --work-dir "WORK_DIR" \
+  --output "WORK_DIR/source-inventory.json"
+```
+
+If no test dirs found, omit `--test-dirs`.
+
+### 3. Read and Verify the Inventory
+
+Read `WORK_DIR/source-inventory.json`. Verify these fields are populated:
+
+| Field | Expected | Critical? |
+|-------|----------|-----------|
+| `files` | List of .c/.h file paths | Yes — if empty, blocker |
+| `source_tests` | List of test file paths | No — warning if empty |
+| `test_functions` | List of test function names | No — warning if empty |
+| `public_apis` | List of public API functions | Yes |
+| `functions` | List of all functions with metadata | Yes |
+| `types` | List of struct/enum/typedef | No |
+| `call_graph` | List of call edges | No |
+| `globals` | List of global variables | No |
+| `parse_failures` | List of files that failed to parse | No — warning if non-empty |
+
+### 4. Build Test Migration Checklist
+
+From the `test_functions` list, create a checklist. Each entry:
+
+```
+- [ ] <test_function_name> (in <source_file>) → Rust equivalent: ________
+```
+
+This checklist will be used by Phase 3 (spec) and Phase 6 (test) to ensure complete C test coverage.
+
+Write the checklist to `WORK_DIR/test-migration-checklist.md`.
+
+### 5. Summarize Key Findings
+
+Note any:
+- Parse failures (which files, what went wrong)
+- Ambiguous public API boundaries
+- Conditional compilation (`#ifdef`, `#ifndef`) that may affect module boundaries
+- Heavy macro usage that complicates translation
+- File I/O or platform-specific code
 
 ## Output
 
-The tools.py command produces structured JSON. Your job is to:
-- Confirm the source inventory is complete and accurate
-- Confirm the test inventory is complete: count C test functions, list them all
-- Flag any ambiguities (e.g., unclear public API boundaries, conditional compilation)
-- Summarize key findings including the **Test Migration Checklist**
-
-The test migration checklist is critical — it is the contract that Phase 6 (test) will verify against.
+1. `WORK_DIR/source-inventory.json` — structured parse data (written by tools.py)
+2. `WORK_DIR/test-migration-checklist.md` — C test function checklist (written by you)
+3. Summary in your return message: file count, function count, test function count, warnings
 
 ## Gate
 
-Return one of:
-- `PHASE_PASS` — source and test inventories complete, test functions extracted
-- `PHASE_BLOCKED` — no C source found, or parse failed critically
-- `PHASE_DEGRADED` — partial parse (e.g., some files had parse errors, test functions partially extracted)
+- `PHASE_PASS` — inventory has files + functions, test_functions extracted (even if 0)
+- `PHASE_BLOCKED` — `files` is empty (no C source found or parse completely failed)
+- `PHASE_DEGRADED` — parse failures on some files, or no test functions found
