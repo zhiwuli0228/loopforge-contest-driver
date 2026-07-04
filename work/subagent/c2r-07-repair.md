@@ -51,14 +51,16 @@ For each round (1 to MAX_REPAIR_ROUNDS):
 
 **a. Apply fixes**: Fix up to 5 errors at a time. Apply minimal changes — do not refactor, do not redesign.
 
-**b. Verify**:
+**b. Format**: Run `cargo fmt --manifest-path "OUTPUT_DIR/Cargo.toml"` to normalize formatting after fixes.
+
+**c. Verify**:
 ```
 python WORK_DIR/runtime/tools.py run-verification \
   --project-dir "OUTPUT_DIR" \
   --commands '["cargo build --locked", "cargo test --locked"]'
 ```
 
-**c. Evaluate**:
+**d. Evaluate**:
 - All build + test pass → `PHASE_PASS`, exit loop
 - Fewer errors than previous round → continue to next round
 - Same errors persist → re-diagnose, try different approach

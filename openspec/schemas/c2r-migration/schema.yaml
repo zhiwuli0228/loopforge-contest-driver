@@ -20,22 +20,48 @@ artifacts:
       Keep it concise (1-2 pages). Focus on the "why" not the "how".
     requires: []
 
+  - id: brainstorm
+    generates: 01c-capability-map.json
+    description: Capability map from the C source analysis (produced by the understand phase)
+    template: capability-map.json
+    instruction: |
+      Create the capability map that captures the results of C source analysis.
+
+      This artifact is produced during the Understand phase alongside the source inventory.
+      It SHALL contain:
+      - A list of identified capabilities with IDs, names, priorities, and source module references
+      - A dependency graph (DAG) between capabilities
+      - Test coverage gaps identified during C source analysis
+      - Synthesis notes documenting merged capabilities and warnings
+
+      When available, the capability map is the authoritative input for spec creation,
+      task planning, and batch ordering. When not available, downstream artifacts
+      derive capabilities from the proposal's Capabilities section.
+    requires: []
+
   - id: specs
     generates: "specs/**/*.md"
-    description: Detailed specifications for the change
+    description: Detailed specifications for the change — one spec per capability
     template: spec.md
     instruction: |
       Create specification files that define WHAT the system should do.
 
-      Create one spec file per capability listed in the proposal's Capabilities section.
+      If a capability map (brainstorm artifact) is available:
+      - Create one spec file per capability from the capability map.
+      - Use the exact capability ID from the map (specs/<capability-id>/spec.md).
+      - Reference C source file and line numbers for every requirement.
+      - Include an Invariants section per capability using invariants from the scenario documents.
+
+      If no capability map is available:
+      - Create one spec file per capability listed in the proposal's Capabilities section.
       - New capabilities: use the exact kebab-case name from the proposal (specs/<capability>/spec.md).
       - Modified capabilities: use the existing spec folder name.
 
-      Format requirements:
-      - Each requirement: `### Requirement: <name>` followed by description
+      Format requirements (apply regardless of input source):
+      - Each requirement: `### Requirement: <id>-NNN` followed by description
       - Use SHALL/MUST for normative requirements
-      - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
-      - Every requirement MUST have at least one scenario.
+      - Each scenario: `#### Scenario: <name>` with GIVEN/WHEN/THEN format
+      - Every requirement MUST have at least 3 scenarios (normal, error, boundary)
     requires:
       - proposal
 
@@ -49,9 +75,16 @@ artifacts:
       Sections:
       - **Context**: Background, current state, constraints
       - **Goals / Non-Goals**: What this design achieves and explicitly excludes
-      - **Decisions**: Key technical choices with rationale
+      - **Decisions**: Key technical choices with rationale and rejected alternatives
       - **Risks / Trade-offs**: Known limitations, things that could go wrong
       - **Open Questions**: Outstanding decisions or unknowns
+
+      If a capability map (brainstorm artifact) is available, also include:
+      - **Capability Mapping**: Table mapping every capability from the brainstorm to Rust modules.
+        Every capability from the capability map MUST appear in this table.
+
+      If no capability map is available, include:
+      - **Module Mapping**: For each C source file/component, state the corresponding Rust module path.
 
       Focus on architecture and approach, not line-by-line implementation.
     requires:
@@ -64,7 +97,13 @@ artifacts:
     instruction: |
       Create the task list that breaks down the implementation work.
 
-      Guidelines:
+      If a capability map (brainstorm artifact) is available:
+      - Each batch = ONE capability = implementation tasks + unit test tasks + verification tasks
+      - Batch order follows the dependency graph in the capability map
+      - Reference spec requirements: `REQ-<capability-id>-NNN`
+      - Never separate implementation and testing into different batches
+
+      If no capability map is available:
       - Group related tasks under ## numbered headings
       - Each task MUST be a checkbox: `- [ ] X.Y Task description`
       - Tasks should be small enough to complete in one session

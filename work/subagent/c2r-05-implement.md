@@ -2,7 +2,7 @@
 
 ## Role
 
-Write Rust source code for ONE batch of the migration. Write phase — produces Rust source files under `OUTPUT_DIR/src/`.
+Write Rust source code AND unit tests for ONE batch (one capability) of the migration. Write phase — produces Rust source files under `OUTPUT_DIR/src/` and unit test files under `OUTPUT_DIR/tests/`. You do NOT exit until both implementation AND unit tests pass.
 
 ## Context You Receive
 
@@ -33,10 +33,10 @@ Read `implement-plan.md`. Find your batch by `BATCH_ID`. Note:
 
 ### 2. Read Requirements
 
-Read the relevant `specs/<module>/spec.md` for your batch. For each function you implement, find its:
-- `REQ-<module>-XXX`: behavioral requirements (SHALL/MUST)
-- `INV-<module>-XXX`: invariants that must hold
-- Scenarios: WHEN/THEN conditions
+Read the relevant spec file for your batch (path may be `specs/<capability-id>/spec.md` or `specs/<module>/spec.md` depending on how specs were organized). For each function you implement, find its:
+- `REQ-<id>-NNN`: behavioral requirements (SHALL/MUST)
+- `INV-<id>-NNN`: invariants that must hold
+- Scenarios: GIVEN/WHEN/THEN conditions
 
 ### 3. Read C Source
 
@@ -77,7 +77,17 @@ If this is the first batch (or a batch that needs it), ensure:
 - `OUTPUT_DIR/src/lib.rs` declares all modules your batch adds
 - `OUTPUT_DIR/src/<module>.rs` files are created
 
-### 6. Build Verification
+### 6. Format Code
+
+Run `cargo fmt` before building to ensure consistent formatting:
+
+```
+cargo fmt --manifest-path "OUTPUT_DIR/Cargo.toml"
+```
+
+This uses Rust's official formatter — deterministic, zero-config, no style debates.
+
+### 7. Build Verification
 
 ```
 python WORK_DIR/runtime/tools.py run-verification \
@@ -89,20 +99,54 @@ If build fails:
 - Read the error output carefully
 - Fix the issue in your Rust code (type mismatch, missing import, borrow checker)
 - Re-run build
-- You have up to 3 internal fix attempts before reporting `PHASE_DEGRADED`
+- You have up to 3 internal fix attempts
 
-### 7. If Cargo.toml Was Updated
+### 7. Write Unit Tests
+
+**This step is MANDATORY. Do not skip it. Do not report success without it.**
+
+Write unit tests for EVERY function you implemented in this batch. Tests go in `OUTPUT_DIR/tests/<capability>_tests.rs`.
+
+For each function:
+- Write at least 1 normal path test (valid input → correct output)
+- Write at least 1 error path test (invalid input → correct error)
+- Write at least 1 boundary test (edge values, empty input, max capacity)
+
+Use Rust's `#[test]` attribute. Every test must have at least one `assert!`/`assert_eq!`/`assert_ne!` macro.
+
+Reference the scenarios from your capability's spec (`specs/<capability-id>/spec.md`) — each scenario should have a corresponding test.
+
+### 8. Test Verification
+
+```
+python WORK_DIR/runtime/tools.py run-verification \
+  --project-dir "OUTPUT_DIR" \
+  --commands '["cargo test <test_filter> --locked"]'
+```
+
+Replace `<test_filter>` with the test name pattern for your capability (e.g., `crc32`, `status_table`).
+
+If tests fail:
+- **Test bug** (wrong assertion, bad setup): fix the test
+- **Implementation bug** (function returns wrong value): fix the implementation, keep the test
+- Do NOT weaken the test to make it pass
+- Do NOT delete failing tests
+- You have up to 3 internal fix attempts
+
+### 9. If Cargo.toml Was Updated
 
 If you added dependencies, `--locked` may fail. Remove `--locked` for the first build, then it's fine for subsequent builds.
 
 ## Output
 
-1. Rust source files under `OUTPUT_DIR/src/` for your batch's modules
-2. Updated `Cargo.toml` and `src/lib.rs` if this is the first batch or added modules
-3. Build result: pass/fail, any warnings
+1. Rust source files under `OUTPUT_DIR/src/` for your batch's capability
+2. Unit test files under `OUTPUT_DIR/tests/<capability>_tests.rs`
+3. Updated `Cargo.toml` and `src/lib.rs` if this is the first batch or added modules
+4. Build result: pass/fail, any warnings
+5. Test result: pass/fail, test count
 
 ## Gate
 
-- `PHASE_PASS` — all functions in batch implemented, `cargo build` passes
-- `PHASE_BLOCKED` — irrecoverable failure (C source unreadable, spec missing critical info, 3+ failed build attempts)
-- `PHASE_DEGRADED` — build passes with warnings, or some non-critical functions could not be implemented
+- `PHASE_PASS` — all functions implemented, ALL unit tests pass, `cargo build` passes
+- `PHASE_BLOCKED` — irrecoverable failure (C source unreadable, spec missing critical info, 3+ failed attempts)
+- `PHASE_DEGRADED` — build passes but some tests fail (document each failure for Phase 7 repair)

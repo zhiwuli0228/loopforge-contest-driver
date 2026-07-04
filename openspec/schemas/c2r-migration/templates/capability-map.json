@@ -1,0 +1,37 @@
+{
+  "source_modules": ["REQUIRED_FIELD_NOT_SET"],
+  "total_scenario_files": 0,
+  "capabilities": [
+    {
+      "id": "REQUIRED_FIELD_NOT_SET",
+      "name": "REQUIRED_FIELD_NOT_SET",
+      "priority": "REQUIRED_FIELD_NOT_SET",
+      "summary": "REQUIRED_FIELD_NOT_SET",
+      "source_modules": ["REQUIRED_FIELD_NOT_SET"],
+      "scenario_files": ["REQUIRED_FIELD_NOT_SET"],
+      "key_functions": ["REQUIRED_FIELD_NOT_SET"],
+      "key_data_structures": ["REQUIRED_FIELD_NOT_SET"],
+      "is_cross_module": false
+    }
+  ],
+  "dependency_graph": {
+    "REQUIRED_FIELD_NOT_SET": ["REQUIRED_FIELD_NOT_SET"]
+  },
+  "test_coverage_gaps": [
+    {
+      "capability_id": "REQUIRED_FIELD_NOT_SET",
+      "gap_description": "REQUIRED_FIELD_NOT_SET",
+      "severity": "REQUIRED_FIELD_NOT_SET"
+    }
+  ],
+  "synthesis_notes": {
+    "merged_capabilities": [
+      {
+        "result_id": "REQUIRED_FIELD_NOT_SET",
+        "sources": ["REQUIRED_FIELD_NOT_SET"],
+        "reason": "REQUIRED_FIELD_NOT_SET"
+      }
+    ],
+    "warnings": ["REQUIRED_FIELD_NOT_SET"]
+  }
+}

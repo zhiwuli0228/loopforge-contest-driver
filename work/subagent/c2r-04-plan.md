@@ -12,6 +12,7 @@ Create the implementation task list and batch execution plan. Write phase — pr
 - `OUTPUT_DIR` — path to Rust output project
 - `PRIOR_OUTPUTS.design` — path to `design.md`
 - `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json`. If provided, use dependency graph and priority ordering from the map. If NOT provided, order tasks by explicit dependencies in the specs.
 
 ## SuperPower Rules (this phase only)
 
@@ -27,89 +28,119 @@ Create the implementation task list and batch execution plan. Write phase — pr
 openspec instructions tasks --change "OPENSPEC_CHANGE" --json
 ```
 
-### 2. Read Design and Specs
+### 2. Read Design, Specs, and Capability Map (if available)
 
 Read `design.md` for module mapping and migration approach.
-Read every `specs/<module>/spec.md` for requirements per module.
+Read every `specs/<capability-id>/spec.md` for requirements per capability.
 Read `specs/test-migration/spec.md` for test requirements.
+If available, read `01c-capability-map.json` for the dependency graph and priority ordering.
 
 ### 3. Create tasks.md
 
-Organize tasks by dependency order. Use checkbox format:
+**If capability map is available**: Organize tasks by capability, in dependency order (P0 first, then P1, then P2). Within each priority level, follow the dependency graph. Each batch = ONE capability = implementation tasks + unit test tasks + verification. Use this EXACT format:
 
 ```
 # Implementation Tasks
 
-## Phase 5: Implementation
-### Batch 1: Core Types and Utilities
-- [ ] 5.1.1 Define core types (Status enum, Result type) in src/types.rs
-- [ ] 5.1.2 Implement FlashDB struct and new() in src/lib.rs
-- [ ] 5.1.3 ...
+## Batch N: [Capability Name]
 
-### Batch 2: KV Store
-- [ ] 5.2.1 Implement KvItem struct in src/kv.rs
-- [ ] 5.2.2 Implement set() and get() in src/kv.rs
-- [ ] 5.2.3 ...
+关联 capability: [capability-id]
+关联 spec: specs/<capability-id>/spec.md
+C 源文件: [file list]
+Rust 目标文件: [file list]
+依赖 batch: [batch-ids or "无"]
 
-## Phase 6: Tests
-### Batch 1: Core Tests
-- [ ] 6.1.1 Write test_init in tests/test_init.rs (maps to C: test_flashdb_init)
-- [ ] 6.1.2 ...
+### 实现
+- [ ] N.1 实现 fn [function_name]([signature]) — REQ-[capability-id]-NNN
+- [ ] N.2 实现 fn [function_name]([signature]) — REQ-[capability-id]-NNN
 
-### Batch 2: KV Tests
-- [ ] 6.2.1 Write test_kv_set_get in tests/test_kv.rs (maps to C: test_kv_basic)
-- [ ] 6.2.2 ...
+### 单元测试
+- [ ] N.T1 #[test] fn [test_name] — 覆盖场景: [scenario description]
+- [ ] N.T2 #[test] fn [test_name] — 覆盖场景: [scenario description]
 
-## Phase 8: Semantic Audit
-- [ ] 8.1 Write invariant tests for reset behavior
-- [ ] 8.2 Write invariant tests for error state preservation
-- [ ] 8.3 ...
+### 验证
+- [ ] N.V1 cargo build 通过
+- [ ] N.V2 cargo test [test_filter] 通过
 ```
 
-Tasks must reference the spec requirement they implement (e.g., `REQ-core-001`).
+Every batch MUST have: implementation tasks, unit test tasks, and verification tasks. Never separate implementation and testing into different batches.
+
+**If capability map is NOT available**: Group related tasks under ## numbered headings. Use this format:
+
+```
+# Implementation Tasks
+
+## 1. [Phase Name]
+- [ ] 1.1 Task description — REQ-<module>-NNN
+- [ ] 1.2 Task description — REQ-<module>-NNN
+
+## 2. [Phase Name]
+- [ ] 2.1 Task description
+```
+
+Tasks should be small enough to complete in one session. Order by dependency.
+
+```
+# Implementation Tasks
+
+## Batch N: [Capability Name]
+
+关联 capability: [capability-id]
+关联 spec: specs/<capability-id>/spec.md
+C 源文件: [file list]
+Rust 目标文件: [file list]
+依赖 batch: [batch-ids or "无"]
+
+### 实现
+- [ ] N.1 实现 fn [function_name]([signature]) — REQ-[capability-id]-NNN
+- [ ] N.2 实现 fn [function_name]([signature]) — REQ-[capability-id]-NNN
+
+### 单元测试
+- [ ] N.T1 #[test] fn [test_name] — 覆盖场景: [scenario description]
+- [ ] N.T2 #[test] fn [test_name] — 覆盖场景: [scenario description]
+
+### 验证
+- [ ] N.V1 cargo build 通过
+- [ ] N.V2 cargo test [test_filter] 通过
+```
+
+Every batch MUST have: implementation tasks, unit test tasks, and verification tasks. Never separate implementation and testing into different batches.
 
 ### 4. Create implement-plan.md
 
-Define batches for Phase 5 (implement) and Phase 6 (test). Each batch must be independently buildable.
+**If capability map is available**: Define ONE batch per capability. Each batch MUST include BOTH implementation and unit test details. Batches are ordered by the dependency graph from the capability map. Use this EXACT format for each batch:
 
 ```
-# Implementation Plan
+### Batch N: [Capability Name]
 
-## Batch Strategy
-- Batch size: 5-8 functions per batch
-- Each batch produces a compilable increment
-- Batches ordered by dependency (types → utilities → core → features)
+**Capability**: [capability-id] (Priority: [P0/P1/P2])
+**Spec reference**: specs/<capability-id>/spec.md
+**C source files**: [explicit file paths]
+**Rust target files**: [explicit file paths]
+**Dependencies**: [batch-ids this batch depends on, or "None (P0 foundation)"]
 
-## Phase 5 Batches
+**Implementation functions**:
+1. `fn [name]([sig]) -> [ret]` — C equivalent: `[c_func]` in [file:line]
+2. ...
 
-### Batch 5.1: Project Scaffold + Core Types
-- Module: src/types.rs, src/lib.rs
-- Functions: FlashDB::new(), Status enum, Result type
-- C sources: flashdb.h, flashdb.c (type definitions)
-- Specs: specs/core/spec.md
-- Build check: cargo build --locked
+**Data structures**:
+| C Struct | Rust Equivalent | Field Mapping |
+|----------|----------------|---------------|
+| [c_struct] | [rust_struct] | [field: type → field: type] |
 
-### Batch 5.2: KV Store Module
-- Module: src/kv.rs
-- Functions: set(), get(), del(), iter()
-- C sources: flashdb_kv.c, flashdb_kv.h
-- Specs: specs/kv/spec.md
-- Build check: cargo build --locked
+**Unit tests**:
+1. `#[test] fn [name]()` — covers scenario: [scenario from spec]
+2. ...
 
-### Batch 5.3: ...
-...
-
-## Phase 6 Batches
-
-### Batch 6.1: Core Tests
-- Module: tests/test_core.rs
-- C tests covered: test_flashdb_init, test_flashdb_deinit
-- Specs: specs/test-migration/spec.md (Batch 1 entries)
-- Test check: cargo test --locked
-
-### Batch 6.2: KV Tests
-...
+**Build command**: `cargo build --features [feature]`
+**Test command**: `cargo test [test_filter]`
+**Completion criteria**:
+- [ ] `cargo build` passes
+- [ ] `cargo test [filter]` — all tests pass
+- [ ] unsafe code: [expected count] lines
 ```
+
+**If capability map is NOT available**: Define batches by module grouping from the design's module mapping. Each batch covers a C source module and its corresponding Rust module. Order batches by dependency (types/constants → core utilities → features). Include build and test commands per batch.
 
 ### 5. Define OUTPUT_DIR Layout
 
@@ -120,12 +151,9 @@ OUTPUT_DIR/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs          (module declarations, re-exports)
-│   ├── types.rs        (Status, Result, core types)
-│   ├── core.rs         (FlashDB struct, new, reset)
-│   └── kv.rs           (KV operations)
+│   └── <capability>.rs (one module per capability)
 └── tests/
-    ├── test_core.rs
-    └── test_kv.rs
+    └── <capability>_tests.rs (unit tests per capability)
 ```
 
 ## Output
@@ -138,6 +166,6 @@ openspec/changes/OPENSPEC_CHANGE/implement-plan.md
 
 ## Gate
 
-- `PHASE_PASS` — both files written, batches are well-defined, each batch has spec references and build check
+- `PHASE_PASS` — tasks.md and implement-plan.md written, batches are well-defined with implement+test+verify tasks, batch order follows dependencies
 - `PHASE_BLOCKED` — specs insufficient to create a plan (missing modules, empty requirements)
-- `PHASE_DEGRADED` — plan exists but some batches are underspecified or dependency order is unclear
+- `PHASE_DEGRADED` — some batches lack test tasks, or dependency order is unclear

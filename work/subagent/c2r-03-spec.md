@@ -2,15 +2,16 @@
 
 ## Role
 
-Create module-level specifications and a test migration specification. Write phase — produces `specs/<module>/spec.md` and `specs/test-migration/spec.md`.
+Create capability-level specifications driven by the brainstorm capability map. Write phase — produces one `specs/<capability-id>/spec.md` per capability, plus `specs/test-migration/spec.md`.
 
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
 - `SOURCE_ROOT` — path to C source tree
 - `WORK_DIR` — path to work directory
-- `PRIOR_OUTPUTS.inventory` — path to `source-inventory.json` (includes `test_functions`)
+- `PRIOR_OUTPUTS.inventory` — path to `01-source-inventory.json` (includes `test_functions`)
 - `PRIOR_OUTPUTS.design` — path to `design.md` from Phase 2
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json` from Phase 1. If provided, use capability IDs, dependency graph, and priorities from the map. If NOT provided, derive capabilities from the proposal's Capabilities section and the design's module mapping.
 
 ## SuperPower Rules (this phase only)
 
@@ -28,42 +29,78 @@ openspec instructions specs --change "OPENSPEC_CHANGE" --json
 
 If openspec unavailable, create specs at `openspec/changes/OPENSPEC_CHANGE/specs/`.
 
-### 2. Read Design and Inventory
+### 2. Read Design, Inventory, and Capability Map (if available)
 
-Read `design.md` for module mapping (which C files → which Rust modules).
+Read `design.md` for overall architecture and type mapping.
 Read `source-inventory.json` for `test_functions` list and module structure.
+If available, read `01c-capability-map.json` for the authoritative list of capabilities, their priorities, and dependencies.
 
-### 3. Write Per-Module Specs
+### 3. Write Per-Capability Specs
 
-For each module identified in the design's module mapping, read the corresponding C source files and write a spec at:
+**If capability map is available**: For EACH capability in `01c-capability-map.json`, create a spec at:
 
 ```
-openspec/changes/OPENSPEC_CHANGE/specs/<module-name>/spec.md
+openspec/changes/OPENSPEC_CHANGE/specs/<capability-id>/spec.md
 ```
 
-Each module spec must contain:
+The `<capability-id>` MUST be the exact `id` from the capability map (kebab-case).
 
-**Module Overview**: One paragraph on what this module does.
+Read the C source files listed in the capability's `source_modules` and `scenario_files` fields. Focus ONLY on the functions listed in `key_functions`.
 
-**Data Structures**:
-```
-C: struct X { field1, field2 }  →  Rust: struct X { field1, field2 }
-```
-Note any design decisions (e.g., `*mut T` → `Box<T>`, fixed array → `Vec`).
+**If capability map is NOT available**: For each capability listed in the proposal's Capabilities section, create a spec at:
 
-**Public API Requirements** (SHALL/MUST):
 ```
-REQ-<module>-001: <function-name> SHALL <behavior description>
-  Scenario: WHEN <condition> THEN <expected outcome>
+openspec/changes/OPENSPEC_CHANGE/specs/<capability-name>/spec.md
 ```
 
-**Behavioral Invariants**:
+Use the kebab-case name from the proposal. Read the C source files mapped to this capability in the design's module mapping.
+
+Each capability spec MUST contain these sections (apply regardless of input source):
+
+**Capability Overview**: One paragraph on what this capability does. Reference the capability map's `summary` and expand.
+
+**Key Functions** (table):
+| C Function | C File:Line | Rust Equivalent | Behavior Summary |
+|------------|-------------|-----------------|------------------|
+| [func] | [file:line] | `fn [name](...) -> ...` | [1-line summary] |
+
+**Data Structures** (table):
+| C Struct | Fields | Rust Equivalent | Notes |
+|----------|--------|----------------|-------|
+| [struct] | [fields] | [rust struct with fields] | [ownership notes, repr(C) if needed] |
+
+**Requirements** (each with SHALL/MUST):
 ```
-INV-<module>-001: After <operation>, <state> SHALL be <condition>
-INV-<module>-002: On error, <state> SHALL remain unchanged
+REQ-<capability-id>-001: <function-name> SHALL <behavior description>
+  C source reference: [file:line]
+  
+  Scenario (normal path):
+    GIVEN [precondition state]
+    WHEN [operation is performed]
+    THEN [expected result, return value, state change]
+  
+  Scenario (error path):
+    GIVEN [error precondition]
+    WHEN [operation is performed]
+    THEN [error handling behavior, error return value]
+  
+  Scenario (boundary condition):
+    GIVEN [boundary state]
+    WHEN [operation is performed]
+    THEN [expected boundary behavior]
 ```
 
-**Edge Cases**: Boundary conditions (empty input, max size, null pointers → `None`).
+**Every requirement MUST have at least 3 scenarios** (normal, error, boundary). If a scenario type is truly not applicable, write "N/A — [specific reason]" instead of omitting it.
+
+**Invariants**:
+```
+INV-<capability-id>-001: Before/after <operation>, <state> SHALL <condition>
+INV-<capability-id>-002: On failure of <operation>, <state> SHALL NOT change
+INV-<capability-id>-003: ...
+```
+Minimum 1 invariant per capability. If none, explain why.
+
+**Dependencies**: List which other capabilities this one depends on (from the dependency graph in the capability map).
 
 ### 4. Write Test Migration Spec
 
@@ -89,12 +126,14 @@ REQ-TEST-001: Boundary condition — SHALL test <scenario> with <inputs>
 
 ### 5. Cross-Check Coverage
 
-Verify every capability mentioned in `design.md` has a corresponding spec requirement. Run through the design's module mapping and confirm each module has a spec file.
+If capability map is available: verify every capability in `01c-capability-map.json` has a corresponding spec file. Every capability's `key_functions` are covered by at least one requirement in the spec. The dependency graph in the capability map is reflected in each spec's Dependencies section.
+
+If capability map is NOT available: verify every capability from the proposal has a corresponding spec file, and every module in the design's module mapping is covered by at least one spec.
 
 ## Output
 
 ```
-openspec/changes/OPENSPEC_CHANGE/specs/<module>/spec.md   (per module)
+openspec/changes/OPENSPEC_CHANGE/specs/<capability-id>/spec.md   (per capability)
 openspec/changes/OPENSPEC_CHANGE/specs/test-migration/spec.md
 ```
 
@@ -102,6 +141,6 @@ The test-migration spec is critical — Phase 6 uses it to verify complete C tes
 
 ## Gate
 
-- `PHASE_PASS` — all module specs written, test-migration spec has complete mapping table (every C test function accounted for)
+- `PHASE_PASS` — one spec per capability, every spec has ≥3 scenarios per requirement, test-migration spec has complete mapping table
 - `PHASE_BLOCKED` — design.md missing or inventory unreadable
-- `PHASE_DEGRADED` — some module specs incomplete, or some C test functions lack Rust mapping
+- `PHASE_DEGRADED` — some capability specs missing requirements, or some C test functions lack Rust mapping

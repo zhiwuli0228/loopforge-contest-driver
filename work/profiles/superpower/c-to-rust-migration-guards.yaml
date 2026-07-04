@@ -15,15 +15,21 @@ phases:
       - any source modification
 
   understand:
-    description: Parse source code and generate inventory
+    description: Parse source, analyze capabilities per module, synthesize capability map
     allowed_tools:
       - parse-source
     allowed_fs:
       - operation: read
         path_pattern: "**"
+      - operation: write
+        path_pattern: "logs/trace/c-to-rust/**"
+      - operation: write
+        path_pattern: "openspec/changes/*/"
     forbidden:
-      - any write operations
-      - any source modification
+      - modify C source files
+      - modify tools.py
+      - modify profiles
+      - modify work/output/
 
   design:
     description: Create technical design document
@@ -39,7 +45,7 @@ phases:
       - modify profiles
 
   spec:
-    description: Write module-level specifications
+    description: Write capability-level specifications
     allowed_tools: []
     allowed_fs:
       - operation: read
@@ -52,7 +58,7 @@ phases:
       - modify profiles
 
   plan:
-    description: Create implementation task list
+    description: Create implementation task list and batch plan
     allowed_tools: []
     allowed_fs:
       - operation: read
@@ -67,7 +73,7 @@ phases:
       - modify profiles
 
   implement:
-    description: Write Rust source code per batch
+    description: Write Rust source code and unit tests per batch
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -76,11 +82,15 @@ phases:
       - operation: write
         path_pattern: "src/**/*.rs"
       - operation: write
+        path_pattern: "tests/**/*.rs"
+      - operation: write
         path_pattern: "Cargo.toml"
       - operation: write
         path_pattern: "Cargo.lock"
       - operation: create
         path_pattern: "src/**/*.rs"
+      - operation: create
+        path_pattern: "tests/**/*.rs"
     forbidden:
       - modify tools.py
       - modify profiles
@@ -89,7 +99,7 @@ phases:
       - modify work/subagent/
 
   test:
-    description: Write and run tests per batch
+    description: Write integration tests and verify C test coverage
     allowed_tools:
       - run-verification
     allowed_fs:

@@ -2,7 +2,7 @@
 
 ## Role
 
-Write Rust tests for ONE batch. Must verify complete C test coverage per the test migration spec. Write phase — produces test files under `OUTPUT_DIR/tests/`.
+Write INTEGRATION tests that span multiple capabilities and verify end-to-end behavior. This phase runs AFTER all implementation batches (Phase 5) complete. You do NOT write unit tests — those were already written per-batch in Phase 5. Your job is integration tests, cross-capability tests, and C test coverage verification.
 
 ## Context You Receive
 
@@ -14,6 +14,7 @@ Write Rust tests for ONE batch. Must verify complete C test coverage per the tes
 - `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
 - `PRIOR_OUTPUTS.test_migration_spec` — path to `specs/test-migration/spec.md`
 - `PRIOR_OUTPUTS.inventory` — path to `source-inventory.json` (for `test_functions` list)
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json`. If provided, unit tests were written per-capability in Phase 5 and this phase writes integration tests only. If NOT provided, this phase also covers unit test gaps.
 
 ## SuperPower Rules (this phase only)
 
@@ -23,55 +24,67 @@ Write Rust tests for ONE batch. Must verify complete C test coverage per the tes
 
 ## Steps
 
-### 1. Read Your Batch Assignment
+### 1. Inventory Existing Tests
 
-Read `implement-plan.md`. Find your test batch by `BATCH_ID`. Note:
-- Which modules you are testing
-- Which C test functions this batch covers
-- The expected test command
+List all existing test files under `OUTPUT_DIR/tests/`. Run `cargo test --list` to see all existing test function names.
+
+If capability map is available: These are the unit tests written per-batch in Phase 5. **Do NOT duplicate any existing test.** Your job is to ADD integration tests, not re-implement unit coverage.
+
+If capability map is NOT available: Identify which C test functions from the inventory are not yet covered. These gaps need unit tests in addition to any integration tests.
 
 ### 2. Read Test Migration Spec
 
-Read `specs/test-migration/spec.md`. Find the C→Rust mapping table rows for your batch. For each C test function in your batch, confirm:
-- The target Rust test function name
-- The target Rust test file
-- Any special requirements or N/A designations
+Read `specs/test-migration/spec.md`. Find the C→Rust mapping table. For each C test function, check whether it is already covered by a Phase 5 unit test.
 
-### 3. Read C Test Source
+### 3. Identify Test Gaps
 
-For each C test function in your batch, read the C test source file to understand:
-- What behavior the test validates
-- Input values and expected outputs
-- Setup and teardown patterns
-- Assertions
+**If capability map is available**: Integration tests are needed when:
+- A C test exercises multiple capabilities together (e.g., init → set → get → del → verify sector layout)
+- A scenario spans capability boundaries (e.g., GC requires KV write + sector management + flash erase)
+- An end-to-end workflow needs verification (e.g., full init → CRUD → deinit cycle)
 
-### 4. Write Rust Tests
+**If capability map is NOT available**: Also identify unit test gaps — C test functions not yet covered by any Rust test. These need per-function unit tests.
 
-For each C test function in your batch, write the corresponding Rust test:
+### 4. Read C Test Source for Uncovered Tests
+
+For each C test function NOT yet covered by Phase 5 unit tests, read the C test source to understand the scenario.
+
+### 5. Write Tests
+
+**If capability map is available**: Write integration tests that exercise cross-capability behavior. Do NOT write single-function unit tests — those already exist. Focus on multi-step workflows.
 
 ```rust
 #[test]
-fn test_<name>() {
-    // Setup — mirrors C test setup
-    // Exercise — mirrors C test execution
-    // Assert — mirrors C test assertions, using Rust assert! macros
+fn test_full_kv_lifecycle() {
+    // Setup: init KVDB (from batch N)
+    // Write: set key-value (from batch M)
+    // Read: get key-value and verify (from batch M)
+    // GC: trigger garbage collection (from batch P)
+    // Verify: sector layout is correct after GC (from batch Q)
 }
 ```
 
-**Test structure rules**:
-- Each `#[test]` function tests one behavior
-- Use `assert_eq!`, `assert!`, `assert_ne!` — every test must have at least one assertion
-- If the C test uses a harness/setup, replicate it in Rust (helper functions, before-each pattern)
-- If a C test is marked N/A in the mapping table, write a comment in the test file explaining why
+**If capability map is NOT available**: Write Rust tests corresponding to each C test function in the inventory that is not yet covered. Follow the C→Rust mapping table from the test-migration spec. Also write integration tests for multi-step workflows.
 
-### 5. Add Spec-Scenario Tests
+### 6. Verify C Test Coverage
 
-Beyond the C test mapping, add tests for scenarios from the module specs:
-- Boundary conditions (empty input, max size, edge values)
-- Error paths (invalid input, out-of-memory simulation where possible)
-- State preservation (operation fails → state unchanged)
+Produce a complete coverage report:
 
-### 6. Run Tests
+```
+C Test Coverage Report
+======================
+C: test_flashdb_init    → Rust: test_init (unit, Phase 5 batch 1)     ✓ covered
+C: test_flashdb_deinit  → Rust: test_deinit (unit, Phase 5 batch 1)   ✓ covered
+C: test_gc_full         → Rust: test_gc_integration (integration)     ✓ covered
+C: test_issue_249       → Rust: test_issue_249_regression (unit, P5)  ✓ covered
+C: test_legacy_api      → Rust: —                                     ✓ N/A (deprecated)
+
+Coverage: N/M C tests mapped (X%), K tests N/A
+```
+
+Every C test function from the inventory must appear with a status: covered (with Rust test name), or N/A (with reason).
+
+### 7. Run All Tests
 
 ```
 python WORK_DIR/runtime/tools.py run-verification \
@@ -79,36 +92,21 @@ python WORK_DIR/runtime/tools.py run-verification \
   --commands '["cargo test --locked"]'
 ```
 
-### 7. Diagnose Failures
+### 8. Diagnose Failures
 
 If tests fail:
-- **Test bug** (wrong assertion, bad setup): fix the test
-- **Implementation bug** (function returns wrong value): note it for Phase 7 (repair), do NOT weaken the test to make it pass
-- Record implementation bugs clearly so Phase 7 can find them
-
-### 8. Verify C Test Coverage
-
-After all tests are written, produce a coverage report for your batch:
-
-```
-C Test Coverage Report — Batch BATCH_ID
-========================================
-C: test_flashdb_init    → Rust: test_init              ✓ written
-C: test_flashdb_deinit  → Rust: test_deinit            ✓ written
-C: test_legacy_api      → Rust: —                      ✓ N/A (deprecated API)
-C: test_kv_basic        → Rust: test_kv_set_get        ✓ written
-```
-
-Every C test function from the inventory that falls in this batch must appear in this report with a status.
+- **Test bug**: fix the test
+- **Implementation bug**: note for Phase 7 repair, do NOT weaken the test
+- Record implementation bugs per capability so Phase 7 can triage
 
 ## Output
 
-1. Rust test files under `OUTPUT_DIR/tests/` for your batch
-2. Test run result from tools.py
-3. C test coverage report for your batch (in your return message)
+1. Integration test files under `OUTPUT_DIR/tests/` (only if new integration tests were needed)
+2. Test run result from tools.py (all tests: unit + integration)
+3. Complete C test coverage report (in your return message)
 
 ## Gate
 
-- `PHASE_PASS` — all tests in batch written and pass, every C test function covered (mapped or N/A)
+- `PHASE_PASS` — all tests pass, every C test function has coverage (unit or integration or N/A with reason)
 - `PHASE_BLOCKED` — critical test infrastructure failure (can't compile tests at all)
-- `PHASE_DEGRADED` — some tests fail (implementation bugs noted for repair), or some C tests lack coverage
+- `PHASE_DEGRADED` — some tests fail (implementation bugs noted for repair), or C test coverage gaps remain

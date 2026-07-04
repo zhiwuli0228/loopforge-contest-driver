@@ -40,13 +40,17 @@ stages:
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
-  # ---- Phase 1: Understand ----
+  # ---- Phase 1: Understand (inventory + capability brainst storm + synthesis) ----
   - id: "01-understand"
-    name: "Source Understanding"
+    name: "Source Understanding & Capability Mapping"
     subagent: "c2r-01-understand.md"
     input:
       - "SOURCE_ROOT/**"
-    output: "logs/trace/c-to-rust/01-source-inventory.json"
+    output:
+      - "logs/trace/c-to-rust/01-source-inventory.json"
+      - "logs/trace/c-to-rust/01c-capability-map.json"
+      - "logs/trace/c-to-rust/capabilities/*-scenarios.md"
+      - "logs/trace/c-to-rust/test-migration-checklist.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_DESIGN"
     failure_gate: "BLOCKED_WITH_REPORT"
@@ -59,6 +63,7 @@ stages:
     subagent: "c2r-02-design.md"
     input:
       - "logs/trace/c-to-rust/01-source-inventory.json"
+      - "logs/trace/c-to-rust/01c-capability-map.json"
       - "work/design/README.md"
     output: "openspec/changes/<name>/design.md"
     parent_direct_execution_allowed: false
@@ -73,6 +78,7 @@ stages:
     subagent: "c2r-03-spec.md"
     input:
       - "openspec/changes/<name>/design.md"
+      - "logs/trace/c-to-rust/01c-capability-map.json"
       - "SOURCE_ROOT/**"
     output: "openspec/changes/<name>/specs/"
     parent_direct_execution_allowed: false
@@ -88,6 +94,7 @@ stages:
     input:
       - "openspec/changes/<name>/specs/"
       - "openspec/changes/<name>/design.md"
+      - "logs/trace/c-to-rust/01c-capability-map.json"
     output:
       - "openspec/changes/<name>/tasks.md"
       - "openspec/changes/<name>/implement-plan.md"
@@ -119,6 +126,8 @@ stages:
     subagent: "c2r-06-test.md"
     input:
       - "work/output/*/src/**/*.rs"
+      - "logs/trace/c-to-rust/01-source-inventory.json"
+      - "logs/trace/c-to-rust/01c-capability-map.json"
     output: "work/output/*/tests/**/*.rs"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_REPAIR"
