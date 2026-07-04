@@ -294,7 +294,7 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
     config_bytes = json.dumps(config, sort_keys=True, separators=(",", ":")).encode()
     metadata = {"schema_version": SCHEMA_VERSION, "run_id": run_id, "source_root": str(root), "source_digest": "", "config_sha256": _sha256(config_bytes)}
     if not root.is_dir():
-        return {"metadata": metadata, "artifacts": {}, "verification": {"passed": False, "status": "BLOCKED_WITH_REPORT", "failures": ["project_root_missing"], "first_blocking_point": "A_SOURCE_ROOT"}}
+        return {"metadata": metadata, "artifacts": {}, "verification": {"checks": {}, "metrics": {}, "differences": {}, "unresolved_symbols": [], "parse_failures": ["project_root_missing"]}}
     before = snapshot_source_tree(root)
     metadata["source_digest"] = _sha256(json.dumps(before, sort_keys=True).encode())
     source_dirs = [Path(p) for p in config["source_dirs"]]
@@ -374,7 +374,7 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
         "source_tree_unchanged": snapshot_source_tree(root) == before,
     }
     failures = [name for name, passed in checks.items() if not passed]
-    verification = {"passed": not failures, "status": "PASSED" if not failures else "BLOCKED_WITH_REPORT", "checks": checks, "metrics": {"source_file_count": len(primary_sets["source_files"]), "public_api_count": len(public_names), "source_test_count": len(primary_sets["source_tests"]), "type_member_count": len(type_members)}, "differences": differences, "unresolved_symbols": unresolved, "parse_failures": ast["parse_failures"], "failures": failures, "first_blocking_point": None if not failures else "C_SOURCE_ANALYSIS"}
+    verification = {"checks": checks, "metrics": {"source_file_count": len(primary_sets["source_files"]), "public_api_count": len(public_names), "source_test_count": len(primary_sets["source_tests"]), "type_member_count": len(type_members)}, "differences": differences, "unresolved_symbols": unresolved, "parse_failures": ast["parse_failures"]}
     artifacts["analysis-verification.json"] = verification
     return {"metadata": metadata, "artifacts": artifacts, "verification": verification}
 
