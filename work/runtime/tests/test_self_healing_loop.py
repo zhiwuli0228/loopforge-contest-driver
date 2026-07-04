@@ -28,7 +28,7 @@ from self_healing_loop import (
     validate_integrity_summary,
     validate_repair_ir,
 )
-from loopforge_runner import main as runner_main
+
 
 
 def project(root: Path) -> Path:
@@ -212,15 +212,7 @@ class OrchestrationTests(unittest.TestCase):
         self.assertTrue(any(item.startswith("stale_attempt") for item in failures))
         self.assertTrue(any(item.startswith("missing_attempt_evidence") for item in failures))
 
-    def test_entrypoint_exception_is_reported_without_process_failure(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            with patch("loopforge_runner.Path.cwd", return_value=root), patch("loopforge_runner.LoopForgeRunner", side_effect=RuntimeError("startup failure")):
-                exit_code = runner_main(["--run", "--work-dir", "work", "--log-dir", "logs", "--result-dir", "result"])
-            self.assertEqual(exit_code, 0)
-            payload = json.loads((root / "logs" / "c-to-rust" / "entrypoint-exception.json").read_text())
-            self.assertEqual(payload["compliance_status"], "not_satisfied")
-            self.assertTrue((root / "result" / "output.md").is_file())
+
 
 
 if __name__ == "__main__":

@@ -374,7 +374,7 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
         "source_tree_unchanged": snapshot_source_tree(root) == before,
     }
     failures = [name for name, passed in checks.items() if not passed]
-    verification = {"checks": checks, "metrics": {"source_file_count": len(primary_sets["source_files"]), "public_api_count": len(public_names), "source_test_count": len(primary_sets["source_tests"]), "type_member_count": len(type_members)}, "differences": differences, "unresolved_symbols": unresolved, "parse_failures": ast["parse_failures"]}
+    verification = {"passed": not failures, "status": "PASSED" if not failures else "BLOCKED_WITH_REPORT", "checks": checks, "failures": failures, "metrics": {"source_file_count": len(primary_sets["source_files"]), "public_api_count": len(public_names), "source_test_count": len(primary_sets["source_tests"]), "type_member_count": len(type_members)}, "differences": differences, "unresolved_symbols": unresolved, "parse_failures": ast["parse_failures"]}
     artifacts["analysis-verification.json"] = verification
     return {"metadata": metadata, "artifacts": artifacts, "verification": verification}
 
