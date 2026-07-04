@@ -43,7 +43,7 @@ def resolve_diagnostics(project_dir: Path, diagnostics: Iterable[Mapping[str, An
 
 
 def build_opencode_command(cli: str, project_dir: Path, prompt: str, model: str = "") -> list[str]:
-    args = ["run", "--dir", str(project_dir), "--dangerously-skip-permissions"]
+    args = ["run", "--dir", str(project_dir), "--auto"]
     if model:
         args.extend(["--model", model])
     args.append(prompt)

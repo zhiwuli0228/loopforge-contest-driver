@@ -11,8 +11,8 @@ Use this skill as the entry point for contest execution.
 
 - Repository root contains `INSTRUCTION.md`, `work/design/README.md`, and the harness assets
 - Framework assets live under `work/`
-- Runtime evidence is written under `work/logs/trace/`
-- Evaluator-facing outputs are written under `work/result/` and `work/logs/`
+- Runtime evidence is written under `logs/trace/`
+- Evaluator-facing outputs are written under `result/` and `logs/`
 
 ## Required Inputs
 
@@ -24,6 +24,38 @@ Use this skill as the entry point for contest execution.
 - `work/rules/loopforge/modes/{task.mode}/`
 - relevant adapter rules under `work/rules/loopforge/adapters/`
 - the configured profile under `work/profiles/`
+
+## OpenSpec Integration
+
+The workflow uses OpenSpec for schema-driven artifact management. Use `work/scripts/openspec.sh` as the entry point (handles global install, local install, and bash fallback).
+
+```bash
+# Check available schemas
+bash work/scripts/openspec.sh schemas --json
+
+# Check change status
+bash work/scripts/openspec.sh status --change <name> --json
+
+# Get artifact instructions
+bash work/scripts/openspec.sh instructions <artifact> --change <name> --json
+```
+
+The project schema is `c2r-migration` with 6 artifacts: proposal → specs + design → tasks → implement-plan → verification-report.
+
+## SuperPower Guards
+
+Before each migration phase, the agent MUST read the permission boundaries from:
+
+```text
+work/profiles/superpower/c-to-rust-migration-guards.yaml
+```
+
+This file defines:
+- `allowed_tools`: which `tools.py` subcommands are permitted per phase
+- `allowed_fs`: filesystem access patterns (read/write/create/delete with glob paths)
+- `forbidden`: explicit deny list per phase
+
+Default-deny policy: anything not explicitly allowed is forbidden. The agent MUST check guards before invoking tools or writing files.
 
 ## Mission
 
@@ -37,7 +69,7 @@ Drive an unattended contest run using `work/design/README.md` as the task defini
 - Parse the preloaded design README first and record its path and SHA-256 digest.
 - If the preloaded design README is invalid, degrade into `BLOCKED_WITH_REPORT` with explicit evidence.
 - Do not create commits, pushes, pull requests, or submissions.
-- Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `work/result/`, and `work/logs/`.
+- Do not write into `SOURCE_ROOT`; generated outputs must stay under a runtime-derived repository-root Rust output project, `result/`, and `logs/`.
 - Stop after verification and report generation.
 
 ## Source Root Protocol
@@ -57,9 +89,6 @@ The driver must use only the preloaded design README to infer requirements and c
 
 - Linux: `SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh`
 - Linux fallback: `bash work/scripts/run.sh`
-- Windows: `$env:SOURCE_ROOT="C:\path\to\source"; powershell -ExecutionPolicy Bypass -File work/scripts/run.ps1`
-
-`bootstrap.sh` and `bootstrap.ps1` are compatibility wrappers over the same `SOURCE_ROOT` protocol.
 
 ## Delegated Execution
 
@@ -86,15 +115,15 @@ For non-delegated modes, continue with the normal contest run.
 6. Inspect `SOURCE_ROOT` and plan the smallest valid task flow for the selected mode.
 7. Use `work/runtime/loopforge_runner.py` with `--source-root` to initialize artifacts, detect the project, attempt verification, and finalize reports.
 8. If no runnable verification command can be derived, leave a blocked report instead of waiting for manual config edits.
-9. Ensure evaluator-facing outputs exist at `work/result/output.md`, `work/result/issues/00-summary.md`, and `work/logs/trace/`.
+9. Ensure evaluator-facing outputs exist at `result/output.md`, `result/issues/00-summary.md`, and `logs/trace/`.
 
 ## Output Expectations
 
 At minimum, the run should leave behind:
 
-- `work/result/output.md`
-- `work/result/issues/00-summary.md`
-- `work/logs/trace/run-summary.json`
-- `work/logs/trace/final-report.md`
-- `work/logs/trace/c-to-rust/06-verification-report.md`
-The trace report under `work/logs/trace/` is runtime evidence, not the primary evaluator-facing result.
+- `result/output.md`
+- `result/issues/00-summary.md`
+- `logs/trace/run-summary.json`
+- `logs/trace/final-report.md`
+- `logs/trace/c-to-rust/06-verification-report.md`
+The trace report under `logs/trace/` is runtime evidence, not the primary evaluator-facing result.

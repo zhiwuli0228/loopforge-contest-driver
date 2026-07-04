@@ -240,11 +240,15 @@ def _ast_analyze(files: List[Path], root: Path) -> Dict[str, Any]:
     return payload
 
 
+TEST_FUNC_RE = re.compile(r"(?:static\s+)?void\s+(test_\w+)\s*\(")
+
+
 def independent_scan(root: Path, core_dirs: Iterable[Path], test_dirs: Iterable[Path]) -> Dict[str, Any]:
     """Independent lexical scan. It intentionally does not consume primary results."""
     source_files: List[Dict[str, Any]] = []
     public_apis: List[Dict[str, Any]] = []
     source_tests: List[Dict[str, Any]] = []
+    test_functions: List[Dict[str, Any]] = []
     test_roots = {p.resolve() for p in test_dirs}
     paths = sorted({p for directory in [*core_dirs, *test_dirs] if directory.is_dir() for p in directory.rglob("*") if p.is_file() and p.suffix.lower() in CORE_SUFFIXES})
     for path in paths:
@@ -254,13 +258,15 @@ def independent_scan(root: Path, core_dirs: Iterable[Path], test_dirs: Iterable[
         if under_test:
             if path.suffix.lower() == ".c" or TEST_MARKER_RE.search(text):
                 source_tests.append({"path": rel, "evidence": _evidence(rel, 1)})
+            for match in TEST_FUNC_RE.finditer(text):
+                test_functions.append({"name": match.group(1), "file": rel, "evidence": _evidence(rel, _line(text, match.start()), match.group(1))})
         else:
             source_files.append({"path": rel, "evidence": _evidence(rel, 1)})
         if path.suffix.lower() == ".h" and not under_test:
             for match in PUBLIC_DECL_RE.finditer(text):
                 name = match.group(1)
                 public_apis.append({"name": name, "evidence": _evidence(rel, _line(text, match.start()), name)})
-    return {"source_files": source_files, "public_apis": public_apis, "source_tests": source_tests}
+    return {"source_files": source_files, "public_apis": public_apis, "source_tests": source_tests, "test_functions": test_functions}
 
 
 def _sorted_unique(items: Iterable[Dict[str, Any]], keys: Tuple[str, ...]) -> List[Dict[str, Any]]:
@@ -320,6 +326,7 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
     source_inventory = {
         "files": [{"id": _stable_id("file", _rel(path, root), ""), "path": _rel(path, root), "kind": "header" if path.suffix.lower() == ".h" else "source", "sha256": before[_rel(path, root)]["sha256"]} for path in primary_files],
         "source_tests": independent["source_tests"],
+        "test_functions": independent["test_functions"],
         "exclusions": [],
         "scope": {"source_dirs": [_rel(path, root) for path in source_dirs], "test_dirs": [_rel(path, root) for path in test_dirs]},
     }
@@ -336,7 +343,7 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
         "independent-source-scan.json": independent,
         "public-api-map.json": {"apis": public_map},
         "type-map.json": {"types": _sorted_unique(ast["types"], ("kind", "name")), "type_dependencies": _sorted_unique(({"type": item["name"], "member": member.get("name", ""), "target_kind": member.get("type", "")} for item in ast["types"] for member in item.get("members", [])), ("type", "member"))},
-        "call-graph.json": {"include_edges": _sorted_unique(includes, ("file", "include")), "call_edges": _sorted_unique(ast["calls"], ("caller", "callee"))},
+        "call-graph.json": {"include_edges": _sorted_unique(includes, ("file", "include")), "call_edges": _sorted_unique(ast["calls"], ("caller", "callee")), "functions": _sorted_unique(ast["functions"], ("name",))},
         "global-state-map.json": {"globals": _sorted_unique(ast["globals"], ("name",))},
         "preprocessor-variants.json": {"frontend": {"name": "pycparser-hybrid", "version": getattr(pycparser, "__version__", "unavailable")}, "compile_database": compile_db, "required_variants": required_variants, "macros": _sorted_unique(macros, ("name",)), "variants": _sorted_unique(variants, ("directive", "expression"))},
     }

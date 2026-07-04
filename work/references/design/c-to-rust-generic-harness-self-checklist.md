@@ -5,7 +5,7 @@
 ### 1.1 禁止旧专用路径残留
 
 ```bash
-grep -R "c2rust-flashdb\|c2rust_flashdb" -n work INSTRUCTION.md README.md || true
+grep -R "c2r-migration\|c2r_migration" -n work INSTRUCTION.md README.md || true
 ```
 
 验收：无命中。
@@ -13,7 +13,7 @@ grep -R "c2rust-flashdb\|c2rust_flashdb" -n work INSTRUCTION.md README.md || tru
 ### 1.2 禁止框架层出现题目专用名称
 
 ```bash
-grep -R "FlashDB\|flashDB_rust\|fdb_\|kvdb\|tsdb" -n \
+grep -R "<source_project>\|<output_project>\|fdb_\|kvdb\|tsdb" -n \
   work/runtime work/skills work/profiles work/rules work/subagent INSTRUCTION.md README.md || true
 ```
 
@@ -25,13 +25,13 @@ grep -R "FlashDB\|flashDB_rust\|fdb_\|kvdb\|tsdb" -n \
 
 ```bash
 test -f work/skills/c-to-rust-migration/SKILL.md
-test ! -d work/skills/c2rust-flashdb-migration
+test ! -d work/skills/c2r-migration-migration
 
 test -f work/profiles/examples/c-to-rust-migration.yaml
-test ! -f work/profiles/examples/c2rust-flashdb-migration.yaml
+test ! -f work/profiles/examples/c2r-migration-migration.yaml
 
 test -d work/rules/loopforge/adapters/c-to-rust
-test ! -d work/rules/loopforge/adapters/c2rust-flashdb
+test ! -d work/rules/loopforge/adapters/c2r-migration
 
 test -f work/subagent/c-to-rust-source-inventory-subagent.md
 test -f work/subagent/c-to-rust-api-mapping-subagent.md
@@ -56,7 +56,7 @@ grep -n "SOURCE_README_DERIVED_OUTPUT_PROJECT" work/loopforge.config.yaml
 验收：全部命中。
 
 ```bash
-grep -n "c2rust-flashdb\|c2rust/\|flashDB_rust\|FlashDB" work/loopforge.config.yaml || true
+grep -n "c2r-migration\|c2rust/\|<output_project>\|<source_project>" work/loopforge.config.yaml || true
 ```
 
 验收：无命中。
@@ -64,9 +64,10 @@ grep -n "c2rust-flashdb\|c2rust/\|flashDB_rust\|FlashDB" work/loopforge.config.y
 ## 4. Runtime 去硬编码检查
 
 ```bash
-grep -R "flashdb_new\|flashdb_set\|flashdb_get\|flashdb_delete\|flashdb_count" -n work/runtime || true
-grep -R "BTreeMap<String, Vec<u8>>\|struct FlashDb\|flashdb_semantics\|flashdb_root" -n work/runtime || true
-grep -R "fdb_\|kvdb\|tsdb\|FlashDB\|flashDB_rust" -n work/runtime || true
+# 替换下方 <source_project_terms> 为当前题目特有的 API 名称、类型名、变量名
+grep -R "<source_project_terms>" -n work/runtime || true
+grep -R "<project_specific_types>\|<project_specific_patterns>" -n work/runtime || true
+grep -R "<project_prefix_>\|<project_module_>\|<source_project>\|<output_project>" -n work/runtime || true
 ```
 
 验收：无命中。
@@ -116,7 +117,7 @@ grep -n "code" work/scripts/run.sh
 ## 8. 运行前清理
 
 ```bash
-rm -rf rust_migration_output flashDB_rust
+rm -rf rust_migration_output <output_project>
 rm -rf logs/trace/c-to-rust
 mkdir -p logs/trace
 ```
@@ -128,7 +129,7 @@ mkdir -p logs/trace
 使用当前比赛题面本地输入时执行：
 
 ```bash
-SOURCE_ROOT="work/code/FlashDB" bash work/scripts/run.sh --run
+SOURCE_ROOT="work/code/<source_project>" bash work/scripts/run.sh --run
 ```
 
 验收：
@@ -142,12 +143,12 @@ test -f logs/trace/c-to-rust/02-api-mapping.json
 test -f logs/trace/c-to-rust/04-test-mapping.json
 ```
 
-若题面要求输出项目名为 `flashDB_rust`，则运行结果允许生成：
+若题面要求输出项目名为 `<output_project>`，则运行结果允许生成：
 
 ```bash
-test -f flashDB_rust/Cargo.toml
-test -d flashDB_rust/src
-test -d flashDB_rust/tests
+test -f <output_project>/Cargo.toml
+test -d <output_project>/src
+test -d <output_project>/tests
 ```
 
 注意：这是运行时从题面推导出的结果，不是框架硬编码。
@@ -157,7 +158,7 @@ test -d flashDB_rust/tests
 如果已生成 Rust 输出项目：
 
 ```bash
-cd flashDB_rust
+cd <output_project>
 cargo build
 cargo test
 cd -
@@ -172,7 +173,7 @@ cd -
 ## 11. Unsafe 检查
 
 ```bash
-python work/runtime/check_unsafe_ratio.py flashDB_rust --max-ratio 0.10
+python work/runtime/check_unsafe_ratio.py <output_project> --max-ratio 0.10
 ```
 
 验收：

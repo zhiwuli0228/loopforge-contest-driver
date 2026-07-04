@@ -37,11 +37,11 @@
 典型缺陷：
 
 ```rust
-let mut db = FlashdbHandle::default();
-flashdb_set(&mut db, "old", "value");
-flashdb_new(&mut db);
-flashdb_set(&mut db, "new", "value");
-assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
+let mut db = <ProjectHandle>::default();
+<project>_set(&mut db, "old", "value");
+<project>_new(&mut db);
+<project>_set(&mut db, "new", "value");
+assert_eq!(<project>_get(&db, "new"), Some("value".to_string()));
 ```
 
 当前生成实现中，初始化函数只重置 `count`，但没有清空底层 `Vec`，导致后续 `push` 追加到旧记录之后；查询又只扫描 `take(count)` 范围，最终新记录不可查。
@@ -68,10 +68,10 @@ assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
 
 当前 C-to-Rust 题目要求包括：
 
-- 从指定源码路径读取 FlashDB 源码。
-- 重点处理 `FlashDB/src` 原始 C 代码。
-- 迁移或等价覆盖 `FlashDB/tests` 原始 C 测试。
-- 生成 Rust 项目 `flashDB_rust`。
+- 从指定源码路径读取 <source_project> 源码。
+- 重点处理 `<source_project>/src` 原始 C 代码。
+- 迁移或等价覆盖 `<source_project>/tests` 原始 C 测试。
+- 生成 Rust 项目 `<output_project>`。
 - 项目包含 `Cargo.toml`、`src`、`tests`。
 - 能执行 `cargo build` 和 `cargo test`。
 - unsafe 使用比例低于 10%。
@@ -85,7 +85,7 @@ assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
 - `INSTRUCTION.md` 无法指导自动执行。
 - 执行过程需要人工交互。
 - 无法判断是否执行完成。
-- 找不到 `flashDB_rust` 或 `Cargo.toml`。
+- 找不到 `<output_project>` 或 `Cargo.toml`。
 - Rust 项目无法构建。
 - 测试缺失或与原始 C 测试语义不一致。
 - 修改平台提供的原始测试材料。
@@ -93,7 +93,7 @@ assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
 
 ### 2.3 设计原则
 
-1. **不硬编码 FlashDB 业务逻辑**  
+1. **不硬编码 <source_project> 业务逻辑**  
    具体 API 名称、容量、错误返回值、输出项目名应来自源码 README/READNE、任务要求和 C 源码分析。
 
 2. **不把 cargo test 通过等同于语义等价**  
@@ -211,7 +211,7 @@ C 中 `records[count] = ...; count++` 与 Rust 中 `Vec::push(...); count += 1` 
 
 #### 风险
 
-该类问题不仅出现在 FlashDB，也会出现在所有 `array + count` 风格 C 数据结构迁移中。
+该类问题不仅出现在 <source_project>，也会出现在所有 `array + count` 风格 C 数据结构迁移中。
 
 ---
 
@@ -471,7 +471,7 @@ logs/trace/c-to-rust/semantic-invariants.json
 
 ### 验收标准
 
-当前 FlashDB 样例至少提取：
+当前 <source_project> 样例至少提取：
 
 - `state_reset`
 - `capacity_limit(capacity=16)`
@@ -669,7 +669,7 @@ count == records.len()
 
 ### 验收标准
 
-- `flashdb_new` 等价 reset 场景通过。
+- `<project>_new` 等价 reset 场景通过。
 - 满容量失败后 count 不变。
 - 删除不存在 key 后 count 不变。
 - 更新已有 key 后 count 不增加。
@@ -865,7 +865,7 @@ Do not report READY_FOR_EVALUATION until:
 
 ### 6.3 Skill 验收标准
 
-- Skill 中不能硬编码 FlashDB API 名称。
+- Skill 中不能硬编码 <source_project> API 名称。
 - Skill 中可以写通用不变量类型。
 - Skill 必须明确“测试不足不得 READY”。
 - Skill 必须明确“verify 失败进入 repair loop”。
@@ -898,7 +898,7 @@ Do not report READY_FOR_EVALUATION until:
 | `INSTRUCTION.md` | 当前问题不是入口说明 |
 | `work/scripts/run.ps1` | 当前问题不是 Windows 调用链 |
 | `work/scripts/run.sh` | 当前问题不是 Linux 启动链 |
-| `flashDB_rust/*` | 不应手工修生成结果，应修 harness |
+| `<output_project>/*` | 不应手工修生成结果，应修 harness |
 | `result/*` | 应由无人托管执行重新生成 |
 | `logs/*` | 应由新一轮 E2E 重新生成 |
 
@@ -1050,11 +1050,11 @@ first_blocking_point: F_CARGO_TEST_OR_SEMANTIC
 必须能抓住当前三方报告中的 P0：
 
 ```rust
-let mut db = FlashdbHandle::default();
-flashdb_set(&mut db, "old", "value");
-flashdb_new(&mut db);
-flashdb_set(&mut db, "new", "value");
-assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
+let mut db = <ProjectHandle>::default();
+<project>_set(&mut db, "old", "value");
+<project>_new(&mut db);
+<project>_set(&mut db, "new", "value");
+assert_eq!(<project>_get(&db, "new"), Some("value".to_string()));
 ```
 
 验收方式：
@@ -1083,11 +1083,11 @@ assert_eq!(flashdb_get(&db, "new"), Some("value".to_string()));
 
 不能在框架中写死：
 
-- `flashdb_new`
-- `flashdb_set`
-- `flashdb_get`
-- `flashdb_delete`
-- `flashdb_count`
+- `<project>_new`
+- `<project>_set`
+- `<project>_get`
+- `<project>_delete`
+- `<project>_count`
 
 API 名称只能来自源码分析结果。
 

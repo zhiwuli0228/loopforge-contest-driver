@@ -26,8 +26,8 @@ stage_id: "07-final-report"
 executed_by_subagent: "opencode-final-report-subagent"
 parent_direct_execution: false
 input_files_read:
-  - "work/logs/trace/consistency/*.md"
-output_artifact: "work/logs/trace/final-report.md"
+  - "logs/trace/consistency/*.md"
+output_artifact: "logs/trace/final-report.md"
 gate: "FINAL_REPORT_READY | BLOCKED_WITH_REPORT"
 summary: "<short-summary>"
 next_stage: "done"

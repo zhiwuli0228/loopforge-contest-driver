@@ -49,7 +49,7 @@ c-to-rust-semantic-self-audit-harness-design.md
 - repair loop。
 - unsafe gate。
 - skill 的语义规则。
-- `work/output/flashDB_rust` 生成内容。
+- `work/output/<output_project>` 生成内容。
 - `result/output.md` 的 READY/BLOCKED 判定逻辑，除非只是路径说明字段同步。
 
 ---
@@ -79,7 +79,7 @@ work/output/<output_project_name>/
 当前题面解析出的项目名为：
 
 ```text
-work/output/flashDB_rust/
+work/output/<output_project>/
 ```
 
 并应在以下位置明确说明：
@@ -144,7 +144,7 @@ logs/trace/acceptance/
 
 ```text
 work/output/
-└── flashDB_rust/
+└── <output_project>/
     ├── Cargo.toml
     ├── src/
     └── tests/
@@ -153,7 +153,7 @@ work/output/
 说明：
 
 - 生成的 Rust 项目统一落在 `work/output/`。
-- 不输出到根目录 `./flashDB_rust`。
+- 不输出到根目录 `./<output_project>`。
 - 不输出到 `SOURCE_ROOT` 内部。
 - 不输出到 `SOURCE_ROOT.parent`。
 - `INSTRUCTION.md` 和 `result/output.md` 必须明确该路径。
@@ -268,23 +268,23 @@ Path(source_root) / ".loopforge"
 Windows PowerShell：
 
 ```powershell
-Select-String -Path work\**\* -Pattern "flashDB_rust","work/output","work\\output","./flashDB_rust",".\\flashDB_rust" -Recurse -ErrorAction SilentlyContinue
+Select-String -Path work\**\* -Pattern "<output_project>","work/output","work\\output","./<output_project>",".\\<output_project>" -Recurse -ErrorAction SilentlyContinue
 ```
 
 Linux Bash：
 
 ```bash
-grep -R "flashDB_rust\|work/output\|work\\\\output\|./flashDB_rust\|.\\\\flashDB_rust" work --exclude-dir=.git
+grep -R "<output_project>\|work/output\|work\\\\output\|./<output_project>\|.\\\\<output_project>" work --exclude-dir=.git
 ```
 
 处理规则：
 
 - `work/output/<output_project_name>` 是允许的。
-- `flashDB_rust` 作为当前题面解析结果可以出现在：
+- `<output_project>` 作为当前题面解析结果可以出现在：
   - `work/code/README.md`
   - `result/output.md`
   - `logs/trace`
-  - `work/output/flashDB_rust`
+  - `work/output/<output_project>`
   - `INSTRUCTION.md` 的“当前题面示例”部分
 - 不应作为 runtime 的固定默认逻辑。
 - runtime 应基于 `output_project_name` 动态生成输出目录。
@@ -443,16 +443,16 @@ The generated Rust project is written to:
 work/output/<output_project_name>/
 ```
 
-For the current FlashDB task:
+For the current migration task:
 
 ```text
-work/output/flashDB_rust/
+work/output/<output_project>/
 ```
 
 Manual verification:
 
 ```bash
-cd work/output/flashDB_rust
+cd work/output/<output_project>
 cargo build --locked
 cargo test --locked -- --nocapture
 ```
@@ -477,8 +477,8 @@ logs/trace/
 
 ```text
 status: READY_FOR_EVALUATION
-rust_project: work/output/flashDB_rust
-cargo_toml: work/output/flashDB_rust/Cargo.toml
+rust_project: work/output/<output_project>
+cargo_toml: work/output/<output_project>/Cargo.toml
 semantic_audit_report: logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
@@ -492,10 +492,10 @@ first_blocking_point: <A/B/C/D/E/F/G>
 严禁在 `result/output.md` 中写旧位置：
 
 ```text
-flashDB_rust/Cargo.toml
-./flashDB_rust
-.code/flashDB_rust
-SOURCE_ROOT/flashDB_rust
+<output_project>/Cargo.toml
+./<output_project>
+.code/<output_project>
+SOURCE_ROOT/<output_project>
 ```
 
 除非是历史 trace，不作为当前结果。
@@ -512,9 +512,9 @@ Windows PowerShell：
 Remove-Item -Recurse -Force result -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force logs\trace -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force work\output -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force flashDB_rust -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force .code\flashDB_rust -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force code\flashDB_rust -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force <output_project> -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force .code\<output_project> -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force code\<output_project> -ErrorAction SilentlyContinue
 
 New-Item -ItemType Directory -Force result\issues | Out-Null
 New-Item -ItemType Directory -Force logs\trace | Out-Null
@@ -527,9 +527,9 @@ Linux Bash：
 rm -rf result
 rm -rf logs/trace
 rm -rf work/output
-rm -rf flashDB_rust
-rm -rf .code/flashDB_rust
-rm -rf code/flashDB_rust
+rm -rf <output_project>
+rm -rf .code/<output_project>
+rm -rf code/<output_project>
 
 mkdir -p result/issues
 mkdir -p logs/trace
@@ -543,13 +543,13 @@ mkdir -p work/output
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1 -SourceRoot ".code\FlashDB"
+powershell -ExecutionPolicy Bypass -File work\scripts\run.ps1 -SourceRoot ".code\<source_project>"
 ```
 
 Linux：
 
 ```bash
-SOURCE_ROOT=".code/FlashDB" bash work/scripts/run.sh --run
+SOURCE_ROOT=".code/<source_project>" bash work/scripts/run.sh --run
 ```
 
 ---
@@ -559,15 +559,15 @@ SOURCE_ROOT=".code/FlashDB" bash work/scripts/run.sh --run
 Windows PowerShell：
 
 ```powershell
-Test-Path work\output\flashDB_rust\Cargo.toml
-Test-Path work\output\flashDB_rust\src
-Test-Path work\output\flashDB_rust\tests
+Test-Path work\output\<output_project>\Cargo.toml
+Test-Path work\output\<output_project>\src
+Test-Path work\output\<output_project>\tests
 Test-Path result\output.md
 Test-Path result\issues\00-summary.md
 Test-Path logs\interaction.md
 Test-Path logs\trace\c-to-rust\semantic-audit-report.md
 
-Push-Location work\output\flashDB_rust
+Push-Location work\output\<output_project>
 cargo build --locked
 cargo test --locked -- --nocapture
 Pop-Location
@@ -576,15 +576,15 @@ Pop-Location
 Linux Bash：
 
 ```bash
-test -f work/output/flashDB_rust/Cargo.toml
-test -d work/output/flashDB_rust/src
-test -d work/output/flashDB_rust/tests
+test -f work/output/<output_project>/Cargo.toml
+test -d work/output/<output_project>/src
+test -d work/output/<output_project>/tests
 test -f result/output.md
 test -f result/issues/00-summary.md
 test -f logs/interaction.md
 test -f logs/trace/c-to-rust/semantic-audit-report.md
 
-cd work/output/flashDB_rust
+cd work/output/<output_project>
 cargo build --locked
 cargo test --locked -- --nocapture
 ```
@@ -695,9 +695,9 @@ c-to-rust-semantic-self-audit-harness-design.md
 ### 13.3 输出标准
 
 ```text
-work/output/flashDB_rust/Cargo.toml
-work/output/flashDB_rust/src/
-work/output/flashDB_rust/tests/
+work/output/<output_project>/Cargo.toml
+work/output/<output_project>/src/
+work/output/<output_project>/tests/
 ```
 
 必须存在。
@@ -705,7 +705,7 @@ work/output/flashDB_rust/tests/
 根目录旧输出：
 
 ```text
-./flashDB_rust/
+./<output_project>/
 ```
 
 不应存在。
@@ -716,8 +716,8 @@ work/output/flashDB_rust/tests/
 
 ```text
 READY_FOR_EVALUATION
-work/output/flashDB_rust
-work/output/flashDB_rust/Cargo.toml
+work/output/<output_project>
+work/output/<output_project>/Cargo.toml
 semantic-audit-report.md
 ```
 
@@ -738,7 +738,7 @@ unsafe gate
 
 ```text
 SOURCE_ROOT/.loopforge
-SOURCE_ROOT/flashDB_rust
+SOURCE_ROOT/<output_project>
 SOURCE_ROOT/tests/*
 SOURCE_ROOT/src/*
 ```

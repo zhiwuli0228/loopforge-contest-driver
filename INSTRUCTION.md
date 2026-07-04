@@ -1,41 +1,66 @@
 # LoopForge Official Linux Evaluation Entry
 
-This is the official unattended Linux entrypoint for the C-to-Rust harness.
+This file is the Linux backup of the official root `INSTRUCTION.md`.
 
 ## Prerequisites
 
-The following commands must be available in `PATH`:
+Required in `PATH`: `bash`, `python3`, `cargo`, `rustc`, and `node` (for OpenSpec).
+
+## Toolchain Setup
+
+The workflow uses [OpenSpec](https://www.npmjs.com/package/@fission-ai/openspec) for schema-driven artifact management. If `openspec` is not globally installed, the bundled fallback handles it automatically.
+
+### Quick check
+
+```bash
+bash work/scripts/openspec.sh --version
+```
+
+### If openspec is not available globally
+
+The wrapper auto-installs from the bundled tarball when Node.js is present:
+
+```bash
+bash work/vendor/openspec/install.sh
+```
+
+Verify:
+
+```bash
+bash work/scripts/openspec.sh schemas --json
+```
+
+### Fallback mode (no Node.js)
+
+If Node.js is unavailable, `work/scripts/openspec.sh` falls back to a bash-based parser that supports: `schemas`, `status`, `instructions`. This is sufficient for the agent to drive the workflow, but with reduced fidelity.
+
+## SuperPower Guards
+
+Before each migration phase, the agent MUST read the permission boundaries:
 
 ```text
-bash
-python3
-cargo
-rustc
+work/profiles/superpower/c-to-rust-migration-guards.yaml
 ```
+
+This file defines allowed tools, filesystem access patterns, and forbidden actions per phase.
 
 ## Official execution
 
-Run from the repository root:
-
 ```bash
-SOURCE_ROOT="/absolute/path/to/source-or-input-container" bash work/scripts/run.sh --run
+SOURCE_ROOT="/home/lzw/loopforge-e2e/FlashDB" bash work/scripts/run.sh --run
 ```
 
-`SOURCE_ROOT` may identify either the evaluator-provided C project or an input
-container whose child directory is the project. Requirements come only from
-the preloaded `work/design/README.md`; project discovery uses C/C++ translation
-units, build metadata, tests, and directory evidence. The harness does not
-require a source README and never writes into `SOURCE_ROOT`.
+Requirements come from the preloaded `work/design/README.md`. The harness does not require a README under `SOURCE_ROOT` and never writes into it.
 
 ## Generated Rust project
 
-All generated Rust projects are written under:
+General location:
 
 ```text
 work/output/<output_project_name>/
 ```
 
-For the current task the expected location is:
+Current task:
 
 ```text
 work/output/flashDB_rust/
@@ -49,9 +74,7 @@ cargo build --locked
 cargo test --locked -- --nocapture
 ```
 
-## Reports
-
-Inspect:
+## Reports and completion
 
 ```text
 result/output.md
@@ -61,27 +84,12 @@ logs/trace/
 logs/trace/c-to-rust/semantic-audit-report.md
 ```
 
-`result/output.md` records the actual generated project path. Completion is reported as exactly one of:
+Completion status is `READY_FOR_EVALUATION` or `BLOCKED_WITH_REPORT`.
 
-```text
-READY_FOR_EVALUATION
-BLOCKED_WITH_REPORT
-```
-
-The evaluator should read `result/output.md` first. When READY, it must report:
+When READY, `result/output.md` should point to:
 
 ```text
 rust_project: work/output/flashDB_rust
 cargo_toml: work/output/flashDB_rust/Cargo.toml
 semantic_audit_report: logs/trace/c-to-rust/semantic-audit-report.md
 ```
-
-## Windows local debugging
-
-Windows is a local debugging path, not the official evaluator entry. Use:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File work\scripts\run-e2e-win.ps1 -SourceRoot "work\code\FlashDB"
-```
-
-The PowerShell runner resolves the Rust project from `result/output.md` or `logs/trace/run-summary.json`; it does not assume a root-level `flashDB_rust` directory.

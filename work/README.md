@@ -23,8 +23,8 @@ Requirements, constraints, and acceptance context are read only from the submiss
 
 Primary run outputs are written to:
 
-- `work/result/output.md`
-- `work/result/issues/00-summary.md`
-- `work/logs/trace/`
+- `result/output.md`
+- `result/issues/00-summary.md`
+- `logs/trace/`
 
-Internal runtime evidence stays under `work/logs/trace/`.
+Internal runtime evidence stays under `logs/trace/`.

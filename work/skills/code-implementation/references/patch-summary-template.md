@@ -2,7 +2,7 @@
 
 The patch stage must write:
 
-`work/logs/trace/consistency/05-patch-summary.md`
+`logs/trace/consistency/05-patch-summary.md`
 
 Use this structure:
 

@@ -1084,13 +1084,13 @@ def main(argv: List[str]) -> int:
         print("No action provided.", file=sys.stderr)
         return 2
 
-    cwd = Path.cwd().resolve()
-    work_dir = resolve_path(cwd, args.work_dir)
+    script_root = Path(__file__).resolve().parent.parent.parent  # runtime -> work -> repo root
+    work_dir = resolve_path(script_root, args.work_dir)
     workspace_root = work_dir.parent
     source_arg = (args.source_root or os.environ.get("SOURCE_ROOT", "")).strip()
     source_root = resolve_path(workspace_root, source_arg) if source_arg else resolve_default_source_root(workspace_root)
-    result_dir = resolve_path(cwd, args.result_dir)
-    log_dir = resolve_path(cwd, args.log_dir)
+    result_dir = resolve_path(workspace_root, args.result_dir)
+    log_dir = resolve_path(workspace_root, args.log_dir)
     try:
         runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
         if args.init:

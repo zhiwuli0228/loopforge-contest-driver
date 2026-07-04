@@ -13,8 +13,8 @@ from timeout_policy import JUDGING_PLATFORM_TIMEOUT_MINUTES, JUDGING_PLATFORM_TI
 
 class GenerationAgentProviderTests(unittest.TestCase):
     def test_default_timeout_matches_judging_platform(self):
-        self.assertEqual(JUDGING_PLATFORM_TIMEOUT_MINUTES, 600)
-        self.assertEqual(JUDGING_PLATFORM_TIMEOUT_SECONDS, 36_000)
+        self.assertEqual(JUDGING_PLATFORM_TIMEOUT_MINUTES, 300)
+        self.assertEqual(JUDGING_PLATFORM_TIMEOUT_SECONDS, 18_000)
         default = inspect.signature(repair_generation).parameters["timeout_seconds"].default
         self.assertEqual(default, JUDGING_PLATFORM_TIMEOUT_SECONDS)
 
@@ -22,7 +22,7 @@ class GenerationAgentProviderTests(unittest.TestCase):
         command = build_opencode_command("/usr/bin/opencode", Path("/tmp/project"), "repair this", "provider/model")
         self.assertEqual(command[:2], ["/usr/bin/opencode", "run"])
         self.assertIn("--dir", command)
-        self.assertIn("--dangerously-skip-permissions", command)
+        self.assertIn("--auto", command)
         self.assertEqual(command[-3:], ["--model", "provider/model", "repair this"])
 
     def test_windows_powershell_wrapper_is_argv(self):

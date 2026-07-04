@@ -60,7 +60,7 @@ class ExternalRepairProviderTests(unittest.TestCase):
         with patch("opencode_repair_provider.shutil.which", return_value="pwsh.exe"):
             command = build_opencode_command(r"C:\\tools\\opencode.ps1", Path(r"C:\\project with spaces"), "repair")
         self.assertEqual(command[:6], ["pwsh.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", r"C:\\tools\\opencode.ps1"])
-        self.assertIn("--dangerously-skip-permissions", command)
+        self.assertIn("--auto", command)
         self.assertEqual(command[-1], "repair")
 
 

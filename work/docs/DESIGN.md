@@ -24,6 +24,6 @@ The preloaded design README provides requirements, constraints, and acceptance c
 
 ## Output Contract
 
-- Evaluator-facing outputs are written to `work/result/` and `work/logs/`.
-- Internal runtime evidence is written under `work/logs/trace/`.
+- Evaluator-facing outputs are written to `result/` and `logs/`.
+- Internal runtime evidence is written under `logs/trace/`.
 - The framework never requires humans to edit task metadata before a run.

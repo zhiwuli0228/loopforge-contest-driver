@@ -1,0 +1,53 @@
+profile:
+  name: "consistency-check-example"
+  class: "example"
+  intent: "illustrate a generic design-versus-implementation review"
+  subagent_required: true
+  fallback_to_main_context_allowed: false
+  missing_subagent_policy: "BLOCKED_WITH_REPORT"
+  parent_direct_execution_allowed: false
+  file_handoff_required: true
+
+task:
+  mode: "consistency-check"
+  objective: "compare a documented design or contract with the implementation under SOURCE_ROOT"
+  language:
+    primary: "source-root-derived"
+    secondary: []
+
+inputs:
+  required:
+    - "design source or README requirements"
+    - "implementation scope"
+  optional:
+    - "repair authorization"
+    - "traceability expectations"
+
+execution:
+  analysis_first: true
+  controlled_repair_default: true
+  require_traceability_matrix: true
+  require_repair_plan: true
+
+verification:
+  strategy: "preloaded-design-or-framework-default"
+  command_source: "loopforge.config.yaml"
+  working_directory_hint: "SOURCE_ROOT"
+  allow_degraded_verification: true
+  require_failure_reason: true
+  require_stdout_stderr_summary: true
+  evidence_focus:
+    - "traceability quality"
+    - "drift classification quality"
+    - "verification evidence"
+  commands: []
+
+reporting:
+  final_report: "logs/trace/final-report.md"
+  highlight:
+    - "design summary"
+    - "implementation mapping"
+    - "traceability matrix"
+    - "drift categories"
+    - "repair plan"
+    - "verification evidence"

@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-将当前 `c2rust-flashdb` 分支收敛为**通用 C-to-Rust 迁移框架**，而不是某个题目或某个源码项目的专用实现。
+将当前 `c2r-migration` 分支收敛为**通用 C-to-Rust 迁移框架**，而不是某个题目或某个源码项目的专用实现。
 
 框架必须满足：
 
@@ -81,7 +81,7 @@ work/skills/c-to-rust-migration/SKILL.md
 删除：
 
 ```text
-work/skills/c2rust-flashdb-migration/
+work/skills/c2r-migration-migration/
 ```
 
 `SKILL.md` frontmatter：
@@ -112,7 +112,7 @@ work/profiles/examples/c-to-rust-migration.yaml
 删除：
 
 ```text
-work/profiles/examples/c2rust-flashdb-migration.yaml
+work/profiles/examples/c2r-migration-migration.yaml
 ```
 
 建议内容：
@@ -199,7 +199,7 @@ work/rules/loopforge/adapters/c-to-rust/
 删除：
 
 ```text
-work/rules/loopforge/adapters/c2rust-flashdb/
+work/rules/loopforge/adapters/c2r-migration/
 ```
 
 目标文件：
@@ -347,7 +347,7 @@ outputs:
 必须删除或替换：
 
 ```text
-flashdb_root
+<source_root>
 ```
 
 建议数据结构：

@@ -99,6 +99,7 @@ def _run_external_repair_provider(
     task = {
         "round": round_number,
         "project_dir": str(project_dir.resolve()),
+        "workspace_root": str(packet.paths.workspace_root),
         "failed_command": command_result.get("command", ""),
         "returncode": command_result.get("returncode"),
         "stdout_tail": command_result.get("stdout_tail", []),
@@ -114,6 +115,9 @@ def invoke_external_repair_provider(packet: AgentTaskPacket, project_dir: Path, 
     command = _external_repair_command(packet)
     if not command:
         return {"applied": False, "detail": "repair_provider_unavailable"}
+    # Ensure workspace_root is available for opencode --dir resolution
+    if "workspace_root" not in task:
+        task = {**task, "workspace_root": str(packet.paths.workspace_root)}
     task_path = packet.paths.migration_trace_dir / f"{trace_prefix}-task-{round_number + 1:02d}.json"
     task_path.write_text(json.dumps(task, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 

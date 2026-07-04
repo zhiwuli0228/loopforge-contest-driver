@@ -19,8 +19,11 @@ def find_opencode_cli() -> Optional[str]:
     return None
 
 
-def build_opencode_command(cli: str, project_dir: Path, prompt: str) -> List[str]:
-    args = ["run", "--dir", str(project_dir), "--dangerously-skip-permissions", prompt]
+def build_opencode_command(cli: str, project_dir: Path, prompt: str, workspace_root: Optional[Path] = None) -> List[str]:
+    # Use workspace root as --dir so evidence directories are within scope
+    # This prevents external_directory permission issues for logs/evidence access
+    opencode_dir = str(workspace_root) if workspace_root else str(project_dir)
+    args = ["run", "--dir", opencode_dir, "--auto", prompt]
     if Path(cli).suffix.lower() == ".ps1":
         powershell = shutil.which("pwsh") or shutil.which("powershell")
         if not powershell:
@@ -55,6 +58,8 @@ def main() -> int:
         return 64
     task = json.loads(Path(task_value).resolve().read_text(encoding="utf-8"))
     project_dir = Path(task["project_dir"]).resolve()
+    # Get workspace root from task or derive from project_dir
+    workspace_root = Path(task["workspace_root"]).resolve() if "workspace_root" in task else None
     if not project_dir.is_dir():
         print(f"project directory does not exist: {project_dir}", file=sys.stderr)
         return 66
@@ -63,7 +68,7 @@ def main() -> int:
         print("OpenCode CLI is unavailable", file=sys.stderr)
         return 69
     try:
-        command = build_opencode_command(cli, project_dir, repair_prompt(task))
+        command = build_opencode_command(cli, project_dir, repair_prompt(task), workspace_root)
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
         return 69

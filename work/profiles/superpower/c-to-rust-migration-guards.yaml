@@ -1,0 +1,176 @@
+# SuperPower Guards: Permission boundaries for C-to-Rust migration phases
+# Default-deny policy: anything not explicitly allowed is forbidden.
+# No project-specific paths — all patterns are generic and relative.
+
+phases:
+  preflight:
+    description: Verify tools.py and environment are ready
+    allowed_tools:
+      - self-check
+    allowed_fs:
+      - operation: read
+        path_pattern: "work/**"
+    forbidden:
+      - any write operations
+      - any source modification
+
+  understand:
+    description: Parse source code and generate inventory
+    allowed_tools:
+      - parse-source
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+    forbidden:
+      - any write operations
+      - any source modification
+
+  design:
+    description: Create technical design document
+    allowed_tools: []
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "openspec/changes/*/design.md"
+    forbidden:
+      - modify source code
+      - modify tools.py
+      - modify profiles
+
+  spec:
+    description: Write module-level specifications
+    allowed_tools: []
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "openspec/changes/*/specs/**/*.md"
+    forbidden:
+      - modify source code
+      - modify tools.py
+      - modify profiles
+
+  plan:
+    description: Create implementation task list
+    allowed_tools: []
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "openspec/changes/*/tasks.md"
+      - operation: write
+        path_pattern: "openspec/changes/*/implement-plan.md"
+    forbidden:
+      - modify source code
+      - modify tools.py
+      - modify profiles
+
+  implement:
+    description: Write Rust source code per batch
+    allowed_tools:
+      - run-verification
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "src/**/*.rs"
+      - operation: write
+        path_pattern: "Cargo.toml"
+      - operation: write
+        path_pattern: "Cargo.lock"
+      - operation: create
+        path_pattern: "src/**/*.rs"
+    forbidden:
+      - modify tools.py
+      - modify profiles
+      - modify openspec/
+      - modify work/skills/
+      - modify work/subagent/
+
+  test:
+    description: Write and run tests per batch
+    allowed_tools:
+      - run-verification
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "tests/**/*.rs"
+      - operation: write
+        path_pattern: "src/**/*.rs"
+      - operation: create
+        path_pattern: "tests/**/*.rs"
+    forbidden:
+      - modify tools.py
+      - modify profiles
+      - modify openspec/
+      - modify work/skills/
+      - modify work/subagent/
+
+  repair:
+    description: Fix build/test failures
+    allowed_tools:
+      - run-verification
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "src/**/*.rs"
+      - operation: write
+        path_pattern: "tests/**/*.rs"
+      - operation: write
+        path_pattern: "Cargo.toml"
+    forbidden:
+      - modify tools.py
+      - modify profiles
+      - modify openspec/
+      - modify work/skills/
+      - modify work/subagent/
+
+  semantic-audit:
+    description: Write and run invariant tests
+    allowed_tools:
+      - run-verification
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "tests/**/*.rs"
+      - operation: create
+        path_pattern: "tests/**/*.rs"
+    forbidden:
+      - modify source code under migration
+      - modify tools.py
+      - modify profiles
+
+  quality-gates:
+    description: Run quality gate checks
+    allowed_tools:
+      - check-unsafe
+      - fault-injection
+      - neutrality-audit
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+    forbidden:
+      - any write operations
+      - any source modification
+
+  finalize:
+    description: Write final reports
+    allowed_tools:
+      - write-report
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "result/**"
+      - operation: write
+        path_pattern: "issues/**"
+      - operation: write
+        path_pattern: "openspec/changes/*/verification-report.md"
+    forbidden:
+      - modify source code
+      - modify tools.py
+      - modify profiles
