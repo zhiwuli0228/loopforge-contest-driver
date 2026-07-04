@@ -1,0 +1,188 @@
+superspec:
+  name: "c-to-rust-migration-stages"
+  version: "1.0"
+  purpose: "Define staged work packets for unattended C-to-Rust migration execution."
+  artifact_root: "logs/trace/c-to-rust"
+  final_report: "result/output.md"
+  subagent_required: true
+  fallback_to_main_context_allowed: false
+  missing_subagent_policy: "BLOCKED_WITH_REPORT"
+  parent_direct_execution_allowed: false
+  file_handoff_required: true
+
+artifact_metadata_contract:
+  required_fields:
+    - "stage_id"
+    - "executed_by_subagent"
+    - "parent_direct_execution"
+    - "input_files_read"
+    - "output_artifact"
+    - "gate"
+    - "summary"
+    - "next_stage"
+
+final_report_evidence:
+  required_section: "## Subagent Execution Evidence"
+  invalid_run_result: "INVALID_RUN_MONOLITHIC_MAIN_CONTEXT"
+
+stages:
+  # ---- Phase 0: Preflight ----
+  - id: "00-preflight"
+    name: "Preflight"
+    subagent: "c2r-00-preflight.md"
+    input:
+      - "INSTRUCTION.md"
+      - "work/design/README.md"
+    output: "logs/trace/c-to-rust/00-preflight-report.md"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_UNDERSTAND"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 1: Understand ----
+  - id: "01-understand"
+    name: "Source Understanding"
+    subagent: "c2r-01-understand.md"
+    input:
+      - "SOURCE_ROOT/**"
+    output: "logs/trace/c-to-rust/01-source-inventory.json"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_DESIGN"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 2: Design ----
+  - id: "02-design"
+    name: "Migration Design"
+    subagent: "c2r-02-design.md"
+    input:
+      - "logs/trace/c-to-rust/01-source-inventory.json"
+      - "work/design/README.md"
+    output: "openspec/changes/<name>/design.md"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_SPEC"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 3: Spec ----
+  - id: "03-spec"
+    name: "Specification"
+    subagent: "c2r-03-spec.md"
+    input:
+      - "openspec/changes/<name>/design.md"
+      - "SOURCE_ROOT/**"
+    output: "openspec/changes/<name>/specs/"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_PLAN"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 4: Plan ----
+  - id: "04-plan"
+    name: "Implementation Planning"
+    subagent: "c2r-04-plan.md"
+    input:
+      - "openspec/changes/<name>/specs/"
+      - "openspec/changes/<name>/design.md"
+    output:
+      - "openspec/changes/<name>/tasks.md"
+      - "openspec/changes/<name>/implement-plan.md"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_IMPLEMENT"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 5: Implement ----
+  - id: "05-implement"
+    name: "Rust Implementation"
+    subagent: "c2r-05-implement.md"
+    input:
+      - "openspec/changes/<name>/tasks.md"
+      - "openspec/changes/<name>/implement-plan.md"
+      - "openspec/changes/<name>/specs/"
+      - "work/profiles/superpower/c-to-rust-migration-guards.yaml"
+    output: "work/output/*/src/**/*.rs"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_TEST"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  # ---- Phase 6: Test ----
+  - id: "06-test"
+    name: "Test Implementation"
+    subagent: "c2r-06-test.md"
+    input:
+      - "work/output/*/src/**/*.rs"
+    output: "work/output/*/tests/**/*.rs"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_REPAIR"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  # ---- Phase 7: Repair ----
+  - id: "07-repair"
+    name: "Build/Test Repair"
+    subagent: "c2r-07-repair.md"
+    input:
+      - "work/output/*/src/**/*.rs"
+      - "work/output/*/tests/**/*.rs"
+    output:
+      - "work/output/*/src/**/*.rs"
+      - "work/output/*/tests/**/*.rs"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_SEMANTIC_AUDIT"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  # ---- Phase 8: Semantic Audit ----
+  - id: "08-semantic-audit"
+    name: "Semantic Audit"
+    subagent: "c2r-08-semantic-audit.md"
+    input:
+      - "openspec/changes/<name>/specs/"
+      - "SOURCE_ROOT/**"
+    output: "work/output/*/tests/"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_QUALITY_GATES"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  # ---- Phase 9: Quality Gates ----
+  - id: "09-quality-gates"
+    name: "Quality Gates"
+    subagent: "c2r-09-quality-gates.md"
+    input:
+      - "work/output/*/src/**/*.rs"
+      - "work/output/*/tests/**/*.rs"
+    output: "logs/trace/c-to-rust/09-quality-gates-report.md"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_FINALIZE"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
+
+  # ---- Phase 10: Finalize ----
+  - id: "10-finalize"
+    name: "Finalize"
+    subagent: "c2r-10-finalize.md"
+    input:
+      - "logs/trace/c-to-rust/*.md"
+      - "work/output/*/src/**/*.rs"
+      - "work/output/*/tests/**/*.rs"
+    output:
+      - "result/output.md"
+      - "result/issues/00-summary.md"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_EVALUATION"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: false
