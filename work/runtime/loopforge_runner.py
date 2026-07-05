@@ -446,13 +446,15 @@ class LoopForgeRunner:
         }
 
     def _write_agent_delegation_report(self, packet: AgentTaskPacket, analysis: Dict[str, Any], context_pkg: Dict[str, Any]) -> Dict[str, Any]:
-        """Write the result/output.md instructing the operator to run the Agent with SKILL.md."""
+        """Write the result/output.md with Stage 1 completion and Stage 2 handoff instructions."""
         public_apis = analysis.get("public_apis", [])
         source_files = analysis.get("source_files", [])
         test_functions = analysis.get("test_functions", [])
 
         output_lines = [
             "# Output",
+            "",
+            "## Stage 1 Complete — Data Preparation",
             "",
             "- status: `AGENT_DELEGATION_READY`",
             f"- generated_at: `{utc_now()}`",
@@ -465,39 +467,44 @@ class LoopForgeRunner:
             f"- public_api_count: `{len(public_apis)}`",
             f"- test_function_count: `{len(test_functions)}`",
             "",
-            "## Data Preparation Complete",
+            "Source analysis and semantic planning are complete. The context package is ready.",
+            f"Context package: `{self.display_path(self.context_pkg_path)}`",
             "",
-            "Source analysis and semantic planning are complete. All code generation, testing, repair, and auditing phases are delegated to the Agent.",
+            "## Stage 2 — Agent Judgment (Phases 0→10)",
             "",
-            f"### Context Package: `{self.display_path(self.context_pkg_path)}`",
+            "The orchestrator MUST immediately proceed to Stage 2. Read the orchestrator skill:",
             "",
-            "### Agent Execution Instructions",
+            f"  `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`",
             "",
-            "The Agent MUST:",
+            "### Quick Start",
             "",
-            f"1. Read the skill definition at `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`",
-            f"2. Read the context package at `{self.display_path(self.context_pkg_path)}` for all paths and data references",
-            "3. Execute phases 0 through 10 in strict order, delegating each phase to the appropriate subagent",
-            "4. Use `python tools.py run-verification` for build/test commands (data retrieval only)",
-            "5. Use `python tools.py check-unsafe`, `fault-injection`, `neutrality-audit` for quality gates (data retrieval only)",
-            "6. Use `python tools.py write-report` for final report generation (data to markdown)",
-            "7. NEVER call any Python function for code generation, semantic analysis, or repair judgment — all judgment is Agent responsibility",
+            "1. Read `work/skills/c-to-rust-migration-v2/SKILL.md`",
+            "2. Read `logs/trace/execution-adapter/state/context-package.json` for all absolute paths",
+            "3. Execute Phase 0 (preflight) — verify context package integrity",
+            "4. Execute Phase 1 (understand) — delegate to `c2r-01-understand.md` subagent",
+            "5. Continue through Phase 10 (finalize) — write `READY_FOR_EVALUATION`",
             "",
-            "### Agent Delegation Flow",
+            "### Phase Sequence",
             "",
             "```",
-            "Phase 0 (preflight)    → Agent reads c2r-00-preflight.md",
-            "Phase 1 (understand)   → Agent reads c2r-01-understand.md + source-inventory.json",
-            "Phase 2 (design)       → Agent reads c2r-02-design.md",
-            "Phase 3 (spec)         → Agent reads c2r-03-spec.md",
-            "Phase 4 (plan)         → Agent reads c2r-04-plan.md",
-            "Phase 5 (implement)    → Agent reads c2r-05-implement.md × N batches + C source files",
-            "Phase 6 (test)         → Agent reads c2r-06-test.md × N batches + C test files",
-            "Phase 7 (repair)       → Agent reads c2r-07-repair.md + error logs",
-            "Phase 8 (semantic)     → Agent reads c2r-08-semantic-audit.md + C source",
-            "Phase 9 (quality)      → Agent reads c2r-09-quality-gates.md + tools.py",
-            "Phase 10 (finalize)    → Agent reads c2r-10-finalize.md + tools.py write-report",
+            "Phase 0 (preflight)    → Read context-package.json, verify paths",
+            "Phase 1 (understand)   → Subagent c2r-01-understand.md + PRIOR_OUTPUTS",
+            "Phase 2 (design)       → Subagent c2r-02-design.md",
+            "Phase 3 (spec)         → Subagent c2r-03-spec.md (per module)",
+            "Phase 4 (plan)         → Subagent c2r-04-plan.md → tasks.md + implement-plan.md",
+            "Phase 5 (implement)    → Subagent c2r-05-implement.md × N batches → src/**/*.rs",
+            "Phase 6 (test)         → Subagent c2r-06-test.md × N batches → tests/**/*.rs",
+            "Phase 7 (repair)       → Subagent c2r-07-repair.md → cargo build + test fixes",
+            "Phase 8 (semantic)     → Subagent c2r-08-semantic-audit.md → invariant tests",
+            "Phase 9 (quality)      → Subagent c2r-09-quality-gates.md → unsafe / fault / neutrality",
+            "Phase 10 (finalize)    → tools.py write-report → result/output.md (READY_FOR_EVALUATION)",
             "```",
+            "",
+            "### Rules",
+            "- Python `tools.py` returns raw data only — NEVER makes pass/fail judgments",
+            "- All judgment (code generation, repair decisions, gate evaluation) is Agent responsibility",
+            "- Each phase returns `PHASE_PASS`, `PHASE_BLOCKED`, or `PHASE_DEGRADED`",
+            "- On `PHASE_BLOCKED`: stop immediately, report blocker",
             "",
             "### Source APIs Detected",
             "",
@@ -574,9 +581,10 @@ class LoopForgeRunner:
             self._write_blocked_report(packet, semantic_plan, "PLANNING_NOT_PASSED")
             return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "plan_gate": semantic_plan}
 
-        # Stage 4: Build context package for Agent
+        # Stage 4: Build context package for Agent (absolute paths, no sanitization)
         context_pkg = self._build_context_package(packet, analysis, source_gate, semantic_plan)
-        self.write_json(self.context_pkg_path, context_pkg)
+        self.context_pkg_path.parent.mkdir(parents=True, exist_ok=True)
+        self.context_pkg_path.write_text(json.dumps(context_pkg, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 
         # Stage 5: Write delegation report
         delegation = self._write_agent_delegation_report(packet, analysis, context_pkg)

@@ -107,15 +107,45 @@ For non-delegated modes, continue with the normal contest run.
 
 ## Required Procedure
 
-1. Read `INSTRUCTION.md`.
-2. Resolve `SOURCE_ROOT`.
-3. Read and validate `work/design/README.md`.
-4. Read `work/loopforge.config.yaml` for framework defaults.
-5. Load core rules and mode rules for the configured mode.
-6. Inspect `SOURCE_ROOT` and plan the smallest valid task flow for the selected mode.
-7. Use `work/runtime/loopforge_runner.py` with `--source-root` to initialize artifacts, detect the project, attempt verification, and finalize reports.
-8. If no runnable verification command can be derived, leave a blocked report instead of waiting for manual config edits.
-9. Ensure evaluator-facing outputs exist at `result/output.md`, `result/issues/00-summary.md`, and `logs/trace/`.
+This is a **two-stage** unattended pipeline. Both stages MUST execute sequentially. Do not stop after Stage 1.
+
+### Stage 1: Data Preparation (Python tools)
+
+Run the data-prep subagent to extract structured source data (no judgment):
+
+```bash
+SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh --run
+```
+
+This writes:
+- `logs/trace/execution-adapter/state/context-package.json` — all absolute paths + analysis summary
+- `result/output.md` — status `AGENT_DELEGATION_READY` with next-step instructions
+- `logs/trace/run-summary.json` — full gate results
+
+If Stage 1 returns `BLOCKED_WITH_REPORT`, stop and report the blocker. Do not proceed to Stage 2.
+
+### Stage 2: Agent Judgment (Phases 0→10)
+
+After Stage 1 completes, immediately read `work/skills/c-to-rust-migration-v2/SKILL.md` and execute phases 0→10 in strict order.
+
+The SKILL.md orchestrates:
+- Phase 0-4: preflight, understand, design, spec, plan (inline or subagent)
+- Phase 5: code generation (subagent per batch) → `work/output/<project>/src/**/*.rs`
+- Phase 6: test migration (subagent per batch) → `work/output/<project>/tests/**/*.rs`
+- Phase 7: repair loop (subagent) → cargo build + test fixes
+- Phase 8: semantic audit (subagent) → invariant tests
+- Phase 9: quality gates (subagent) → unsafe, fault-injection, neutrality
+- Phase 10: finalize → `result/output.md` with `READY_FOR_EVALUATION`
+
+The context package at `logs/trace/execution-adapter/state/context-package.json` contains all paths needed for phases 0→10.
+
+Each phase returns a gate token: `PHASE_PASS`, `PHASE_BLOCKED`, or `PHASE_DEGRADED`. On `PHASE_BLOCKED`, stop immediately and report.
+
+### Final State
+
+After Stage 2 Phase 10 completes:
+- `work/output/<project>/` contains a complete, buildable Rust project
+- `result/output.md` status is `READY_FOR_EVALUATION` or `BLOCKED_WITH_REPORT`
 
 ## Output Expectations
 
@@ -126,4 +156,6 @@ At minimum, the run should leave behind:
 - `logs/trace/run-summary.json`
 - `logs/trace/final-report.md`
 - `logs/trace/c-to-rust/06-verification-report.md`
+- `work/output/<project>/` — generated Rust project with `Cargo.toml`, `src/`, `tests/`
+
 The trace report under `logs/trace/` is runtime evidence, not the primary evaluator-facing result.

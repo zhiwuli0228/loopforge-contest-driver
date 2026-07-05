@@ -13,10 +13,31 @@ Drive a complete C-to-Rust migration through 10 sequential phases. Each phase is
 
 | Variable | Source | Example |
 |----------|--------|---------|
-| `SOURCE_ROOT` | Environment | `E:/001code/csource/FlashDB` |
-| `WORK_DIR` | Fixed | `work/` |
-| `OUTPUT_DIR` | Derived | `work/output/flashDB_rust/` |
-| `OPENSPEC_CHANGE` | Derived | `c-to-rust-migration` |
+| `SOURCE_ROOT` | context-package.json | `/home/lzw/loopforge-e2e/FlashDB` |
+| `WORK_DIR` | context-package.json | `work/` |
+| `OUTPUT_DIR` | context-package.json | `work/output/flashDB_rust/` |
+| `OPENSPEC_CHANGE` | context-package.json | `c-to-rust-migration` |
+| `PRIOR_OUTPUTS` | context-package.json | paths to source-inventory.json, call-graph.json, etc. |
+
+All paths come from `logs/trace/execution-adapter/state/context-package.json`.
+
+## Prerequisite: Data Preparation
+
+Before Phase 0, the context package MUST exist. If `logs/trace/execution-adapter/state/context-package.json` is missing, run Stage 1 first:
+
+```bash
+SOURCE_ROOT="<path>" bash work/scripts/run.sh --run
+```
+
+This produces `AGENT_DELEGATION_READY` and writes the context package containing all absolute paths and analysis data needed for phases 0→10.
+
+Read the context package before starting Phase 0:
+
+```bash
+cat logs/trace/execution-adapter/state/context-package.json
+```
+
+Key fields: `SOURCE_ROOT`, `WORK_DIR`, `OUTPUT_DIR`, `RESULT_DIR`, `LOG_DIR`, `PRIOR_OUTPUTS`, `ANALYSIS_SUMMARY`.
 
 ## Phase Sequence
 
@@ -97,14 +118,16 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 ## Phase-Specific Notes
 
 ### Phase 0 — Preflight
-- Verify `python tools.py` works before spawning subagent
-- If tools.py is broken, abort immediately — do not proceed
+- Read `logs/trace/execution-adapter/state/context-package.json` for all paths
+- Read `logs/trace/run-summary.json` for self-check and source analysis gate results
+- Verify all `PRIOR_OUTPUTS` files exist on disk
+- Verify `python tools.py` is functional: `python WORK_DIR/runtime/tools.py --help`
+- If any check fails, return `PHASE_BLOCKED` immediately
 
 ### Phase 1 — Understand
-- The subagent discovers test directories under SOURCE_ROOT
-- Pass discovered test dirs to `--test-dirs`
-- Confirm `test_functions` list is populated — this is the C test inventory
-- Output: `WORK_DIR/source-inventory.json`
+- Data is already pre-computed: `PRIOR_OUTPUTS.source_inventory`, `PRIOR_OUTPUTS.public_api_map`, etc.
+- The subagent reads these files (no need to re-run parse-source)
+- Confirm `test_functions` from ANALYSIS_SUMMARY is populated
 
 ### Phase 2 — Design
 - Requires `openspec` CLI for template
