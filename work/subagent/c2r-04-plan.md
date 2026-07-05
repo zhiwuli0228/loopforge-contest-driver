@@ -7,12 +7,12 @@ Create the implementation task list and batch execution plan. Write phase — pr
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree
-- `WORK_DIR` — path to work directory
-- `OUTPUT_DIR` — path to Rust output project
-- `PRIOR_OUTPUTS.design` — path to `design.md`
-- `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
-- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json`. If provided, use dependency graph and priority ordering from the map. If NOT provided, order tasks by explicit dependencies in the specs.
+- `SOURCE_ROOT` — absolute path to C source tree
+- `WORK_DIR` — absolute path to work directory
+- `OUTPUT_DIR` — absolute path to Rust output project
+- `PRIOR_OUTPUTS.design` — absolute path to `design.md`
+- `PRIOR_OUTPUTS.specs_dir` — absolute path to `specs/` directory
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json`. If provided, use dependency graph and priority ordering from the map. If NOT provided, order tasks by explicit dependencies in the specs.
 
 ## SuperPower Rules (this phase only)
 

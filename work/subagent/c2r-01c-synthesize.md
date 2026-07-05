@@ -8,9 +8,9 @@ Read the per-module scenario documents produced by 01b instances and synthesize 
 
 ## Context You Receive
 
-- `SCENARIOS_DIR` — path to `logs/trace/c-to-rust/capabilities/` containing all `*-scenarios.md` files
-- `INVENTORY_PATH` — path to `01a-source-inventory.json`
-- `WORK_DIR` — path to work directory
+- `SCENARIOS_DIR` — absolute path to `logs/trace/c-to-rust/capabilities/` containing all `*-scenarios.md` files
+- `INVENTORY_PATH` — absolute path to `01a-source-inventory.json`
+- `WORK_DIR` — absolute path to work directory
 
 ## SuperPower Rules (this phase only)
 

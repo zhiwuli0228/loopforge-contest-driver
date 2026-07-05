@@ -6,10 +6,10 @@ Deeply analyze ONE C source module and identify its key functional capabilities.
 
 ## Context You Receive
 
-- `MODULE_SOURCE` — path to one `.c` file (e.g., `SOURCE_ROOT/src/fdb_kvdb.c`)
-- `MODULE_HEADER` — path to the corresponding `.h` file (e.g., `SOURCE_ROOT/inc/fdb_def.h`)
-- `INVENTORY_PATH` — path to `01a-source-inventory.json` (for function list and call graph)
-- `WORK_DIR` — path to work directory
+- `MODULE_SOURCE` — absolute path to one `.c` file (e.g., `/mnt/e/.../FlashDB/src/fdb_kvdb.c`)
+- `MODULE_HEADER` — absolute path to the corresponding `.h` file
+- `INVENTORY_PATH` — absolute path to `01a-source-inventory.json` (for function list and call graph)
+- `WORK_DIR` — absolute path to work directory
 
 **Important**: You are analyzing ONE module. Other subagents are analyzing other modules in parallel. Focus only on your assigned module.
 

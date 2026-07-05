@@ -7,12 +7,20 @@ Write Rust source code AND unit tests for ONE batch (one capability) of the migr
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree (read-only)
-- `OUTPUT_DIR` — path to Rust output project
+- `SOURCE_ROOT` — absolute path to C source tree (read-only)
+- `OUTPUT_DIR` — absolute path to Rust output project
 - `BATCH_ID` — which batch from implement-plan you are executing (e.g., "5.1")
-- `PRIOR_OUTPUTS.implement_plan` — path to `implement-plan.md`
-- `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
-- `PRIOR_OUTPUTS.design` — path to `design.md`
+- `PRIOR_OUTPUTS.implement_plan` — absolute path to `implement-plan.md`
+- `PRIOR_OUTPUTS.specs_dir` — absolute path to `specs/` directory
+- `PRIOR_OUTPUTS.design` — absolute path to `design.md`
+
+## Critical Constraint: Output Project Directory
+
+`OUTPUT_DIR` is derived from the required project name in `work/design/README.md`. This path is authoritative and non-negotiable.
+
+- **NEVER** create a new project directory or rename the output project.
+- **ALWAYS** write to exactly the `OUTPUT_DIR` path provided in context.
+- If `OUTPUT_DIR` already contains a `Cargo.toml`, edit it in place — do not create a sibling project.
 
 ## SuperPower Rules (this phase only)
 

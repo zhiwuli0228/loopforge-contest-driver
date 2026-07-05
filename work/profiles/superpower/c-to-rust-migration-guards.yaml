@@ -5,6 +5,7 @@
 phases:
   preflight:
     description: Verify tools.py and environment are ready
+    subagent: work/subagent/c2r-00-preflight.md
     allowed_tools:
       - self-check
     allowed_fs:
@@ -16,6 +17,7 @@ phases:
 
   understand:
     description: Parse source, analyze capabilities per module, synthesize capability map
+    subagent: work/subagent/c2r-01-understand.md
     allowed_tools:
       - parse-source
     allowed_fs:
@@ -33,6 +35,7 @@ phases:
 
   design:
     description: Create technical design document
+    subagent: work/subagent/c2r-02-design.md
     allowed_tools: []
     allowed_fs:
       - operation: read
@@ -46,6 +49,7 @@ phases:
 
   spec:
     description: Write capability-level specifications
+    subagent: work/subagent/c2r-03-spec.md
     allowed_tools: []
     allowed_fs:
       - operation: read
@@ -59,6 +63,7 @@ phases:
 
   plan:
     description: Create implementation task list and batch plan
+    subagent: work/subagent/c2r-04-plan.md
     allowed_tools: []
     allowed_fs:
       - operation: read
@@ -74,6 +79,7 @@ phases:
 
   implement:
     description: Write Rust source code and unit tests per batch
+    subagent: work/subagent/c2r-05-implement.md
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -100,6 +106,7 @@ phases:
 
   test:
     description: Write integration tests and verify C test coverage
+    subagent: work/subagent/c2r-06-test.md
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -120,6 +127,7 @@ phases:
 
   repair:
     description: Fix build/test failures
+    subagent: work/subagent/c2r-07-repair.md
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -140,6 +148,7 @@ phases:
 
   semantic-audit:
     description: Write and run invariant tests
+    subagent: work/subagent/c2r-08-semantic-audit.md
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -156,6 +165,7 @@ phases:
 
   quality-gates:
     description: Run quality gate checks
+    subagent: work/subagent/c2r-09-quality-gates.md
     allowed_tools:
       - check-unsafe
       - fault-injection
@@ -169,6 +179,7 @@ phases:
 
   finalize:
     description: Write final reports
+    subagent: work/subagent/c2r-10-finalize.md
     allowed_tools:
       - write-report
     allowed_fs:

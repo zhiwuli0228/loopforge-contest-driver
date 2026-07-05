@@ -7,9 +7,9 @@ Aggregate all migration results into final reports. Write phase — produces `re
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree (for reference)
-- `OUTPUT_DIR` — path to Rust output project
-- `WORK_DIR` — path to work directory
+- `SOURCE_ROOT` — absolute path to C source tree (for reference)
+- `OUTPUT_DIR` — absolute path to Rust output project
+- `WORK_DIR` — absolute path to work directory
 - `PRIOR_OUTPUTS` — all prior phase outputs:
   - Phase 1: inventory path, test function count
   - Phase 5: build results (all batches)

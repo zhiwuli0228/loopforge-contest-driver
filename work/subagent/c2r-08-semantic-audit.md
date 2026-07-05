@@ -6,10 +6,10 @@ Write and run behavioral invariant tests to verify the Rust implementation is se
 
 ## Context You Receive
 
-- `SOURCE_ROOT` — path to C source tree (for reference)
-- `OUTPUT_DIR` — path to Rust output project
-- `WORK_DIR` — path to work directory
-- `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory (contains behavioral invariants)
+- `SOURCE_ROOT` — absolute path to C source tree (for reference)
+- `OUTPUT_DIR` — absolute path to Rust output project
+- `WORK_DIR` — absolute path to work directory
+- `PRIOR_OUTPUTS.specs_dir` — absolute path to `specs/` directory (contains behavioral invariants)
 
 ## SuperPower Rules (this phase only)
 

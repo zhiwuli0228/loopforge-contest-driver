@@ -7,10 +7,10 @@ Create the technical design document for the C-to-Rust migration. Write phase �
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree
-- `WORK_DIR` — path to work directory
-- `PRIOR_OUTPUTS.inventory` — path to `01-source-inventory.json` from Phase 1
-- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json` from Phase 1. If provided, use capability IDs, dependency graph, and priorities from the map. If NOT provided, derive module mapping from the proposal and source inventory.
+- `SOURCE_ROOT` — absolute path to C source tree
+- `WORK_DIR` — absolute path to work directory
+- `PRIOR_OUTPUTS.inventory` — absolute path to `01-source-inventory.json` from Phase 1
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json` from Phase 1. If provided, use capability IDs, dependency graph, and priorities from the map. If NOT provided, derive module mapping from the proposal and source inventory.
 
 ## SuperPower Rules (this phase only)
 

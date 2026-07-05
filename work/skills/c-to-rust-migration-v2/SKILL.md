@@ -43,13 +43,22 @@ Execute phases 0→10 in strict order. Do not skip, do not reorder.
 Assemble a context block with these fields and pass it to the subagent:
 
 ```
-SOURCE_ROOT: <path>
-WORK_DIR: <path>
-OUTPUT_DIR: <path>
+SOURCE_ROOT: <absolute path>
+WORK_DIR: <absolute path>
+OUTPUT_DIR: <absolute path>
 OPENSPEC_CHANGE: <name>
 PRIOR_OUTPUTS:
-  <key>: <file path from previous phase>
+  <key>: <absolute file path from previous phase>
 ```
+
+**All paths MUST be absolute.** The subagent's working directory is unpredictable (it may be the repo root, the user's home, or anywhere else). Relative paths will cause "file not found", permission errors, or writes to the wrong location. Before spawning a subagent:
+
+1. Resolve `SOURCE_ROOT` to an absolute path (use `readlink -f`, `realpath`, or `pwd`)
+2. Resolve `WORK_DIR` to an absolute path — typically `<repo_root>/work/`
+3. Resolve `OUTPUT_DIR` to an absolute path — typically `<repo_root>/work/output/<project_name>/`
+4. Resolve every `PRIOR_OUTPUTS` value to an absolute path
+
+Pass ONLY absolute paths. The subagent prompts use these values directly in shell commands (`test -d "SOURCE_ROOT/tests"`, `python WORK_DIR/runtime/tools.py`, `cargo build --manifest-path "OUTPUT_DIR/Cargo.toml"`) and will fail on relative paths.
 
 Include only outputs that actually exist from prior phases. Do not invent paths.
 

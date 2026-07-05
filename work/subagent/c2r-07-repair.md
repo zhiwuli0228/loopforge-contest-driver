@@ -6,8 +6,8 @@ Diagnose and fix all build errors and test failures from phases 5 and 6. Iterati
 
 ## Context You Receive
 
-- `OUTPUT_DIR` — path to Rust output project
-- `WORK_DIR` — path to work directory
+- `OUTPUT_DIR` — absolute path to Rust output project
+- `WORK_DIR` — absolute path to work directory
 - `PRIOR_OUTPUTS.build_errors` — build errors from Phase 5 (all batches)
 - `PRIOR_OUTPUTS.test_failures` — test failures from Phase 6 (all batches)
 - `MAX_REPAIR_ROUNDS` — maximum repair attempts (default: 5, from loopforge.config.yaml)

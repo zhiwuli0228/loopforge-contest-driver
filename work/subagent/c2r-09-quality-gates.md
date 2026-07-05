@@ -6,8 +6,8 @@ Run three quality gate checks: unsafe ratio, fault injection, and neutrality aud
 
 ## Context You Receive
 
-- `OUTPUT_DIR` — path to Rust output project
-- `WORK_DIR` — path to work directory
+- `OUTPUT_DIR` — absolute path to Rust output project
+- `WORK_DIR` — absolute path to work directory
 
 ## SuperPower Rules (this phase only)
 

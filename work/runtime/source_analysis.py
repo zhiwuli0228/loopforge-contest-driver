@@ -307,20 +307,27 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
     independent = independent_scan(root, source_dirs, test_dirs)
 
     public_names = sorted(set(legacy.get("public_apis", [])))
-    declarations = {item.get("name"): item for item in legacy.get("functions", []) if item.get("decl_kind") == "prototype"}
+    if not public_names:
+        public_names = sorted({item["name"] for item in independent["public_apis"]})
+    legacy_functions = legacy.get("functions", [])
+    declarations = {item.get("name"): item for item in legacy_functions if item.get("decl_kind") == "prototype"}
+    if not declarations:
+        declarations = {item["name"]: item for item in independent["public_apis"]}
     definitions = {item.get("name"): item for item in ast["functions"] if item.get("kind") == "definition"}
     if not definitions:
-        definitions = {item.get("name"): item for item in legacy.get("functions", []) if item.get("decl_kind") == "definition"}
+        definitions = {item.get("name"): item for item in legacy_functions if item.get("decl_kind") == "definition"}
     public_map = []
     for name in public_names:
         declaration = declarations.get(name, {})
         definition = definitions.get(name, {})
-        signature = next((item for item in legacy.get("functions", []) if item.get("name") == name and item.get("decl_kind") == "definition"), declaration)
+        signature = next((item for item in legacy_functions if item.get("name") == name and item.get("decl_kind") == "definition"), None)
+        if not signature:
+            signature = definition if definition else declaration
         public_map.append({
             "id": _stable_id("api", str(declaration.get("file", "")), name), "name": name,
             "return_type": signature.get("return_type", ""),
             "inputs": signature.get("params", []),
-            "declaration": _evidence(str(declaration.get("file", "")), int(declaration.get("line", 0) or 0), name) if declaration else None,
+            "declaration": declaration.get("evidence") or _evidence(str(declaration.get("file", "")), int(declaration.get("line", 0) or 0), name) if declaration else None,
             "definition": definition.get("evidence") or (_evidence(str(definition.get("file", "")), int(definition.get("line", 0) or 0), name) if definition else None),
         })
     source_inventory = {
@@ -352,10 +359,11 @@ def build_complete_analysis(packet: Any, legacy: Dict[str, Any]) -> Dict[str, An
         "public_apis": {item["name"] for item in independent["public_apis"]},
         "source_tests": {item["path"] for item in independent["source_tests"]},
     }
+    legacy_test_files = set(legacy.get("test_files", []))
     primary_sets = {
         "source_files": {_rel(path, root) for path in primary_files},
         "public_apis": set(public_names),
-        "source_tests": set(legacy.get("test_files", [])),
+        "source_tests": legacy_test_files if legacy_test_files else {item["path"] for item in independent["source_tests"]},
     }
     differences = {name: {"missing_from_primary": sorted(values - primary_sets[name]), "missing_from_independent": sorted(primary_sets[name] - values)} for name, values in independent_sets.items()}
     unresolved = sorted(item["name"] for item in public_map if not item["declaration"] or not item["definition"])

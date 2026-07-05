@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""LoopForge execution orchestrator using a preloaded design contract."""
+"""LoopForge execution orchestrator — thin data-preparation layer.
+
+Responsibilities:
+  - Resolve SOURCE_ROOT, validate environment, self-check
+  - Run tools.py parse-source (structured data, no judgment)
+  - Run semantic_planning (deterministic migration plan)
+  - Write context package for Agent consumption
+  - Output instructions for Agent to execute SKILL.md
+
+All judgment phases (understanding, design, code generation, testing,
+repair, semantic audit, gating) are delegated to the Agent via
+work/skills/c-to-rust-migration-v2/SKILL.md.
+"""
 
 from __future__ import annotations
 
@@ -13,18 +25,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_task_packet import AgentTaskPacket, RuntimePaths, resolve_runtime_contract
-from c2rust_analysis import analyze_source, evaluate_semantic_equivalence
 from c_project_root_resolver import resolve_c_project_root, write_resolution_trace
-from c2rust_project_generator import generate_project
-from rust_project_generation import GenerationBlocked, build_evidence, load_generation_inputs, write_evidence
-from c2rust_repair import run_repair_loop
-from c2rust_semantic_repair import run_semantic_repair_loop
 from semantic_planning import PlanningBlocked, plan_from_trace
+from source_analysis import build_complete_analysis, write_complete_analysis
 from source_analysis_verify_gate import build_and_verify_source_analysis
-from test_migration_validation import TestValidationBlocked, verify_and_publish as verify_test_migration
-from self_healing_loop import audit_neutrality, atomic_json, run_fault_injection_campaign
-from generation_agent_provider import repair_generation, write_report as write_generation_agent_report
-from timeout_policy import JUDGING_PLATFORM_TIMEOUT_SECONDS
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -32,14 +36,7 @@ TRACE_NAMESPACE = "c-to-rust"
 REQUIRED_RUNTIME_FILES = [
     "work/runtime/loopforge_runner.py",
     "work/runtime/agent_task_packet.py",
-    "work/runtime/c2rust_analysis.py",
     "work/runtime/c_project_root_resolver.py",
-    "work/runtime/c2rust_project_generator.py",
-    "work/runtime/c2rust_repair.py",
-    "work/runtime/opencode_repair_provider.py",
-    "work/runtime/c2rust_semantic_repair.py",
-    "work/runtime/c2rust_semantic_audit.py",
-    "work/runtime/c2rust_invariant_tests.py",
     "work/runtime/source_analysis_verify_gate.py",
     "work/runtime/source_analysis.py",
     "work/runtime/semantic_planning.py",
@@ -49,7 +46,8 @@ REQUIRED_RUNTIME_FILES = [
     "work/runtime/test_migration_validation.py",
     "work/runtime/timeout_policy.py",
     "work/runtime/self_healing_loop.py",
-    "work/runtime/generation_agent_provider.py",
+    "work/runtime/tools.py",
+    "work/runtime/check_unsafe_ratio.py",
     "work/vendor/pycparser/__init__.py",
     "work/vendor/PYCPARSER-LICENSE",
 ]
@@ -68,7 +66,20 @@ REQUIRED_MISC_FILES = [
     "work/design/README.md",
     "work/loopforge.config.yaml",
     "work/profiles/examples/c-to-rust-migration.yaml",
-    "work/skills/c-to-rust-migration/SKILL.md",
+    "work/skills/c-to-rust-migration-v2/SKILL.md",
+]
+REQUIRED_SUBAGENT_FILES = [
+    "work/subagent/c2r-00-preflight.md",
+    "work/subagent/c2r-01-understand.md",
+    "work/subagent/c2r-02-design.md",
+    "work/subagent/c2r-03-spec.md",
+    "work/subagent/c2r-04-plan.md",
+    "work/subagent/c2r-05-implement.md",
+    "work/subagent/c2r-06-test.md",
+    "work/subagent/c2r-07-repair.md",
+    "work/subagent/c2r-08-semantic-audit.md",
+    "work/subagent/c2r-09-quality-gates.md",
+    "work/subagent/c2r-10-finalize.md",
 ]
 
 
@@ -247,24 +258,8 @@ class LoopForgeRunner:
         self.run_summary_path = self.trace_dir / "run-summary.json"
         self.final_report_path = self.trace_dir / "final-report.md"
         self.self_check_path = self.artifact_dir / "state" / "self-check.json"
-        self.detect_path = self.artifact_dir / "state" / "detect-summary.json"
-        self.verify_path = self.artifact_dir / "state" / "verification-summary.json"
-        self.orchestrator_state_path = self.artifact_dir / "state" / "orchestrator-state.json"
-        self.packet_snapshot_path = self.artifact_dir / "state" / "packet.json"
-        self.gates_path = self.artifact_dir / "gate-events.md"
-        self.mode_artifacts_path = self.artifact_dir / "mode-artifacts.md"
-        self.source_inventory_md = self.migration_trace_dir / "01-source-inventory.md"
-        self.source_inventory_json = self.migration_trace_dir / "01-source-inventory.json"
-        self.api_mapping_md = self.migration_trace_dir / "02-api-mapping.md"
-        self.api_mapping_json = self.migration_trace_dir / "02-api-mapping.json"
-        self.migration_plan_md = self.migration_trace_dir / "03-migration-plan.md"
-        self.migration_plan_json = self.migration_trace_dir / "03-migration-plan.json"
-        self.test_mapping_md = self.migration_trace_dir / "04-test-mapping.md"
-        self.test_mapping_json = self.migration_trace_dir / "04-test-mapping.json"
-        self.migration_summary_md = self.migration_trace_dir / "05-migration-summary.md"
-        self.verification_report_md = self.migration_trace_dir / "06-verification-report.md"
-        self.unsafe_ratio_json = self.migration_trace_dir / "unsafe-ratio.json"
-        self.gate_events: List[Dict[str, str]] = []
+        self.context_pkg_path = self.artifact_dir / "state" / "context-package.json"
+        self.source_inventory_json = self.migration_trace_dir / "source-inventory.json"
 
     def display_path(self, path: Path | str) -> str:
         if isinstance(path, str):
@@ -321,9 +316,6 @@ class LoopForgeRunner:
         packet.metadata["design_readme_error"] = self.runtime_contract["design_readme_error"]
         return packet
 
-    def create_packet(self) -> AgentTaskPacket:
-        return self.create_agent_task_packet()
-
     def ensure_outputs(self) -> None:
         self.result_dir.mkdir(parents=True, exist_ok=True)
         (self.result_dir / "issues").mkdir(parents=True, exist_ok=True)
@@ -333,81 +325,9 @@ class LoopForgeRunner:
         self.migration_trace_dir.mkdir(parents=True, exist_ok=True)
         if not self.interaction_log_path.exists():
             self.interaction_log_path.write_text("# Interaction Log\n\nNo manual interaction.\n", encoding="utf-8")
-        self.mode_artifacts_path.write_text(
-            "\n".join(
-                [
-                    "# Mode Artifacts",
-                    "",
-                    f"- mode: `{self.config.get('task', {}).get('mode', 'migration')}`",
-                    f"- generated_at: `{utc_now()}`",
-                    "",
-                    "- `01-source-inventory.md/json`",
-                    "- `02-api-mapping.md/json`",
-                    "- `03-migration-plan.md/json`",
-                    "- `04-test-mapping.md/json`",
-                    "- `05-migration-summary.md`",
-                    "- `06-verification-report.md`",
-                    "- `repair-rounds.md/json`",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-
-    def write_templates(self) -> None:
-        self.result_output_path.write_text(
-            "\n".join(
-                [
-                    "# Output",
-                    "",
-                    "- status: `NOT_RUN`",
-                    "- input_root: `NOT_RUN`",
-                    "- design_readme: `NOT_RUN`",
-                    "- resolved_project_root: `NOT_RUN`",
-                    "- rust_project: `NOT_RUN`",
-                    "- cargo_toml: `NOT_RUN`",
-                    "- semantic_audit_report: `NOT_RUN`",
-                    "- cargo_build: `NOT_RUN`",
-                    "- cargo_test: `NOT_RUN`",
-                    "- unsafe_gate: `NOT_RUN`",
-                    "- semantic_gate: `NOT_RUN`",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        self.issue_summary_path.write_text(
-            "\n".join(
-                [
-                    "# Issue Summary",
-                    "",
-                    "- final_status: NOT_RUN",
-                    "- source_root: NOT_RUN",
-                    "- issue_count: NOT_RUN",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-
-    def normalize_commands(self, packet: AgentTaskPacket) -> List[str]:
-        commands = self.config.get("verification", {}).get("commands", [])
-        if isinstance(commands, dict):
-            default_commands = commands.get("default", [])
-            if isinstance(default_commands, list) and default_commands:
-                return [str(item) for item in default_commands]
-        if isinstance(commands, list) and commands:
-            return [str(item) for item in commands]
-        return list(packet.build_commands)
-
-    def record_gate_event(self, gate: str, passed: bool, detail: str) -> None:
-        self.gate_events.append({"gate": gate, "status": "PASS" if passed else "FAIL", "detail": detail})
-        lines = ["| Gate | Status | Detail |", "|---|---|---|"]
-        lines.extend(f"| {item['gate']} | {item['status']} | {item['detail']} |" for item in self.gate_events)
-        self.gates_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def self_check(self, packet: AgentTaskPacket) -> Dict[str, Any]:
-        required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES
+        required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES + REQUIRED_SUBAGENT_FILES
         missing = [path for path in required_files if not (self.workspace_root / path).exists()]
         invalid_source = self.layout_resolution["status"] != "RESOLVED"
         design_error = str(packet.metadata.get("design_readme_error", ""))
@@ -435,597 +355,287 @@ class LoopForgeRunner:
             "issues": list(packet.issues),
         }
         self.write_json(self.self_check_path, payload)
-        self.record_gate_event("SELF_CHECK", payload["ok"], "runtime and adapter assets validated")
         return payload
 
-    def write_source_inventory(self, packet: AgentTaskPacket, analysis: Dict[str, Any]) -> None:
-        lines = [
-            "# Source Inventory",
-            "",
-            f"- design_readme: `{self.display_path(analysis.get('design_readme_path') or 'missing')}`",
-            f"- design_readme_sha256: `{analysis.get('design_readme_sha256') or 'missing'}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
-            f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
-            f"- source_project_name: `{packet.source_project_name}`",
-            "",
-            "## Source Files",
-            "",
-        ]
-        lines.extend([f"- `{item['path']}`" for item in analysis.get("source_files", [])] or ["- none"])
-        lines.extend(["", "## Test Files", ""])
-        lines.extend([f"- `{item['file']}`" for item in analysis.get("test_cases", [])] or ["- none"])
-        lines.extend(["", "## Public APIs", ""])
-        lines.extend([f"- `{item}`" for item in analysis.get("public_apis", [])] or ["- none"])
-        lines.extend(["", "## Types", ""])
-        lines.extend([f"- `{item}`" for item in analysis.get("types", [])] or ["- none"])
-        lines.extend(["", "## Macros", ""])
-        lines.extend([f"- `{item}`" for item in analysis.get("macros", [])] or ["- none"])
-        lines.extend(["", "## Include Graph", ""])
-        lines.extend([f"- `{item['file']}` -> {', '.join(item['includes']) or 'none'}" for item in analysis.get("include_graph", [])] or ["- none"])
-        lines.append("")
-        self.source_inventory_md.write_text("\n".join(lines), encoding="utf-8")
-        self.write_json(self.source_inventory_json, analysis)
-
-    def write_api_mapping(self, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
-        mapping_payload = {
-            "support_level": analysis.get("support_level", "unsupported"),
-            "mapped_apis": project_payload.get("mapped_apis", []) if project_payload else [],
-            "unsupported_apis": project_payload.get("unsupported_apis", analysis.get("public_apis", [])) if project_payload else analysis.get("public_apis", []),
-            "source_coverage": project_payload.get("source_coverage", {}) if project_payload else {},
-            "generation_diagnostics": project_payload.get("generation_diagnostics", []) if project_payload else [],
-            "final_repair_summary": project_payload.get("final_repair_summary", {}) if project_payload else {},
-            "semantic_equivalence_claim": project_payload.get("semantic_equivalence_claim", "not_generated") if project_payload else "not_generated",
+    def _run_source_analysis(self, packet: AgentTaskPacket) -> Dict[str, Any]:
+        """Run deterministic C source analysis via source_analysis.py (pycparser + regex).
+        No body_kind classification. No translation judgment. Pure data."""
+        legacy = {
+            "project_root": str(self.source_root),
+            "public_apis": [],
+            "functions": [],
+            "test_files": [],
         }
-        lines = [
-            "# API Mapping",
-            "",
-            f"- support_level: `{mapping_payload['support_level']}`",
-            f"- semantic_equivalence_claim: `{mapping_payload['semantic_equivalence_claim']}`",
-            "",
-            "## Mapped APIs",
-            "",
-        ]
-        lines.extend([f"- `{item}`" for item in mapping_payload["mapped_apis"]] or ["- none"])
-        lines.extend(["", "## Unsupported APIs", ""])
-        lines.extend([f"- `{item}`" for item in mapping_payload["unsupported_apis"]] or ["- none"])
-        lines.extend(["", "## Source Coverage", ""])
-        for key, value in mapping_payload["source_coverage"].items():
-            lines.append(f"- `{key}`: `{value}`")
-        summary = mapping_payload["final_repair_summary"]
-        lines.extend(["", "## Final Repair Summary", ""])
-        lines.append(f"- `attempted_count`: `{summary.get('attempted_count', 0)}`")
-        lines.append(f"- `resolved_count`: `{summary.get('resolved_count', 0)}`")
-        lines.append(f"- `unresolved_count`: `{summary.get('unresolved_count', 0)}`")
-        lines.append(f"- `attempted_symbols`: `{', '.join(summary.get('attempted_symbols', [])) or 'none'}`")
-        lines.append(f"- `resolved_symbols`: `{', '.join(summary.get('resolved_symbols', [])) or 'none'}`")
-        lines.append(f"- `unresolved_symbols`: `{', '.join(summary.get('unresolved_symbols', [])) or 'none'}`")
-        lines.extend(["", "## Generation Diagnostics", ""])
-        for item in mapping_payload["generation_diagnostics"]:
-            status = "resolved" if item.get("resolved") else "unresolved"
-            lines.append(
-                f"- `{item.get('symbol', 'unknown')}` ({status}): {item.get('stage', 'unknown')} - {item.get('reason', 'unknown')}"
-            )
-        if not mapping_payload["generation_diagnostics"]:
-            lines.append("- none")
-        lines.append("")
-        self.api_mapping_md.write_text("\n".join(lines), encoding="utf-8")
-        self.write_json(self.api_mapping_json, mapping_payload)
-
-    def write_migration_plan(self, packet: AgentTaskPacket, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
-        payload = {
-            "support_level": analysis.get("support_level", "unsupported"),
-            "module_list": project_payload.get("module_list", []) if project_payload else [],
-            "test_files": [item["file"] for item in analysis.get("tests", [])],
-            "semantic_equivalence_claim": project_payload.get("semantic_equivalence_claim", "not_generated") if project_payload else "not_generated",
+        bundle = build_complete_analysis(packet, legacy)
+        write_complete_analysis(bundle, self.migration_trace_dir)
+        artifacts = bundle.get("artifacts", {})
+        inventory = artifacts.get("source-inventory.json", {})
+        public_api = artifacts.get("public-api-map.json", {})
+        call_graph = artifacts.get("call-graph.json", {})
+        type_map = artifacts.get("type-map.json", {})
+        globals_map = artifacts.get("global-state-map.json", {})
+        verification = artifacts.get("analysis-verification.json", {})
+        return {
+            "ok": verification.get("passed", False),
+            "run_id": bundle["metadata"]["run_id"],
+            "project_root": str(self.source_root),
+            "source_files": inventory.get("files", []),
+            "source_tests": inventory.get("source_tests", []),
+            "test_functions": inventory.get("test_functions", []),
+            "public_apis": [api["name"] for api in public_api.get("apis", [])],
+            "functions": call_graph.get("functions", []),
+            "types": type_map.get("types", []),
+            "call_graph": call_graph.get("call_edges", []),
+            "globals": globals_map.get("globals", []),
+            "parse_failures": verification.get("parse_failures", []),
+            "design_readme_path": str(packet.design_readme_path),
+            "design_readme_sha256": packet.design_readme_sha256,
+            "support_level": "supported" if verification.get("passed") else "blocked",
+            "verification": verification,
+            "source_dirs": [str(d) for d in self.layout_resolution.get("source_dirs", [])],
+            "test_dirs": [str(d) for d in self.layout_resolution.get("test_dirs", [])],
+            "src_files": [item["path"] for item in inventory.get("files", [])],
+            "test_files": [item["path"] for item in inventory.get("source_tests", [])],
+            "tests": inventory.get("source_tests", []),
+            "module_hints": list({item["path"].split("/")[0] for item in inventory.get("files", []) if "/" in item["path"]}),
+            "type_table": type_map.get("types", []),
+            "macro_table": artifacts.get("preprocessor-variants.json", {}).get("macros", []),
         }
-        lines = [
-            "# Migration Plan",
-            "",
-            f"- support_level: `{payload['support_level']}`",
-            f"- output_project_dir: `{self.display_path(packet.output_project_dir)}`",
-            f"- semantic_equivalence_claim: `{payload['semantic_equivalence_claim']}`",
-            "",
-            "## Crate Layout",
-            "",
-        ]
-        lines.extend([f"- `{packet.output_project_dir.name}/{item}`" for item in payload["module_list"]] or ["- generation skipped"])
-        lines.extend(["", "## Test Migration List", ""])
-        lines.extend([f"- `{item}`" for item in payload["test_files"]] or ["- none"])
-        lines.extend(["", "## Unsupported Or Degraded Behaviors", ""])
-        if payload["semantic_equivalence_claim"] == "not_claimed":
-            lines.append("- Semantic equivalence is not claimed. The generated crate is source-driven but requires additional manual migration.")
-        else:
-            lines.append("- none")
-        lines.append("")
-        self.migration_plan_md.write_text("\n".join(lines), encoding="utf-8")
-        self.write_json(self.migration_plan_json, payload)
 
-    def write_test_mapping(self, project_payload: Optional[Dict[str, Any]]) -> None:
-        mapping = project_payload.get("test_mapping", []) if project_payload else []
-        lines = ["# Test Mapping", "", "## Scenario Mapping", ""]
-        if mapping:
-            for item in mapping:
-                lines.append(
-                    f"- `{item['source_test']}` -> `{item['rust_test_file']}` "
-                    f"({item['mapping']}, coverage=`{item.get('coverage_level', 'unknown')}`)"
-                )
-        else:
-            lines.append("- none")
-        lines.append("")
-        self.test_mapping_md.write_text("\n".join(lines), encoding="utf-8")
-        self.write_json(self.test_mapping_json, {"test_mapping": mapping})
+    def _build_context_package(self, packet: AgentTaskPacket, analysis: Dict[str, Any], source_gate: Dict[str, Any], semantic_plan: Dict[str, Any]) -> Dict[str, Any]:
+        """Build the context package for Agent consumption.
 
-    def write_migration_summary(self, packet: AgentTaskPacket, analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]]) -> None:
-        lines = [
-            "# Migration Summary",
-            "",
-            f"- generated_at: `{utc_now()}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
-            f"- source_project_name: `{packet.source_project_name}`",
-            f"- output_project_dir: `{self.display_path(packet.output_project_dir)}`",
-            f"- support_level: `{analysis.get('support_level', 'unsupported')}`",
-            "",
-            "## Generation",
-            "",
-        ]
-        if project_payload:
-            lines.extend([f"- `{item}`" for item in project_payload.get("module_list", [])])
-        else:
-            lines.append("- project generation skipped")
-        lines.append("")
-        self.migration_summary_md.write_text("\n".join(lines), encoding="utf-8")
-
-    def verify_generated(self, packet: AgentTaskPacket, project_payload: Dict[str, Any], repair_payload: Dict[str, Any], semantic_payload: Dict[str, Any], test_validation_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        project_dir = packet.output_project_dir
-        cargo_manifest_exists = (project_dir / "Cargo.toml").is_file()
-        src_exists = (project_dir / "src").is_dir()
-        tests_exists = (project_dir / "tests").is_dir()
-
-        total_lines = 0
-        unsafe_lines = 0
-        unsafe_files: List[Dict[str, Any]] = []
-        for rust_file in project_dir.rglob("*.rs"):
-            if "target" in rust_file.parts:
-                continue
-            file_total = 0
-            file_unsafe = 0
-            for line in rust_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-                stripped = line.strip()
-                if not stripped or stripped.startswith("//"):
-                    continue
-                file_total += 1
-                if "unsafe" in stripped and "unsafe_code" not in stripped:
-                    file_unsafe += 1
-            total_lines += file_total
-            unsafe_lines += file_unsafe
-            unsafe_files.append({"file": str(rust_file), "code_lines": file_total, "unsafe_lines": file_unsafe})
-        unsafe_ratio = (unsafe_lines / total_lines) if total_lines else 0.0
-        unsafe_payload = {
-            "project": str(project_dir),
-            "total_code_lines": total_lines,
-            "unsafe_lines": unsafe_lines,
-            "unsafe_ratio": unsafe_ratio,
-            "max_ratio": packet.unsafe_ratio_max,
-            "passed": unsafe_ratio < packet.unsafe_ratio_max,
-            "files": unsafe_files,
+        All paths are absolute. The Agent reads this JSON and executes SKILL.md."""
+        return {
             "generated_at": utc_now(),
+            "SOURCE_ROOT": str(self.source_root),
+            "WORK_DIR": str(self.work_dir),
+            "OUTPUT_DIR": str(packet.output_project_dir),
+            "RESULT_DIR": str(self.result_dir),
+            "LOG_DIR": str(self.log_dir),
+            "OPENSPEC_CHANGE": "c-to-rust-migration",
+            "SOURCE_PROJECT_NAME": packet.source_project_name,
+            "OUTPUT_PROJECT_NAME": packet.output_project_name,
+            "DESIGN_README_PATH": str(packet.design_readme_path),
+            "DESIGN_README_SHA256": packet.design_readme_sha256,
+            "MAX_REPAIR_ROUNDS": packet.max_repair_rounds,
+            "UNSAFE_RATIO_MAX": packet.unsafe_ratio_max,
+            "PRIOR_OUTPUTS": {
+                "source_inventory": str(self.migration_trace_dir / "source-inventory.json"),
+                "public_api_map": str(self.migration_trace_dir / "public-api-map.json"),
+                "call_graph": str(self.migration_trace_dir / "call-graph.json"),
+                "type_map": str(self.migration_trace_dir / "type-map.json"),
+                "global_state_map": str(self.migration_trace_dir / "global-state-map.json"),
+                "analysis_verification": str(self.migration_trace_dir / "analysis-verification.json"),
+                "source_analysis_verify_report": str(self.migration_trace_dir / "source-analysis-verify-report.md"),
+                "migration_trace_dir": str(self.migration_trace_dir),
+                "semantic_planning_dir": str(self.migration_trace_dir),
+            },
+            "ANALYSIS_SUMMARY": {
+                "source_file_count": len(analysis.get("source_files", [])),
+                "public_api_count": len(analysis.get("public_apis", [])),
+                "test_function_count": len(analysis.get("test_functions", [])),
+                "type_count": len(analysis.get("types", [])),
+                "call_edge_count": len(analysis.get("call_graph", [])),
+                "parse_failures": analysis.get("parse_failures", []),
+            },
+            "SKILL_PATH": str(self.work_dir / "skills" / "c-to-rust-migration-v2" / "SKILL.md"),
+            "SUBAGENT_DIR": str(self.work_dir / "subagent"),
+            "TOOLS_PY_PATH": str(self.work_dir / "runtime" / "tools.py"),
+            "SUPERPOWER_GUARDS_PATH": str(self.work_dir / "profiles" / "superpower" / "c-to-rust-migration-guards.yaml"),
         }
-        self.write_json(self.unsafe_ratio_json, unsafe_payload)
 
-        test_mapping_payload = json.loads(self.test_mapping_json.read_text(encoding="utf-8"))
-        mappings = test_mapping_payload.get("test_mapping", [])
-        test_mapping_gate = bool(mappings) and all(item.get("coverage_level") == "semantic_mapped" for item in mappings)
+    def _write_agent_delegation_report(self, packet: AgentTaskPacket, analysis: Dict[str, Any], context_pkg: Dict[str, Any]) -> Dict[str, Any]:
+        """Write the result/output.md instructing the operator to run the Agent with SKILL.md."""
+        public_apis = analysis.get("public_apis", [])
+        source_files = analysis.get("source_files", [])
+        test_functions = analysis.get("test_functions", [])
 
-        packet.set_gate("project_layout", cargo_manifest_exists and src_exists and tests_exists, "generated Cargo.toml/src/tests layout", {})
-        packet.set_gate(
-            "trace_artifacts",
-            all(path.exists() for path in [self.source_inventory_json, self.api_mapping_json, self.test_mapping_json, self.migration_trace_dir / "00-requirement-extraction.json", self.migration_trace_dir / "00-requirement-verification.json", self.migration_trace_dir / "01a-structure-map.json", self.migration_trace_dir / "01a-structure-verification.json", self.migration_trace_dir / "01b-data-model-map.json", self.migration_trace_dir / "01b-data-model-verification.json", self.migration_trace_dir / "01c-capability-map.json", self.migration_trace_dir / "01c-capability-verification.json", self.migration_trace_dir / "01d-state-transition-map.json", self.migration_trace_dir / "01d-state-transition-verification.json", self.migration_trace_dir / "01e-api-behavior-map.json", self.migration_trace_dir / "01e-api-behavior-verification.json", self.migration_trace_dir / "01f-test-coverage-map.json", self.migration_trace_dir / "01f-test-coverage-verification.json", self.migration_trace_dir / "01g-missing-capability-report.md", self.migration_trace_dir / "source-analysis-verify-report.md", self.migration_trace_dir / "implementation-map.json", self.migration_trace_dir / "unsupported-functions.json", self.migration_trace_dir / "module-edge-map.json", self.migration_trace_dir / "unsafe-audit.json", self.migration_trace_dir / "generation-verification.json", self.migration_trace_dir / "test-ir.json", self.migration_trace_dir / "source-test-map.json", self.migration_trace_dir / "semantic-invariant-test-map.json", self.migration_trace_dir / "differential-test-vectors.json", self.migration_trace_dir / "differential-test-report.json", self.migration_trace_dir / "mutation-test-report.json", self.migration_trace_dir / "anti-customization-report.json", self.migration_trace_dir / "test-validation-report.json", self.migration_trace_dir / "cargo-test.log", self.migration_trace_dir / "repair-rounds.json", self.migration_trace_dir / "repair-integrity-report.json", self.migration_trace_dir / "repair-fault-injection-report.json", self.migration_trace_dir / "repair-neutrality-report.json", self.migration_trace_dir / "exception-ledger.json", self.migration_trace_dir / "semantic-invariants.json", self.migration_trace_dir / "semantic-test-plan.json", self.migration_trace_dir / "semantic-audit-report.md"]),
-            "required trace artifacts exist",
-            {},
-        )
-        packet.set_gate("cargo_build", bool(repair_payload.get("build_ok")), "cargo build gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
-        packet.set_gate("cargo_test", bool(repair_payload.get("test_ok")), "cargo test gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
-        packet.set_gate("unsafe", unsafe_payload["passed"], "unsafe gate", unsafe_payload)
-        if test_validation_payload is not None:
-            packet.set_gate("test_validation", bool(test_validation_payload.get("passed")), "source test migration and differential validation gate", test_validation_payload)
-        packet.set_gate("semantic", bool(semantic_payload.get("passed")), "semantic gate", semantic_payload)
-        packet.set_gate("test_mapping", test_mapping_gate, "test mapping gate", test_mapping_payload)
-        packet.set_gate("repair_loop", bool(repair_payload.get("ok")), "repair loop gate", {"rounds_executed": repair_payload.get("rounds_executed", 0)})
-        repair_integrity = packet.metadata.get("repair_integrity", {})
-        semantic_integrity = repair_integrity.get("semantic_repair", {})
-        integrity_passed = bool(
-            repair_integrity.get("fault_injection", {}).get("passed")
-            and repair_integrity.get("neutrality", {}).get("passed")
-            and repair_payload.get("repair_integrity", {}).get("compliance_status") == "satisfied"
-            and (not semantic_integrity or semantic_integrity.get("compliance_status") == "satisfied")
-        )
-        packet.set_gate("repair_integrity", integrity_passed, "repair integrity, fault injection, and zero-customization gate", repair_integrity)
-
-        verification_payload = {
-            "cargo_manifest_exists": cargo_manifest_exists,
-            "src_exists": src_exists,
-            "tests_exists": tests_exists,
-            "project_generation": project_payload,
-            "repair_loop": repair_payload,
-            "repair_integrity": repair_integrity,
-            "unsafe": unsafe_payload,
-            "semantic": semantic_payload,
-            "test_validation": test_validation_payload or {},
-            "test_mapping_gate": test_mapping_gate,
-            "ready": packet.ready(),
-            "status": "READY_FOR_EVALUATION" if packet.ready() else "BLOCKED_WITH_REPORT",
-            "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
-            "issues": packet.issues,
-            "first_blocking_point": None if packet.ready() else "F_CARGO_TEST_OR_SEMANTIC",
-        }
-        self.write_json(self.verify_path, verification_payload)
-        lines = [
-            "# Verification Report",
-            "",
-            f"- status: `{verification_payload['status']}`",
-            "",
-            "## Gates",
-            "",
-            json.dumps(sanitize_payload(verification_payload["gates"], self.workspace_root), indent=2, ensure_ascii=True),
-            "",
-            "## Repair Loop",
-            "",
-            json.dumps(sanitize_payload(repair_payload, self.workspace_root), indent=2, ensure_ascii=True),
-            "",
-            "## Semantic",
-            "",
-            json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True),
-            "",
-            "## Issues",
-            "",
-            json.dumps(sanitize_payload(packet.issues, self.workspace_root), indent=2, ensure_ascii=True),
-            "",
-        ]
-        self.verification_report_md.write_text("\n".join(lines), encoding="utf-8")
-        return verification_payload
-
-    def finalize_generated(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
-        final_status = verification_payload.get("status", "BLOCKED_WITH_REPORT")
-        report = {
-            "generated_at": utc_now(),
-            "status": final_status,
-            "self_check": self_check_payload,
-            "analysis": analysis,
-            "project_generation": project_payload or {},
-            "verification": verification_payload,
-            "packet": packet.to_dict(),
-        }
-        self.write_json(self.orchestrator_state_path, report)
-        lines = [
-            "# LoopForge Final Report",
-            "",
-            f"- status: `{final_status}`",
-            f"- generated_at: `{utc_now()}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
-            f"- output_project_dir: `{self.display_path(packet.output_project_dir)}`",
-            "",
-            "## READY Gates",
-            "",
-        ]
-        for gate_name in ["source_analysis", "semantic_planning", "rust_generation", "test_validation", "cargo_build", "cargo_test", "unsafe", "semantic", "test_mapping", "repair_loop", "repair_integrity"]:
-            gate = packet.gates.get(gate_name)
-            if gate:
-                lines.append(f"- `{gate_name}`: `{'pass' if gate.passed else 'fail'}`")
-        lines.extend(["", "## Issues", "", json.dumps(sanitize_payload(packet.issues, self.workspace_root), indent=2, ensure_ascii=True), "", "## Gate Events", "", self.gates_path.read_text(encoding="utf-8").rstrip(), ""])
-        self.final_report_path.write_text("\n".join(lines), encoding="utf-8")
-        self.record_gate_event("FINALIZE", True, final_status)
-        return {"ok": True, "status": final_status, "report": str(self.final_report_path)}
-
-    def finalize(self, packet: AgentTaskPacket, self_check_payload: Dict[str, Any], analysis: Dict[str, Any], project_payload: Optional[Dict[str, Any]], verification_payload: Dict[str, Any]) -> Dict[str, Any]:
-        return self.finalize_generated(packet, self_check_payload, analysis, project_payload, verification_payload)
-
-    def write_entrypoint_result(self, packet: AgentTaskPacket, analysis: Dict[str, Any], verification_payload: Dict[str, Any], finalize_payload: Dict[str, Any]) -> Dict[str, Any]:
-        gates = verification_payload.get("gates", {})
         output_lines = [
             "# Output",
             "",
-            f"- status: `{finalize_payload['status']}`",
-            f"- first_blocking_point: `{verification_payload.get('first_blocking_point') or 'none'}`",
+            "- status: `AGENT_DELEGATION_READY`",
+            f"- generated_at: `{utc_now()}`",
             f"- input_root: `{self.display_path(self.input_root)}`",
+            f"- source_root: `{self.display_path(self.source_root)}`",
             f"- design_readme: `{self.display_path(analysis.get('design_readme_path') or 'missing')}`",
             f"- design_readme_sha256: `{analysis.get('design_readme_sha256') or 'missing'}`",
-            f"- resolved_project_root: `{self.display_path(analysis.get('project_root') or 'missing')}`",
             f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
-            f"- cargo_toml: `{self.display_path(packet.output_project_dir / 'Cargo.toml')}`",
-            f"- semantic_audit_report: `{self.display_path(self.migration_trace_dir / 'semantic-audit-report.md')}`",
-            f"- source_analysis_gate: `{gates.get('source_analysis', {}).get('passed', False)}`",
-            f"- cargo_build: `{gates.get('cargo_build', {}).get('passed', False)}`",
-            f"- cargo_test: `{gates.get('cargo_test', {}).get('passed', False)}`",
-            f"- unsafe_gate: `{gates.get('unsafe', {}).get('passed', False)}`",
-            f"- semantic_gate: `{gates.get('semantic', {}).get('passed', False)}`",
+            f"- source_file_count: `{len(source_files)}`",
+            f"- public_api_count: `{len(public_apis)}`",
+            f"- test_function_count: `{len(test_functions)}`",
             "",
-            "## Summary",
+            "## Data Preparation Complete",
             "",
-            f"- The execution orchestrator analyzed `{packet.source_project_name}`, generated or refreshed `{self.display_path(packet.output_project_dir)}`, executed the repair loop, and evaluated semantic/test-mapping gates before declaring READY.",
+            "Source analysis and semantic planning are complete. All code generation, testing, repair, and auditing phases are delegated to the Agent.",
+            "",
+            f"### Context Package: `{self.display_path(self.context_pkg_path)}`",
+            "",
+            "### Agent Execution Instructions",
+            "",
+            "The Agent MUST:",
+            "",
+            f"1. Read the skill definition at `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`",
+            f"2. Read the context package at `{self.display_path(self.context_pkg_path)}` for all paths and data references",
+            "3. Execute phases 0 through 10 in strict order, delegating each phase to the appropriate subagent",
+            "4. Use `python tools.py run-verification` for build/test commands (data retrieval only)",
+            "5. Use `python tools.py check-unsafe`, `fault-injection`, `neutrality-audit` for quality gates (data retrieval only)",
+            "6. Use `python tools.py write-report` for final report generation (data to markdown)",
+            "7. NEVER call any Python function for code generation, semantic analysis, or repair judgment — all judgment is Agent responsibility",
+            "",
+            "### Agent Delegation Flow",
+            "",
+            "```",
+            "Phase 0 (preflight)    → Agent reads c2r-00-preflight.md",
+            "Phase 1 (understand)   → Agent reads c2r-01-understand.md + source-inventory.json",
+            "Phase 2 (design)       → Agent reads c2r-02-design.md",
+            "Phase 3 (spec)         → Agent reads c2r-03-spec.md",
+            "Phase 4 (plan)         → Agent reads c2r-04-plan.md",
+            "Phase 5 (implement)    → Agent reads c2r-05-implement.md × N batches + C source files",
+            "Phase 6 (test)         → Agent reads c2r-06-test.md × N batches + C test files",
+            "Phase 7 (repair)       → Agent reads c2r-07-repair.md + error logs",
+            "Phase 8 (semantic)     → Agent reads c2r-08-semantic-audit.md + C source",
+            "Phase 9 (quality)      → Agent reads c2r-09-quality-gates.md + tools.py",
+            "Phase 10 (finalize)    → Agent reads c2r-10-finalize.md + tools.py write-report",
+            "```",
+            "",
+            "### Source APIs Detected",
             "",
         ]
-        if packet.issues:
-            output_lines.extend(["## Blocking Details", ""])
-            output_lines.extend([f"- `{item['code']}`: {item['detail']}" for item in packet.issues])
-            output_lines.append("")
+        output_lines.extend([f"- `{api}`" for api in (public_apis or ["none detected"])])
+        output_lines.append("")
         self.result_output_path.write_text("\n".join(output_lines), encoding="utf-8")
 
         issue_lines = [
             "# Issue Summary",
             "",
-            f"- final_status: {finalize_payload['status']}",
-            f"- first_blocking_point: {verification_payload.get('first_blocking_point') or 'none'}",
-            f"- input_root: {self.display_path(self.input_root)}",
-            f"- resolved_project_root: {self.display_path(analysis.get('project_root') or 'missing')}",
-            f"- issue_count: {len(packet.issues)}",
+            "- final_status: AGENT_DELEGATION_READY",
+            f"- generated_at: `{utc_now()}`",
+            f"- input_root: `{self.display_path(self.input_root)}`",
+            f"- source_root: `{self.display_path(self.source_root)}`",
+            "- issue_count: 0 (pre-generation phase)",
+            "",
+            "## Note",
+            "",
+            "The Python runner has completed data preparation. All further phases are delegated to the Agent.",
+            "Check result/output.md for Agent execution instructions.",
             "",
         ]
-        if packet.issues:
-            failed_gates = [name for name, gate in packet.gates.items() if not gate.passed]
-            for item in packet.issues:
-                issue_lines.extend(
-                    [
-                        f"- issue_code: {item['code']}",
-                        f"- failed_gate: {', '.join(failed_gates) or 'analysis'}",
-                        f"- root_cause: {item['detail']}",
-                        f"- evidence_file: work/logs/trace/c-to-rust/06-verification-report.md",
-                        f"- repair_attempted: {'yes' if packet.gates.get('repair_loop') else 'no'}",
-                        "- remaining_action: implement the missing behavior or relax the semantic claim with explicit unsupported behavior notes",
-                        "",
-                    ]
-                )
-        else:
-            issue_lines.append("- no_blocking_issues: all READY gates passed")
-        issue_lines.append("")
         self.issue_summary_path.write_text("\n".join(issue_lines), encoding="utf-8")
 
-        run_summary = {
-            "generated_at": utc_now(),
-            "input_root": str(self.input_root),
-            "source_root": str(self.source_root),
-            "analysis": analysis,
-            "verification": verification_payload,
-            "finalize": finalize_payload,
-            "packet": packet.to_dict(),
+        return {
+            "status": "AGENT_DELEGATION_READY",
+            "context_package_path": str(self.context_pkg_path),
+            "result_output_path": str(self.result_output_path),
         }
-        self.write_json(self.run_summary_path, run_summary)
-        return run_summary
-
-    def snapshot_packet(self, packet: AgentTaskPacket) -> None:
-        self.write_json(self.packet_snapshot_path, packet.to_dict())
-        self.record_gate_event("SNAPSHOT", True, "packet.json")
 
     def run_entrypoint(self) -> Dict[str, Any]:
+        """Prepare data and delegate to Agent.
+
+        1. Self-check environment
+        2. Run source analysis (deterministic, no body_kind)
+        3. Run semantic planning (deterministic migration plan)
+        4. Write context package for Agent
+        5. Output Agent delegation instructions
+        """
         self.ensure_outputs()
         packet = self.create_agent_task_packet()
+
+        # Stage 1: Self-check
         self_check_payload = self.self_check(packet)
-        analysis = analyze_source(packet)
-        self.write_json(self.migration_trace_dir / "semantic-invariants.json", {"invariants": analysis.get("semantic_invariants", [])})
-        self.write_source_inventory(packet, analysis)
-        self.record_gate_event("ANALYZE_SOURCE", analysis["ok"], f"support_level={analysis.get('support_level', 'unsupported')}")
+        if not self_check_payload["ok"]:
+            self._write_blocked_report(packet, self_check_payload, "SELF_CHECK_FAILED")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "self_check": self_check_payload}
 
+        # Stage 2: Source analysis (deterministic data extraction, no body_kind)
+        analysis = self._run_source_analysis(packet)
+        self.write_json(self.migration_trace_dir / "semantic-invariants.json", {"invariants": []})
+
+        if not analysis["ok"]:
+            source_gate = {"passed": False, "status": "BLOCKED_WITH_REPORT", "failures": analysis.get("verification", {}).get("failures", []), "first_blocking_point": "C_SOURCE_ANALYSIS"}
+            self._write_blocked_report(packet, source_gate, "SOURCE_ANALYSIS_FAILED")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "source_gate": source_gate}
+
+        # Source analysis verify gate
         source_gate = build_and_verify_source_analysis(packet, analysis, self.migration_trace_dir)
-        packet.set_gate("source_analysis", source_gate["passed"], "strict source analysis verify gate", source_gate)
-        self.record_gate_event("SOURCE_ANALYSIS_VERIFY", source_gate["passed"], ",".join(source_gate["failed_stages"]) or "passed")
-        if not source_gate["passed"]:
-            packet.add_issue("source_analysis_gate_failed", f"failed stages: {', '.join(source_gate['failed_stages'])}")
+        if not source_gate.get("passed"):
+            self._write_blocked_report(packet, source_gate, "SOURCE_ANALYSIS_VERIFY_FAILED")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "source_gate": source_gate}
 
-        semantic_planning_gate: Dict[str, Any] = {
-            "passed": False, "status": "BLOCKED_WITH_REPORT",
-            "failures": ["source_analysis_not_passed"],
-            "first_blocking_point": "C_SOURCE_ANALYSIS",
+        # Stage 3: Semantic planning (deterministic migration plan)
+        try:
+            semantic_plan = plan_from_trace(self.migration_trace_dir)
+        except PlanningBlocked as exc:
+            plan_gate = {"passed": False, "status": "BLOCKED_WITH_REPORT", "failures": exc.failures, "first_blocking_point": "SEMANTIC_MIGRATION_PLANNING"}
+            self._write_blocked_report(packet, plan_gate, "PLANNING_BLOCKED")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "plan_gate": plan_gate}
+
+        if not semantic_plan.get("passed"):
+            self._write_blocked_report(packet, semantic_plan, "PLANNING_NOT_PASSED")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "plan_gate": semantic_plan}
+
+        # Stage 4: Build context package for Agent
+        context_pkg = self._build_context_package(packet, analysis, source_gate, semantic_plan)
+        self.write_json(self.context_pkg_path, context_pkg)
+
+        # Stage 5: Write delegation report
+        delegation = self._write_agent_delegation_report(packet, analysis, context_pkg)
+
+        # Write final report
+        final_report = {
+            "generated_at": utc_now(),
+            "status": "AGENT_DELEGATION_READY",
+            "self_check": self_check_payload,
+            "source_analysis": analysis.get("verification", {}),
+            "source_gate": source_gate,
+            "semantic_planning": semantic_plan,
+            "context_package_path": str(self.context_pkg_path),
+            "instructions": "The Agent must read work/skills/c-to-rust-migration-v2/SKILL.md and execute phases 0-10.",
         }
-        if source_gate["passed"]:
-            try:
-                semantic_planning_gate = plan_from_trace(self.migration_trace_dir)
-            except PlanningBlocked as exc:
-                semantic_planning_gate = {
-                    "passed": False, "status": "BLOCKED_WITH_REPORT",
-                    "failures": exc.failures,
-                    "first_blocking_point": "SEMANTIC_MIGRATION_PLANNING",
-                }
-        packet.set_gate("semantic_planning", semantic_planning_gate["passed"], "semantic migration planning gate", semantic_planning_gate)
-        self.record_gate_event("SEMANTIC_MIGRATION_PLANNING", semantic_planning_gate["passed"], ",".join(semantic_planning_gate.get("failures", [])) or "passed")
-        if not semantic_planning_gate["passed"]:
-            packet.add_issue("semantic_planning_gate_failed", f"failed checks: {', '.join(semantic_planning_gate.get('failures', []))}")
+        self.write_json(self.run_summary_path, final_report)
+        self.write_json((self.artifact_dir / "state" / "packet.json"), packet.to_dict())
+        self.final_report_path.write_text(
+            "# LoopForge Final Report\n\n"
+            f"- status: `AGENT_DELEGATION_READY`\n"
+            f"- generated_at: `{utc_now()}`\n"
+            f"- source_root: `{self.display_path(self.source_root)}`\n"
+            f"- output_project_dir: `{self.display_path(packet.output_project_dir)}`\n\n"
+            "## Data preparation complete. All judgment phases delegated to Agent.\n\n"
+            f"Context Package: `{self.display_path(self.context_pkg_path)}`\n\n"
+            f"Skill: `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`\n\n",
+            encoding="utf-8",
+        )
 
-        project_payload: Optional[Dict[str, Any]] = None
-        generation_gate: Dict[str, Any] = {
-            "passed": False, "status": "BLOCKED_WITH_REPORT",
-            "failures": ["generation_not_run"], "first_blocking_point": "RUST_PROJECT_GENERATION",
-        }
-        test_validation_gate: Dict[str, Any] = {
-            "passed": False, "status": "BLOCKED_WITH_REPORT",
-            "failures": ["test_validation_not_run"], "first_blocking_point": "SOURCE_TEST_MIGRATION_DIFFERENTIAL_VALIDATION",
-        }
-        if analysis["ok"] and source_gate["passed"] and semantic_planning_gate["passed"]:
-            try:
-                generation_inputs = load_generation_inputs(self.migration_trace_dir)
-                project_payload = generate_project(
-                    packet,
-                    analysis,
-                    generation_inputs["planning"]["rust-migration-plan.json"],
-                )
-                generation_diagnostics = project_payload.get("generation_diagnostics", [])
-                generation_agent_enabled = os.environ.get(
-                    "LOOPFORGE_ENABLE_GENERATION_AGENT", "1" if sys.platform.startswith("linux") else "0"
-                ).lower() not in {"0", "false", "no"}
-                if generation_agent_enabled and any(not item.get("resolved") for item in generation_diagnostics):
-                    generation_diagnostics, generation_agent_report = repair_generation(
-                        packet.output_project_dir,
-                        packet.paths.source_root,
-                        self.migration_trace_dir,
-                        generation_inputs,
-                        generation_diagnostics,
-                        model=str(os.environ.get("LOOPFORGE_GENERATION_MODEL", "")),
-                        timeout_seconds=int(os.environ.get(
-                            "LOOPFORGE_GENERATION_AGENT_TIMEOUT",
-                            str(JUDGING_PLATFORM_TIMEOUT_SECONDS),
-                        )),
-                    )
-                    project_payload["generation_diagnostics"] = generation_diagnostics
-                    write_generation_agent_report(self.migration_trace_dir, generation_agent_report)
-                packet.metadata["project_generation"] = project_payload
-                self.write_api_mapping(analysis, project_payload)
-                self.write_migration_plan(packet, analysis, project_payload)
-                self.write_test_mapping(project_payload)
-                self.write_json(self.migration_trace_dir / "semantic-test-plan.json", {"scenarios": project_payload.get("semantic_test_plan", [])})
-                self.write_migration_summary(packet, analysis, project_payload)
-                generation_bundle = build_evidence(
-                    packet.output_project_dir,
-                    generation_inputs,
-                    generation_diagnostics=project_payload.get("generation_diagnostics", []),
-                )
-                write_evidence(generation_bundle, self.migration_trace_dir)
-                generation_gate = generation_bundle["verification"]
-            except GenerationBlocked as exc:
-                generation_gate = {
-                    "passed": False, "status": "BLOCKED_WITH_REPORT", "failures": exc.failures,
-                    "first_blocking_point": "RUST_PROJECT_GENERATION", **exc.report,
-                }
-            packet.set_gate("rust_generation", bool(generation_gate.get("passed")), "complete Rust project generation gate", generation_gate)
-            self.record_gate_event("GENERATE_PROJECT", bool(generation_gate.get("passed")), ",".join(generation_gate.get("failures", [])) or "passed")
-            if not generation_gate.get("passed"):
-                packet.add_issue("rust_generation_gate_failed", f"failed checks: {', '.join(generation_gate.get('failures', []))}")
-        else:
-            packet.set_gate("rust_generation", False, "complete Rust project generation gate", generation_gate)
-            self.write_api_mapping(analysis, None)
-            self.write_migration_plan(packet, analysis, None)
-            self.write_test_mapping(None)
-            self.write_migration_summary(packet, analysis, None)
-            self.record_gate_event("GENERATE_PROJECT", False, "source analysis or semantic planning failed")
-
-        if project_payload is not None and generation_gate.get("passed"):
-            try:
-                customization_paths = [
-                    self.work_dir / "runtime" / "test_migration_validation.py",
-                    self.work_dir / "runtime" / "c2rust_project_generator.py",
-                    self.work_dir / "runtime" / "rust_project_generation.py",
-                    self.work_dir / "runtime" / "loopforge_runner.py",
-                    *(packet.output_project_dir / "tests").rglob("*.rs"),
-                ]
-                test_validation_gate = verify_test_migration(
-                    self.migration_trace_dir,
-                    packet.output_project_dir,
-                    customization_paths=customization_paths,
-                )
-            except TestValidationBlocked as exc:
-                test_validation_gate = {
-                    "passed": False,
-                    "status": "BLOCKED_WITH_REPORT",
-                    "failures": exc.failures,
-                    "first_blocking_point": "SOURCE_TEST_MIGRATION_DIFFERENTIAL_VALIDATION",
-                    **exc.report,
-                }
-            packet.set_gate("test_validation", bool(test_validation_gate.get("passed")), "source test migration and differential validation gate", test_validation_gate)
-            self.record_gate_event("TEST_MIGRATION_DIFFERENTIAL_VALIDATION", bool(test_validation_gate.get("passed")), ",".join(test_validation_gate.get("failures", [])) or "passed")
-            if not test_validation_gate.get("passed"):
-                packet.add_issue("test_validation_gate_failed", f"failed checks: {', '.join(test_validation_gate.get('failures', []))}")
-        else:
-            packet.set_gate("test_validation", False, "source test migration and differential validation gate", test_validation_gate)
-
-        self.snapshot_packet(packet)
-
-        if project_payload is not None and generation_gate.get("passed") and test_validation_gate.get("passed"):
-            packet.metadata["run_id"] = str(analysis.get("run_id") or packet.design_readme_sha256)
-            commands = self.normalize_commands(packet)
-            verification_timeout = int(
-                self.config.get("verification", {}).get(
-                    "timeout_seconds", JUDGING_PLATFORM_TIMEOUT_SECONDS
-                ) or JUDGING_PLATFORM_TIMEOUT_SECONDS
-            )
-            repair_payload = run_repair_loop(packet, commands, verification_timeout)
-            self.record_gate_event("REPAIR_LOOP", repair_payload["ok"], f"rounds={repair_payload['rounds_executed']}")
-            semantic_payload = evaluate_semantic_equivalence(packet, analysis, packet.output_project_dir, project_payload, repair_payload)
-            if not semantic_payload["passed"]:
-                semantic_repair = run_semantic_repair_loop(
-                    packet, analysis, project_payload, semantic_payload, commands,
-                    verification_timeout,
-                )
-                semantic_payload = semantic_repair["semantic"]
-                packet.metadata["semantic_repair"] = semantic_repair
-            fault_report = run_fault_injection_campaign(self.migration_trace_dir, packet.metadata["run_id"])
-            repair_assets = [
-                self.work_dir / "runtime" / "self_healing_loop.py",
-                self.work_dir / "runtime" / "c2rust_repair.py",
-                self.work_dir / "runtime" / "c2rust_semantic_repair.py",
-                self.work_dir / "runtime" / "opencode_repair_provider.py",
-            ]
-            project_terms = set(analysis.get("public_apis", []))
-            project_terms.update(Path(item.get("path", "")).stem for item in analysis.get("source_files", []))
-            project_terms = {term for term in project_terms if len(term) >= 4}
-            neutrality_report = audit_neutrality(repair_assets, project_terms)
-            atomic_json(self.migration_trace_dir / "repair-neutrality-report.json", neutrality_report)
-            packet.metadata["repair_integrity"] = {
-                "fault_injection": fault_report,
-                "neutrality": neutrality_report,
-                "semantic_repair": packet.metadata.get("semantic_repair", {}).get("repair_integrity", {}),
-            }
-            audit_lines = ["# Semantic Audit Report", "", f"- passed: `{semantic_payload['passed']}`", "", "```json", json.dumps(sanitize_payload(semantic_payload, self.workspace_root), indent=2, ensure_ascii=True), "```", ""]
-            (self.migration_trace_dir / "semantic-audit-report.md").write_text("\n".join(audit_lines), encoding="utf-8")
-            self.record_gate_event("SEMANTIC_GATE", semantic_payload["passed"], ",".join(semantic_payload.get("failing_checks", [])) or "passed")
-            verification_payload = self.verify_generated(packet, project_payload, repair_payload, semantic_payload, test_validation_gate)
-        else:
-            repair_payload = {"ok": False, "build_ok": False, "test_ok": False, "rounds_executed": 0, "attempts": []}
-            self.write_json(self.migration_trace_dir / "repair-rounds.json", repair_payload)
-            (self.migration_trace_dir / "repair-rounds.md").write_text("# Repair Rounds\n\n- rounds_executed: `0`\n\n", encoding="utf-8")
-            semantic_payload = {"passed": False, "checks": [], "failing_checks": ["project_generation_or_test_validation"], "detail": "semantic gate requires generated project and source test differential validation"}
-            packet.set_gate("cargo_build", False, "cargo build gate", {})
-            packet.set_gate("cargo_test", False, "cargo test gate", {})
-            packet.set_gate("unsafe", False, "unsafe gate", {"unsafe_ratio": 1.0})
-            packet.set_gate("semantic", False, "semantic gate", semantic_payload)
-            packet.set_gate("test_mapping", False, "test mapping gate", {})
-            packet.set_gate("repair_loop", False, "repair loop gate", repair_payload)
-            packet.set_gate("repair_integrity", False, "repair integrity gate", {"reason": "upstream_generation_or_test_validation"})
-            verification_payload = {
-                "status": "BLOCKED_WITH_REPORT",
-                "ready": False,
-                "gates": {name: gate.to_dict() for name, gate in packet.gates.items()},
-                "issues": packet.issues,
-                "first_blocking_point": source_gate.get("first_blocking_point") or semantic_planning_gate.get("first_blocking_point") or generation_gate.get("first_blocking_point") or test_validation_gate.get("first_blocking_point") or "C_SOURCE_ANALYSIS",
-            }
-            self.write_json(self.verify_path, verification_payload)
-            self.verification_report_md.write_text(
-                "# Verification Report\n\n- status: `BLOCKED_WITH_REPORT`\n\n## Issues\n\n"
-                + json.dumps(sanitize_payload(packet.issues, self.workspace_root), indent=2, ensure_ascii=True)
-                + "\n",
-                encoding="utf-8",
-            )
-
-        finalize_payload = self.finalize_generated(packet, self_check_payload, analysis, project_payload, verification_payload)
-        run_summary = self.write_entrypoint_result(packet, analysis, verification_payload, finalize_payload)
         return {
-            "ok": finalize_payload["status"] in {"READY_FOR_EVALUATION", "BLOCKED_WITH_REPORT"},
+            "ok": True,
+            "status": "AGENT_DELEGATION_READY",
             "self_check": self_check_payload,
             "analysis": analysis,
-            "project_generation": project_payload or {},
-            "verification": verification_payload,
-            "finalize": finalize_payload,
-            "run_summary": run_summary,
+            "source_gate": source_gate,
+            "semantic_planning": semantic_plan,
+            "delegation": delegation,
         }
 
-    def detect_project(self) -> Dict[str, Any]:
-        self.ensure_outputs()
-        packet = self.create_agent_task_packet()
-        self.self_check(packet)
-        analysis = analyze_source(packet)
-        self.write_source_inventory(packet, analysis)
-        self.write_api_mapping(analysis, None)
-        self.write_migration_plan(packet, analysis, None)
-        self.write_test_mapping(None)
-        self.write_migration_summary(packet, analysis, None)
-        payload = {"ok": analysis["ok"], "analysis": analysis, "packet": packet.to_dict(), "issues": list(packet.issues)}
-        self.write_json(self.detect_path, payload)
-        return payload
-
-    def verify(self) -> Dict[str, Any]:
-        return self.run_entrypoint()["verification"]
-
-    def finalize_only(self) -> Dict[str, Any]:
-        if self.orchestrator_state_path.exists():
-            payload = json.loads(self.orchestrator_state_path.read_text(encoding="utf-8"))
-            return {"ok": True, "status": payload.get("status", "BLOCKED_WITH_REPORT"), "report": str(self.final_report_path)}
-        return {"ok": False, "status": "BLOCKED_WITH_REPORT", "report": str(self.final_report_path)}
+    def _write_blocked_report(self, packet: AgentTaskPacket, gate: Dict[str, Any], reason: str) -> None:
+        """Write BLOCKED_WITH_REPORT output when a pre-generation stage fails."""
+        self.result_output_path.write_text(
+            "# Output\n\n"
+            f"- status: `BLOCKED_WITH_REPORT`\n"
+            f"- reason: `{reason}`\n"
+            f"- generated_at: `{utc_now()}`\n\n"
+            f"## Gate Details\n\n"
+            f"```json\n{json.dumps(gate, indent=2, ensure_ascii=True)}\n```\n",
+            encoding="utf-8",
+        )
+        self.issue_summary_path.write_text(
+            "# Issue Summary\n\n"
+            f"- final_status: BLOCKED_WITH_REPORT\n"
+            f"- reason: {reason}\n"
+            f"- generated_at: `{utc_now()}`\n\n"
+            f"## Gate\n\n"
+            f"```json\n{json.dumps(gate, indent=2, ensure_ascii=True)}\n```\n",
+            encoding="utf-8",
+        )
 
 
 def resolve_path(base: Path, value: str) -> Path:
@@ -1033,19 +643,6 @@ def resolve_path(base: Path, value: str) -> Path:
     if not path.is_absolute():
         path = (base / path).resolve()
     return path.resolve()
-
-
-def _candidate_source_roots(workspace_root: Path) -> List[Path]:
-    candidates: List[Path] = []
-    if os.name != "nt":
-        for candidate in [
-            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"),
-            Path("/__CONTEST_PLATFORM_SOURCE_ROOT__"),
-        ]:
-            candidates.append(candidate)
-            if candidate.is_dir():
-                candidates.extend(path for path in candidate.iterdir() if path.is_dir())
-    return candidates
 
 
 def resolve_default_source_root(workspace_root: Path, platform_name: Optional[str] = None) -> Path:
@@ -1059,17 +656,12 @@ def resolve_default_source_root(workspace_root: Path, platform_name: Optional[st
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="LoopForge execution orchestrator")
+    parser = argparse.ArgumentParser(description="LoopForge execution orchestrator — data preparation + Agent delegation")
     parser.add_argument("--work-dir", default="work")
     parser.add_argument("--source-root")
     parser.add_argument("--result-dir", default="result")
     parser.add_argument("--log-dir", default="logs")
-    parser.add_argument("--snapshot")
-    parser.add_argument("--init", action="store_true")
     parser.add_argument("--self-check", action="store_true")
-    parser.add_argument("--detect", action="store_true")
-    parser.add_argument("--verify", action="store_true")
-    parser.add_argument("--finalize", action="store_true")
     parser.add_argument("--run", action="store_true")
     return parser.parse_args(argv)
 
@@ -1080,7 +672,7 @@ def print_json(payload: Dict[str, Any]) -> None:
 
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
-    if not any([args.init, args.self_check, args.detect, args.verify, args.finalize, args.run]):
+    if not any([args.self_check, args.run]):
         print("No action provided.", file=sys.stderr)
         return 2
 
@@ -1091,44 +683,21 @@ def main(argv: List[str]) -> int:
     source_root = resolve_path(workspace_root, source_arg) if source_arg else resolve_default_source_root(workspace_root)
     result_dir = resolve_path(workspace_root, args.result_dir)
     log_dir = resolve_path(workspace_root, args.log_dir)
+
     try:
         runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
-        if args.init:
-            runner.ensure_outputs()
-            runner.write_templates()
-            print_json({"ok": True, "status": "initialized", "source_root": str(source_root)})
         if args.self_check:
             packet = runner.create_agent_task_packet()
             runner.ensure_outputs()
             print_json(runner.self_check(packet))
-        if args.detect:
-            print_json(runner.detect_project())
-        if args.verify:
-            print_json(runner.verify())
-        if args.finalize:
-            print_json(runner.finalize_only())
         if args.run:
             print_json(runner.run_entrypoint())
     except Exception as exc:
         fallback = {
-            "ok": True,
-            "execution_status": "completed_with_recorded_exception",
-            "compliance_status": "not_satisfied",
+            "ok": False,
             "status": "BLOCKED_WITH_REPORT",
             "exception": {"kind": type(exc).__name__, "detail": str(exc)},
         }
-        try:
-            trace_dir = log_dir / TRACE_NAMESPACE
-            trace_dir.mkdir(parents=True, exist_ok=True)
-            atomic_json(trace_dir / "entrypoint-exception.json", fallback)
-            result_dir.mkdir(parents=True, exist_ok=True)
-            (result_dir / "output.md").write_text(
-                "# Output\n\n- status: `BLOCKED_WITH_REPORT`\n- execution_status: `completed_with_recorded_exception`\n\n"
-                f"## Exception\n\n```json\n{json.dumps(fallback['exception'], indent=2, ensure_ascii=True)}\n```\n",
-                encoding="utf-8",
-            )
-        except Exception as report_exc:
-            fallback["report_error"] = f"{type(report_exc).__name__}: {report_exc}"
         print_json(fallback)
         return 0
     return 0

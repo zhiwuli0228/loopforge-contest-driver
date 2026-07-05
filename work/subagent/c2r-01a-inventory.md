@@ -6,8 +6,8 @@ Run `tools.py parse-source` to produce a structured source inventory. Mechanical
 
 ## Context You Receive
 
-- `SOURCE_ROOT` — path to C source tree
-- `WORK_DIR` — path to work directory
+- `SOURCE_ROOT` — absolute path to C source tree
+- `WORK_DIR` — absolute path to work directory
 
 ## SuperPower Rules (this phase only)
 

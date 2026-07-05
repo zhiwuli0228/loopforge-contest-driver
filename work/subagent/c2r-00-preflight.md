@@ -6,8 +6,8 @@ Verify the environment is ready for C-to-Rust migration. Read-only phase. No fil
 
 ## Context You Receive
 
-- `SOURCE_ROOT` — path to C source tree
-- `WORK_DIR` — path to work directory
+- `SOURCE_ROOT` — absolute path to C source tree
+- `WORK_DIR` — absolute path to work directory
 
 ## SuperPower Rules (this phase only)
 

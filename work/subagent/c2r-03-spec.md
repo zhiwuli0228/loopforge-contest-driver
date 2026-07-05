@@ -7,11 +7,11 @@ Create capability-level specifications driven by the brainstorm capability map. 
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree
-- `WORK_DIR` — path to work directory
-- `PRIOR_OUTPUTS.inventory` — path to `01-source-inventory.json` (includes `test_functions`)
-- `PRIOR_OUTPUTS.design` — path to `design.md` from Phase 2
-- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json` from Phase 1. If provided, use capability IDs, dependency graph, and priorities from the map. If NOT provided, derive capabilities from the proposal's Capabilities section and the design's module mapping.
+- `SOURCE_ROOT` — absolute path to C source tree
+- `WORK_DIR` — absolute path to work directory
+- `PRIOR_OUTPUTS.inventory` — absolute path to `01-source-inventory.json` (includes `test_functions`)
+- `PRIOR_OUTPUTS.design` — absolute path to `design.md` from Phase 2
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json` from Phase 1. If provided, use capability IDs, dependency graph, and priorities from the map. If NOT provided, derive capabilities from the proposal's Capabilities section and the design's module mapping.
 
 ## SuperPower Rules (this phase only)
 

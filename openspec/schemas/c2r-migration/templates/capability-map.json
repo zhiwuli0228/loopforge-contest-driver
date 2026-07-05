@@ -1,37 +1,38 @@
 {
-  "source_modules": ["REQUIRED_FIELD_NOT_SET"],
+  "source_modules": ["<module1.c>", "<module2.c>"],
   "total_scenario_files": 0,
   "capabilities": [
     {
-      "id": "REQUIRED_FIELD_NOT_SET",
-      "name": "REQUIRED_FIELD_NOT_SET",
-      "priority": "REQUIRED_FIELD_NOT_SET",
-      "summary": "REQUIRED_FIELD_NOT_SET",
-      "source_modules": ["REQUIRED_FIELD_NOT_SET"],
-      "scenario_files": ["REQUIRED_FIELD_NOT_SET"],
-      "key_functions": ["REQUIRED_FIELD_NOT_SET"],
-      "key_data_structures": ["REQUIRED_FIELD_NOT_SET"],
+      "id": "<kebab-case-unique-id>",
+      "name": "<Human-Readable Capability Name>",
+      "priority": "<P0|P1|P2>",
+      "summary": "<One sentence describing what this capability does and why it matters>",
+      "source_modules": ["<module1.c>", "<module2.c>"],
+      "scenario_files": ["capabilities/<module>-scenarios.md"],
+      "key_functions": ["<func1>", "<func2>"],
+      "key_data_structures": ["<StructA>", "<EnumB>"],
       "is_cross_module": false
     }
   ],
   "dependency_graph": {
-    "REQUIRED_FIELD_NOT_SET": ["REQUIRED_FIELD_NOT_SET"]
+    "<capability-id-1>": [],
+    "<capability-id-2>": ["<capability-id-1>"]
   },
   "test_coverage_gaps": [
     {
-      "capability_id": "REQUIRED_FIELD_NOT_SET",
-      "gap_description": "REQUIRED_FIELD_NOT_SET",
-      "severity": "REQUIRED_FIELD_NOT_SET"
+      "capability_id": "<capability-id>",
+      "gap_description": "<Description of what is not covered by existing C tests>",
+      "severity": "<high|medium|low>"
     }
   ],
   "synthesis_notes": {
     "merged_capabilities": [
       {
-        "result_id": "REQUIRED_FIELD_NOT_SET",
-        "sources": ["REQUIRED_FIELD_NOT_SET"],
-        "reason": "REQUIRED_FIELD_NOT_SET"
+        "result_id": "<merged-capability-id>",
+        "sources": ["<module-a>:<cap-x>", "<module-b>:<cap-y>"],
+        "reason": "<Why these were merged>"
       }
     ],
-    "warnings": ["REQUIRED_FIELD_NOT_SET"]
+    "warnings": ["<Any concerns about analysis quality or completeness>"]
   }
 }

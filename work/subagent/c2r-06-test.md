@@ -7,14 +7,14 @@ Write INTEGRATION tests that span multiple capabilities and verify end-to-end be
 ## Context You Receive
 
 - `OPENSPEC_CHANGE` — OpenSpec change name
-- `SOURCE_ROOT` — path to C source tree (contains original C tests)
-- `OUTPUT_DIR` — path to Rust output project
+- `SOURCE_ROOT` — absolute path to C source tree (contains original C tests)
+- `OUTPUT_DIR` — absolute path to Rust output project
 - `BATCH_ID` — which test batch from implement-plan you are executing (e.g., "6.1")
-- `PRIOR_OUTPUTS.implement_plan` — path to `implement-plan.md`
-- `PRIOR_OUTPUTS.specs_dir` — path to `specs/` directory
-- `PRIOR_OUTPUTS.test_migration_spec` — path to `specs/test-migration/spec.md`
-- `PRIOR_OUTPUTS.inventory` — path to `source-inventory.json` (for `test_functions` list)
-- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) path to `01c-capability-map.json`. If provided, unit tests were written per-capability in Phase 5 and this phase writes integration tests only. If NOT provided, this phase also covers unit test gaps.
+- `PRIOR_OUTPUTS.implement_plan` — absolute path to `implement-plan.md`
+- `PRIOR_OUTPUTS.specs_dir` — absolute path to `specs/` directory
+- `PRIOR_OUTPUTS.test_migration_spec` — absolute path to `specs/test-migration/spec.md`
+- `PRIOR_OUTPUTS.inventory` — absolute path to `source-inventory.json` (for `test_functions` list)
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json`. If provided, unit tests were written per-capability in Phase 5 and this phase writes integration tests only. If NOT provided, this phase also covers unit test gaps.
 
 ## SuperPower Rules (this phase only)
 

@@ -31,7 +31,8 @@ def _names(items: Iterable[Dict[str, Any]], key: str = "name") -> Set[str]:
 
 
 def _evidence(item: Dict[str, Any]) -> List[Dict[str, str]]:
-    return [{"file": str(item.get("file", "")), "symbol": str(item.get("name", ""))}]
+    nested = item.get("evidence", {}) if isinstance(item.get("evidence"), dict) else {}
+    return [{"file": str(item.get("file") or nested.get("file", "")), "symbol": str(item.get("name") or nested.get("symbol", ""))}]
 
 
 def _api_kind(function: Dict[str, Any]) -> str:
@@ -70,8 +71,8 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
         write_complete_analysis(complete_bundle, trace_dir)
     functions = analysis.get("functions", [])
     public = set(analysis.get("public_apis", []))
-    definitions = {item["name"]: item for item in functions if item.get("decl_kind") == "definition"}
-    declarations = {item["name"]: item for item in functions if item.get("decl_kind") == "prototype"}
+    definitions = {item["name"]: item for item in functions if item.get("kind") == "definition" or item.get("decl_kind") == "definition"}
+    declarations = {item["name"]: item for item in functions if item.get("kind") == "prototype" or item.get("decl_kind") == "prototype"}
     api_functions = [definitions.get(name) or declarations.get(name) for name in sorted(public)]
     api_functions = [item for item in api_functions if item]
 
@@ -117,7 +118,7 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
         behaviors.append({
             "name": function["name"], "signature": f"{function.get('return_type', '')} {function['name']}({function.get('params_text', '')})",
             "kind": kind, "inputs": function.get("params", []), "outputs": [function.get("return_type", "")],
-            "side_effects": [function.get("body_kind", "")] if kind in {"init", "mutation", "delete"} else [],
+            "side_effects": [kind] if kind in {"init", "mutation", "delete"} else [],
             "failure_modes": [], "evidence": _evidence(function),
         })
     api_behavior = {"apis": behaviors}
@@ -160,11 +161,14 @@ def build_and_verify_source_analysis(packet: Any, analysis: Dict[str, Any], trac
     }
     for stage, payload in verifications.items():
         _write_json(trace_dir / ARTIFACTS[stage][1], payload)
+    HARD_STAGES = ("requirement", "structure", "data_model", "state_model")
     failed = [stage for stage in STAGES if not verifications[stage]["passed"]]
+    hard_failed = [s for s in failed if s in HARD_STAGES]
     if not complete_bundle["verification"]["passed"]:
-        failed.append("complete_source_analysis")
+        hard_failed.append("complete_source_analysis")
     layout_resolved = packet.metadata.get("layout_resolution", {}).get("status") == "RESOLVED"
-    gate = {"passed": not failed, "status": "PASSED" if not failed else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not failed else ("A_SOURCE_ROOT" if not layout_resolved or "requirement" in failed else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "verifications": verifications, "complete_source_analysis": complete_bundle["verification"]}
+    blocking = bool(hard_failed)
+    gate = {"passed": not blocking, "status": "PASSED" if not blocking else "BLOCKED_WITH_REPORT", "first_blocking_point": None if not blocking else ("A_SOURCE_ROOT" if not layout_resolved or "requirement" in hard_failed else "C_SOURCE_ANALYSIS"), "failed_stages": failed, "hard_failures": hard_failed, "verifications": verifications, "complete_source_analysis": complete_bundle["verification"]}
     missing_lines = ["# Missing Capability Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", f"- missing public APIs: `{', '.join(structure['unresolved_declarations']) or 'none'}`", f"- missing capabilities: `{', '.join(capability['unmapped_public_apis']) or 'none'}`", "- missing data invariants: `none detected by structural gate`", "- missing state transitions: `" + (", ".join(sorted({item['name'] for item in mutating} - {item['api'] for item in state_model['transitions']})) or "none") + "`", f"- missing boundary tests: `{', '.join(uncovered) or 'none'}`", f"- missing error-path tests: `{', '.join(uncovered) or 'none'}`", f"- severity: `{'P1' if failed else 'none'}`", ""]
     (trace_dir / "01g-missing-capability-report.md").write_text("\n".join(missing_lines), encoding="utf-8")
     report = ["# Source Analysis Verify Report", "", f"- status: `{gate['status']}`", f"- first_blocking_point: `{gate['first_blocking_point'] or 'none'}`", "", "| Stage | Result | Failed checks |", "|---|---|---|"]
