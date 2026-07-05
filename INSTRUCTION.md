@@ -93,9 +93,9 @@ After Stage 1 subagent returns, immediately read the orchestrator skill and exec
 | 0 — Preflight | Keep inline | Lightweight — reads context package, verifies tools |
 | 1 — Understand | **Delegate** to `c2r-01-understand.md` | Reads C source + writes capability map — 100K+ tokens |
 | 2 — Design | Keep inline | Reads prior summaries, not raw source |
-| 3 — Spec | Keep inline | Reads capability map + writes specs — moderate |
-| 4 — Plan | Keep inline | Reads specs + writes task lists — moderate |
-| 5 — Implement (per batch) | **Delegate** to `c2r-05-implement.md` | Reads C source + specs + writes Rust code |
+| 3 — Spec | **Delegate** to `c2r-03-spec.md` | Writes one spec per capability — can produce 10+ files |
+| 4 — Plan | **Delegate** to `c2r-04-plan.md` | Produces tasks.md and implement-plan.md — content scales with batch count |
+| 5 — Implement (per batch) | **Delegate** to `c2r-05-implement.md` | One subagent per batch, parallel at same priority level, prompt file reference only |
 | 6 — Test (per batch) | **Delegate** to `c2r-06-test.md` | Reads C tests + writes Rust tests |
 | 7 — Repair | **Delegate** to `c2r-07-repair.md` | Reads errors + iterative fix loop |
 | 8 — Semantic Audit | **Delegate** to `c2r-08-semantic-audit.md` | Reads C source + specs + writes invariant tests |

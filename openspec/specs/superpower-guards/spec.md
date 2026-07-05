@@ -52,3 +52,19 @@ The SuperPower guards file MUST NOT contain any project-specific paths, names, o
 #### Scenario: Generic path patterns
 - **WHEN** the guards file is inspected
 - **THEN** all `path_pattern` values SHALL use relative paths (no absolute paths) and SHALL NOT reference specific project names
+
+### Requirement: Each phase has a dedicated subagent
+
+Each phase entry in the guards file SHALL include a `subagent` field pointing to the corresponding `work/subagent/c2r-NN-*.md` file. Phases SHALL be: preflight, understand, design, spec, plan, implement, test, repair, semantic-audit, quality-gates, finalize. The implement and test phases MAY have multiple subagent instances (one per batch).
+
+#### Scenario: Each phase has a subagent
+- **WHEN** the guards file is inspected
+- **THEN** each phase entry SHALL include a `subagent` field pointing to the corresponding work/subagent/c2r-NN-*.md file
+
+### Requirement: No Python generation functions in any phase
+
+No phase's allowed_tools SHALL reference or allow execution of Python code generation functions. The implement, test, repair, and semantic-audit phases SHALL use Agent subagents, not Python scripts, for code generation.
+
+#### Scenario: Implement phase uses subagent
+- **WHEN** the `implement` phase executes
+- **THEN** code generation SHALL be performed by the Agent subagent, not by any Python script

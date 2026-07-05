@@ -135,19 +135,30 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 - Output: `openspec/changes/<name>/design.md`
 
 ### Phase 3 — Spec
-- One spec per module + one `test-migration/spec.md`
-- test-migration spec must map every C test function → Rust test (or N/A)
-- Output: `openspec/changes/<name>/specs/`
+- **Delegate** to `work/subagent/c2r-03-spec.md`
+- Main agent passes context variables (SOURCE_ROOT, WORK_DIR, OUTPUT_DIR, OPENSPEC_CHANGE) and PRIOR_OUTPUTS to subagent
+- Subagent reads capability map, writes all spec files in isolation (one spec per module + `test-migration/spec.md`), returns gate token
+- Main agent only receives `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED` + one-line summary
 
 ### Phase 4 — Plan
-- Produces `tasks.md` (checkbox list) and `implement-plan.md` (batch assignments)
-- Each batch: 5-8 functions, independently buildable
-- Output: `openspec/changes/<name>/tasks.md`, `implement-plan.md`
+- **Delegate** to `work/subagent/c2r-04-plan.md`
+- Main agent passes context variables (SOURCE_ROOT, WORK_DIR, OUTPUT_DIR, OPENSPEC_CHANGE) and PRIOR_OUTPUTS to subagent
+- Subagent reads specs, writes `tasks.md` and `implement-plan.md` in isolation (each batch: 5-8 functions, independently buildable), returns gate token
+- Main agent only receives gate token + one-line summary
 
 ### Phase 5 — Implement
-- Run one subagent per batch from implement-plan
-- Each batch subagent writes Rust code, runs `cargo build`
-- If a batch fails build, the subagent attempts fixes internally
+- **Dynamic batch scheduling** with dependency-aware parallelism:
+  1. Parse `implement-plan.md` → discover `{batch_id, priority, dependencies}` for all batches
+  2. Group batches by priority level: P0, P1, P2
+  3. For each priority level (P0 → P1 → P2):
+     a. Find batches at current level with all dependencies satisfied
+     b. Dispatch independent batches in parallel (one subagent per batch)
+     c. Each subagent references `work/subagent/c2r-05-implement.md` by file path with only `BATCH_ID` and context variables (SOURCE_ROOT, OUTPUT_DIR, OPENSPEC_CHANGE)
+     d. Wait for all dispatched subagents to return gate tokens
+     e. Mark completed batches as done, advance to next priority level
+- If `implement-plan.md` parsing fails, fall back to sequential execution
+- **Do NOT** fabricate inline prompts embedding Rust signatures or batch contents
+- Each batch subagent writes Rust code, runs `cargo build`, attempts internal fixes on build failure
 - Output: Rust source files under `OUTPUT_DIR/src/`
 
 ### Phase 6 — Test
@@ -179,6 +190,14 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 - Writes `result/output.md`, `result/issues/00-summary.md`
 - Writes verification report via openspec
 - Returns `READY_FOR_EVALUATION` or `BLOCKED_WITH_REPORT`
+
+## Context Safety Rules
+
+**Code-writing prohibition**: The main agent MUST NOT write Rust source files (`src/**/*.rs`), Cargo.toml, Cargo.lock, spec files (`specs/**/*.md`), or plan files (`tasks.md`, `implement-plan.md`). These writes SHALL only occur inside subagents. The first Phase 5 batch subagent is responsible for project skeleton creation (Cargo.toml, lib.rs).
+
+**Prompt file references**: Subagent prompts MUST reference the subagent prompt file by path (e.g., `work/subagent/c2r-05-implement.md`), not inline-construct prompts. The main agent passes only `BATCH_ID` and context variables — never embed Rust function signatures, C source mappings, or batch contents in the prompt field.
+
+**Gate token compression**: All subagents MUST return only `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED` plus at most one line of summary (e.g., "6 modules implemented, 29 tests pass"). Subagents MUST NOT return full implementation reports, file listings, or test output summaries. The main agent discards verbose results and extracts only the gate token.
 
 ## Abort Conditions
 
