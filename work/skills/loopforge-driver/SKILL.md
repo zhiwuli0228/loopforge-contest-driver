@@ -129,7 +129,8 @@ If Stage 1 returns `BLOCKED_WITH_REPORT`, stop and report the blocker. Do not pr
 After Stage 1 completes, immediately read `work/skills/c-to-rust-migration-v2/SKILL.md` and execute phases 0→10 in strict order.
 
 The SKILL.md orchestrates:
-- Phase 0-4: preflight, understand, design, spec, plan (inline or subagent)
+- Phase 0, 2: preflight, design (inline)
+- Phase 1, 3, 4: understand, spec, plan (delegated to subagent)
 - Phase 5: code generation (subagent per batch) → `work/output/<project>/src/**/*.rs`
 - Phase 6: test migration (subagent per batch) → `work/output/<project>/tests/**/*.rs`
 - Phase 7: repair loop (subagent) → cargo build + test fixes

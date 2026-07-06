@@ -13,9 +13,9 @@ Drive a complete C-to-Rust migration through 10 sequential phases. Each phase is
 
 | Variable | Source | Example |
 |----------|--------|---------|
-| `SOURCE_ROOT` | context-package.json | `/home/lzw/loopforge-e2e/FlashDB` |
+| `SOURCE_ROOT` | context-package.json | `/path/to/c/source/tree` |
 | `WORK_DIR` | context-package.json | `work/` |
-| `OUTPUT_DIR` | context-package.json | `work/output/flashDB_rust/` |
+| `OUTPUT_DIR` | context-package.json | `work/output/<project>_rust/` |
 | `OPENSPEC_CHANGE` | context-package.json | `c-to-rust-migration` |
 | `PRIOR_OUTPUTS` | context-package.json | paths to source-inventory.json, call-graph.json, etc. |
 
@@ -119,85 +119,80 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 
 ### Phase 0 — Preflight
 - Read `logs/trace/execution-adapter/state/context-package.json` for all paths
-- Read `logs/trace/run-summary.json` for self-check and source analysis gate results
 - Verify all `PRIOR_OUTPUTS` files exist on disk
-- Verify `python tools.py` is functional: `python WORK_DIR/runtime/tools.py --help`
-- If any check fails, return `PHASE_BLOCKED` immediately
+- Verify `python WORK_DIR/runtime/tools.py --help` succeeds
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED` — stop on blocked
 
 ### Phase 1 — Understand
-- Data is already pre-computed: `PRIOR_OUTPUTS.source_inventory`, `PRIOR_OUTPUTS.public_api_map`, etc.
-- The subagent reads these files (no need to re-run parse-source)
-- Confirm `test_functions` from ANALYSIS_SUMMARY is populated
+- Subagent: `work/subagent/c2r-01-understand.md`
+- Output: `source-inventory.json`
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 2 — Design
-- Requires `openspec` CLI for template
-- If openspec unavailable, subagent creates design.md directly
+- Subagent: `work/subagent/c2r-02-design.md`
 - Output: `openspec/changes/<name>/design.md`
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 3 — Spec
 - **Delegate** to `work/subagent/c2r-03-spec.md`
-- Main agent passes context variables (SOURCE_ROOT, WORK_DIR, OUTPUT_DIR, OPENSPEC_CHANGE) and PRIOR_OUTPUTS to subagent
-- Subagent reads capability map, writes all spec files in isolation (one spec per module + `test-migration/spec.md`), returns gate token
-- Main agent only receives `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED` + one-line summary
+- Output: `specs/*/spec.md`
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 4 — Plan
 - **Delegate** to `work/subagent/c2r-04-plan.md`
-- Main agent passes context variables (SOURCE_ROOT, WORK_DIR, OUTPUT_DIR, OPENSPEC_CHANGE) and PRIOR_OUTPUTS to subagent
-- Subagent reads specs, writes `tasks.md` and `implement-plan.md` in isolation (each batch: 5-8 functions, independently buildable), returns gate token
-- Main agent only receives gate token + one-line summary
+- Output: `tasks.md`, `implement-plan.md`
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 5 — Implement
-- **Dynamic batch scheduling** with dependency-aware parallelism:
-  1. Parse `implement-plan.md` → discover `{batch_id, priority, dependencies}` for all batches
-  2. Group batches by priority level: P0, P1, P2
-  3. For each priority level (P0 → P1 → P2):
-     a. Find batches at current level with all dependencies satisfied
-     b. Dispatch independent batches in parallel (one subagent per batch)
-     c. Each subagent references `work/subagent/c2r-05-implement.md` by file path with only `BATCH_ID` and context variables (SOURCE_ROOT, OUTPUT_DIR, OPENSPEC_CHANGE)
-     d. Wait for all dispatched subagents to return gate tokens
-     e. Mark completed batches as done, advance to next priority level
-- If `implement-plan.md` parsing fails, fall back to sequential execution
-- **Do NOT** fabricate inline prompts embedding Rust signatures or batch contents
-- Each batch subagent writes Rust code, runs `cargo build`, attempts internal fixes on build failure
-- Output: Rust source files under `OUTPUT_DIR/src/`
+- **Dynamic batch scheduling** from `implement-plan.md`:
+  1. Parse batches → `{batch_id, capability, priority, dependencies, rust_target, features}`
+  2. **Designate scaffold batch**: Identify the lowest `batch_id` at P0 priority — this is the **scaffold batch**. The scaffold batch has special responsibilities: it reads ALL batch entries from `implement-plan.md`, extracts every module name and feature flag, and writes complete `lib.rs`, `Cargo.toml`, and `types.rs` before writing its own capability code. All other batches SHALL NOT modify these infrastructure files.
+  3. **File isolation verification**: After parsing, check that no two batches at the same priority level share a `rust_target` file. If conflicts are detected (same file path in multiple batches' `rust_target` lists), log a warning naming the conflicting batches and the shared file, and mark the affected batches for sequential execution in `batch_id` order within that priority level.
+  4. Group by priority: P0 → P1 → P2. Batches with no `rust_target` conflicts at the same level dispatch in parallel.
+  5. **Dispatch**: For each priority level, dispatch batches according to their conflict resolution (parallel or sequential). The scaffold batch is dispatched as part of P0 — it may run concurrently with other P0 batches since each batch writes to its own module files, but the scaffold batch's `lib.rs`/`Cargo.toml` must be written before non-scaffold batches read them (other P0 batches write to their own `rust_target` files, so they can safely run in parallel).
+  6. Wait for all batches at the current priority level to return gates before advancing to the next level.
+- Output: `src/**/*.rs` — `lib.rs`, `Cargo.toml`, and `types.rs` are written only by the scaffold batch; each capability module file is owned by exactly one batch (declared in its `rust_target` field)
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 6 — Test
-- Run one subagent per batch
-- Each batch subagent writes tests, verifies C test coverage
-- Uses the C test inventory from Phase 1 and test-migration spec from Phase 3
-- Output: Rust test files under `OUTPUT_DIR/tests/`
+- Subagent: `work/subagent/c2r-06-test.md`
+- Output: `tests/**/*.rs`
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 7 — Repair
-- Single subagent that reads all errors from phases 5-6
-- Fix → build → test loop, max 5 rounds (from config: `max_repair_rounds`)
-- Must not weaken or delete tests to make them pass
+- Subagent: `work/subagent/c2r-07-repair.md`
 - Output: fixed source/test files + repair log
+- Max rounds: 5
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 8 — Semantic Audit
-- Reads specs for behavioral invariants
-- Writes invariant tests (boundary, error path, state preservation, reset)
-- Runs tests; failures are recorded, not silenced
+- Subagent: `work/subagent/c2r-08-semantic-audit.md`
 - Output: invariant test files + audit report
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 9 — Quality Gates
-- Three checks in sequence: unsafe ratio, fault injection, neutrality audit
-- Unsafe ratio threshold: < 10%
-- Neutrality: 0 hits expected
-- Output: gate summary (no files written)
+- Subagent: `work/subagent/c2r-09-quality-gates.md`
+- Checks: unsafe ratio, fault injection, neutrality audit
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
 ### Phase 10 — Finalize
-- Aggregates all phase results
-- Writes `result/output.md`, `result/issues/00-summary.md`
-- Writes verification report via openspec
-- Returns `READY_FOR_EVALUATION` or `BLOCKED_WITH_REPORT`
+- Output: `result/output.md`, `result/issues/00-summary.md`
+- Gate: `READY_FOR_EVALUATION`/`BLOCKED_WITH_REPORT`
 
-## Context Safety Rules
+## Subagent Dispatch Protocol
 
-**Code-writing prohibition**: The main agent MUST NOT write Rust source files (`src/**/*.rs`), Cargo.toml, Cargo.lock, spec files (`specs/**/*.md`), or plan files (`tasks.md`, `implement-plan.md`). These writes SHALL only occur inside subagents. The first Phase 5 batch subagent is responsible for project skeleton creation (Cargo.toml, lib.rs).
+1. DO NOT read `work/subagent/c2r-*.md` files into the main context.
+2. Construct the Agent tool prompt using ONLY this format:
 
-**Prompt file references**: Subagent prompts MUST reference the subagent prompt file by path (e.g., `work/subagent/c2r-05-implement.md`), not inline-construct prompts. The main agent passes only `BATCH_ID` and context variables — never embed Rust function signatures, C source mappings, or batch contents in the prompt field.
+```
+Execute <subagent_prompt_path> with:
+KEY1=VALUE1
+KEY2=VALUE2
+```
 
-**Gate token compression**: All subagents MUST return only `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED` plus at most one line of summary (e.g., "6 modules implemented, 29 tests pass"). Subagents MUST NOT return full implementation reports, file listings, or test output summaries. The main agent discards verbose results and extracts only the gate token.
+3. The subagent reads its own prompt file from disk. The main agent only receives back a gate token + one-line summary.
+
+**Gate token compression**: All subagents MUST return only `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED` plus at most one line of summary. The main agent discards verbose results and extracts only the gate token.
 
 ## Abort Conditions
 

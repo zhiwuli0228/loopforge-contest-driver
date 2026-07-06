@@ -108,7 +108,11 @@ Every batch MUST have: implementation tasks, unit test tasks, and verification t
 
 ### 4. Create implement-plan.md
 
-**If capability map is available**: Define ONE batch per capability. Each batch MUST include BOTH implementation and unit test details. Batches are ordered by the dependency graph from the capability map. Use this EXACT format for each batch:
+**If capability map is available**: Define ONE batch per capability. Each batch MUST include BOTH implementation and unit test details. Batches are ordered by the dependency graph from the capability map.
+
+**File contract**: Each batch's `Rust target files` list SHALL contain at least one `.rs` file path. No file path SHALL appear in more than one batch's `Rust target files` list. The scheduling algorithm (Phase 5) verifies this contract before parallel dispatch — duplicate file entries will force sequential execution.
+
+Use this EXACT format for each batch:
 
 ```
 ### Batch N: [Capability Name]
@@ -118,6 +122,7 @@ Every batch MUST have: implementation tasks, unit test tasks, and verification t
 **C source files**: [explicit file paths]
 **Rust target files**: [explicit file paths]
 **Dependencies**: [batch-ids this batch depends on, or "None (P0 foundation)"]
+**Features**: [Cargo.toml feature flag names, space-separated; for the first P0 batch (scaffold), list ALL feature flags from all batches so the scaffold subagent can pre-declare them]
 
 **Implementation functions**:
 1. `fn [name]([sig]) -> [ret]` — C equivalent: `[c_func]` in [file:line]
@@ -140,7 +145,19 @@ Every batch MUST have: implementation tasks, unit test tasks, and verification t
 - [ ] unsafe code: [expected count] lines
 ```
 
+**Field naming consistency**: The `**Rust target files**` field uses the markdown key `Rust target files`. When referenced in code (parsing, scheduling, subagent prompts), this field is referred to as `rust_target`. The scaffold batch (Phase 5) and orchestrator parse this exact key to extract the file list. Use the same key name consistently across all batch entries.
+
 **If capability map is NOT available**: Define batches by module grouping from the design's module mapping. Each batch covers a C source module and its corresponding Rust module. Order batches by dependency (types/constants → core utilities → features). Include build and test commands per batch.
+
+### 4a. Validate implement-plan.md
+
+Before finalizing `implement-plan.md`, verify:
+
+1. **Every batch declares at least one `Rust target file`**: Each batch entry SHALL have a non-empty `Rust target files` field. If a batch has no target file, reassign it or merge it with another batch.
+
+2. **No file appears in more than one batch's target list**: Scan all `Rust target files` entries. If the same `.rs` file path appears in two or more batches, restructure the plan — split the shared module into capability-specific sub-modules, or assign the shared file to exactly one batch and have other batches depend on it.
+
+3. **The first P0 batch declares all features**: The `**Features**` field in the scaffold batch (lowest batch_id at P0) SHALL list every feature flag referenced in any batch's `**Build command**` (the `--features` argument). This allows the scaffold subagent to pre-declare all `[features]` entries in `Cargo.toml`.
 
 ### 5. Define OUTPUT_DIR Layout
 

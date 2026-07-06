@@ -20,7 +20,8 @@ Write Rust source code AND unit tests for ONE batch (one capability) of the migr
 
 - **NEVER** create a new project directory or rename the output project.
 - **ALWAYS** write to exactly the `OUTPUT_DIR` path provided in context.
-- If `OUTPUT_DIR` already contains a `Cargo.toml`, edit it in place — do not create a sibling project.
+- If you are the **scaffold batch** and `OUTPUT_DIR` already contains a `Cargo.toml`, edit it in place — do not create a sibling project.
+- If you are a **non-scaffold batch**, do NOT modify `Cargo.toml`, `lib.rs`, or `types.rs` — these are owned by the scaffold batch.
 
 ## SuperPower Rules (this phase only)
 
@@ -39,6 +40,10 @@ Read `implement-plan.md`. Find your batch by `BATCH_ID`. Note:
 - Which spec files define the requirements
 - The expected build command
 
+**Extract `rust_target`**: From your batch entry, extract the `Rust target files` (or `rust_target`) field. This is the complete list of `.rs` files your batch is permitted to write. Store this list as your batch's **write scope**. You SHALL NOT create, modify, or delete any `.rs` file outside this list. Reading any file in `OUTPUT_DIR/` is allowed and encouraged.
+
+**Determine if scaffold batch**: Read all batch entries in `implement-plan.md`. Find the lowest `batch_id` at P0 priority. If your `BATCH_ID` matches that lowest P0 batch, you are the **scaffold batch** with special responsibilities (see Step 5).
+
 ### 2. Read Requirements
 
 Read the relevant spec file for your batch (path may be `specs/<capability-id>/spec.md` or `specs/<module>/spec.md` depending on how specs were organized). For each function you implement, find its:
@@ -56,12 +61,14 @@ Read the C source files listed in your batch. Understand:
 
 ### 4. Write Rust Code
 
+**File ownership constraint**: You SHALL only create or modify files listed in your batch's `rust_target` (extracted in Step 1). You may READ any file in `OUTPUT_DIR/` to understand types, traits, and signatures. The write restriction applies to ALL write operations: creating, editing, or deleting files.
+
 For each function in your batch:
 
 **Function signature**: Map C types to Rust types per the design's type mapping.
 ```
-C: fdb_status flashdb_kv_set(fdb_kv* kv, const char* key, const char* value)
-Rust: pub fn set(&mut self, key: &str, value: &str) -> Result<(), Error>
+C: int lib_init(config_t* cfg, const char* path)
+Rust: pub fn init(cfg: &Config, path: &str) -> Result<(), Error>
 ```
 
 **Implementation**: Preserve the original logic flow. Translate:
@@ -78,12 +85,27 @@ Rust: pub fn set(&mut self, key: &str, value: &str) -> Result<(), Error>
 
 **No stubs**: No `todo!()`, no `unimplemented!()`. Every function must be fully implemented.
 
-### 5. Update Project Files
+### 5. Update Project Files (Scaffold Batch Only)
 
-If this is the first batch (or a batch that needs it), ensure:
-- `OUTPUT_DIR/Cargo.toml` exists with correct `[package]` and `[dependencies]`
-- `OUTPUT_DIR/src/lib.rs` declares all modules your batch adds
-- `OUTPUT_DIR/src/<module>.rs` files are created
+**If you are the scaffold batch** (determined in Step 1):
+
+Before writing your own capability code:
+1. Read ALL batch entries from `implement-plan.md`
+2. Extract every batch's `Rust target files` (or `rust_target`) field
+3. Derive the module name from each target file (e.g., `src/kvdb.rs` → `kvdb`)
+4. Extract all feature flags mentioned in any batch entry (check `**Build command**` lines for `--features` flags)
+
+Write complete infrastructure files:
+
+**`OUTPUT_DIR/src/lib.rs`**: Write `pub mod` declarations for EVERY module discovered from the plan. Include `#![cfg_attr(...)]` attributes as appropriate. No subsequent batch SHALL need to add, remove, or reorder `pub mod` entries.
+
+**`OUTPUT_DIR/Cargo.toml`**: Write `[package]`, `[dependencies]`, and `[features]` sections. The `[features]` section SHALL include every feature flag discovered from the plan. The `[dependencies]` section SHALL include all crates needed by any batch (infer from the Rust code patterns in the design).
+
+**`OUTPUT_DIR/src/types.rs`** (or equivalent shared module): Write minimal foundational types that all batches depend on — at minimum an `Error` type (enum or struct) and a root database handle type.
+
+**Validate plan completeness**: Before writing infrastructure files, check that every batch entry in `implement-plan.md` has a `Rust target files` (or `rust_target`) field. If any batch is missing this field, return `PHASE_BLOCKED` with a message naming the incomplete batch.
+
+**If you are NOT the scaffold batch**: Skip this step entirely. Do NOT create, modify, or delete `lib.rs`, `Cargo.toml`, or `types.rs`. These files were already written by the scaffold batch. Proceed directly to Step 6.
 
 ### 6. Format Code
 
@@ -103,11 +125,20 @@ python WORK_DIR/runtime/tools.py run-verification \
   --commands '["cargo build --locked"]'
 ```
 
-If build fails:
+If build fails, classify errors before acting:
+
+**Errors in your own files** (files in your `rust_target` list):
 - Read the error output carefully
 - Fix the issue in your Rust code (type mismatch, missing import, borrow checker)
 - Re-run build
-- You have up to 3 internal fix attempts
+- You have up to 3 internal fix attempts for errors in your own files
+
+**Errors in other batches' files** (files NOT in your `rust_target` list):
+- Do NOT modify those files
+- Record the exact file path, line number, and error message for each external error
+- If there are also errors in your own files, fix only those (up to 3 attempts)
+- If after fixing your own errors the build still fails due to external errors, return `PHASE_DEGRADED` with the external error details
+- If the build failure is ONLY due to external errors (your files compile clean), return `PHASE_DEGRADED` with the external error details
 
 ### 7. Write Unit Tests
 
@@ -132,7 +163,7 @@ python WORK_DIR/runtime/tools.py run-verification \
   --commands '["cargo test <test_filter> --locked"]'
 ```
 
-Replace `<test_filter>` with the test name pattern for your capability (e.g., `crc32`, `status_table`).
+Replace `<test_filter>` with the test name pattern for your capability (e.g., `init`, `config`).
 
 If tests fail:
 - **Test bug** (wrong assertion, bad setup): fix the test
@@ -147,14 +178,14 @@ If you added dependencies, `--locked` may fail. Remove `--locked` for the first 
 
 ## Output
 
-1. Rust source files under `OUTPUT_DIR/src/` for your batch's capability
+1. Rust source files under `OUTPUT_DIR/src/` for your batch's capability (only files in your `rust_target` list)
 2. Unit test files under `OUTPUT_DIR/tests/<capability>_tests.rs`
-3. Updated `Cargo.toml` and `src/lib.rs` if this is the first batch or added modules
-4. Build result: pass/fail, any warnings
+3. If scaffold batch: complete `Cargo.toml`, `src/lib.rs`, and `src/types.rs` with all module/feature declarations; if non-scaffold: no modifications to these files
+4. Build result: pass/fail, any warnings, external error report (if PHASE_DEGRADED due to cross-batch errors)
 5. Test result: pass/fail, test count
 
 ## Gate
 
-- `PHASE_PASS` — all functions implemented, ALL unit tests pass, `cargo build` passes
-- `PHASE_BLOCKED` — irrecoverable failure (C source unreadable, spec missing critical info, 3+ failed attempts)
-- `PHASE_DEGRADED` — build passes but some tests fail (document each failure for Phase 7 repair)
+- `PHASE_PASS` — all functions implemented, ALL unit tests pass, `cargo build` passes with no errors in your batch's files
+- `PHASE_BLOCKED` — irrecoverable failure (C source unreadable, spec missing critical info, 3+ failed fix attempts on own files, scaffold batch detects missing `rust_target` in a batch entry)
+- `PHASE_DEGRADED` — build passes but some tests fail (document each failure for Phase 7 repair), OR build fails due to external compilation errors in other batches' files (document file paths, line numbers, and error messages), OR build passes but with compiler warnings
