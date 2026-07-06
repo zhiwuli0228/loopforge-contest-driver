@@ -119,6 +119,7 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 
 ### Phase 0 — Preflight
 - Read `logs/trace/execution-adapter/state/context-package.json` for all paths
+- **Clean stale artifacts**: Delete `openspec/changes/<OPENSPEC_CHANGE>/tasks.md` and `openspec/changes/<OPENSPEC_CHANGE>/implement-plan.md` if they exist. These are Phase 4 outputs that must be regenerated with the current subagent prompts — stale formats will break Phase 5 scheduling.
 - Verify all `PRIOR_OUTPUTS` files exist on disk
 - Verify `python WORK_DIR/runtime/tools.py --help` succeeds
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED` — stop on blocked
