@@ -1,0 +1,206 @@
+superpower:
+  name: "design-implementation-consistency-guards"
+  version: "1.0"
+  purpose: "Deny-by-default guardrails for analyze-only design-implementation consistency execution."
+  default_policy: "deny-by-default"
+
+execution:
+  strategy: "analyze-only"
+  unattended: true
+  allow_manual_interaction: false
+  allow_patch: false
+  allow_code_generation: false
+  fail_soft: true
+  always_finalize: true
+  handoff_mode: "file-paths-and-summaries-only"
+
+shared_paths:
+  denial_evidence: "logs/trace/consistency/guard-denials.jsonl"
+  final_report: "logs/trace/final-report.md"
+  result_report: "result/output.md"
+  issue_summary: "result/issues/00-summary.md"
+
+source_write_policy:
+  deny_when:
+    - "allow_patch=false"
+    - "allow_code_generation=false"
+  forbidden_paths:
+    - "SOURCE_ROOT/**"
+  required_denial_evidence: "logs/trace/consistency/guard-denials.jsonl"
+
+stage_guards:
+  - stage_id: "dic-00"
+    read_allowlist:
+      - "INSTRUCTION.md"
+      - "work/loopforge.config.yaml"
+      - "work/profiles/examples/default-java-consistency.yaml"
+      - "work/profiles/superspec/design-implementation-consistency-stages.yaml"
+      - "work/profiles/superpower/design-implementation-consistency-guards.yaml"
+      - "work/subagent/design-implementation-consistency-stage-map.yaml"
+      - "work/design/README.md"
+      - "SOURCE_ROOT/**"
+    write_allowlist:
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/00-preflight-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-01"
+    read_allowlist:
+      - "work/design/README.md"
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/00-preflight-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-inventory.json"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-02"
+    read_allowlist:
+      - "SOURCE_ROOT/**"
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+      - "logs/trace/consistency/02-source-inventory-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-03"
+    read_allowlist:
+      - "work/design/README.md"
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+    write_allowlist:
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-04"
+    read_allowlist:
+      - "SOURCE_ROOT/**"
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+      - "logs/trace/consistency/02-source-inventory-evidence.json"
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+    write_allowlist:
+      - "logs/trace/consistency/04-implementation-model-summary.md"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-gate.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-05"
+    read_allowlist:
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/04-implementation-model-summary.md"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-gate.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/05-traceability-map.md"
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-gate.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-06"
+    read_allowlist:
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+      - "logs/trace/consistency/05-traceability-map.md"
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-gate.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-07"
+    read_allowlist:
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/07-risk-classification.md"
+      - "logs/trace/consistency/07-risk-classification.json"
+      - "logs/trace/consistency/07-risk-classification-gate.json"
+      - "logs/trace/consistency/07-risk-classification-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-08"
+    read_allowlist:
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+      - "logs/trace/consistency/07-risk-classification.md"
+      - "logs/trace/consistency/07-risk-classification.json"
+      - "logs/trace/consistency/07-risk-classification-gate.json"
+      - "logs/trace/consistency/07-risk-classification-evidence.json"
+    write_allowlist:
+      - "logs/trace/consistency/08-repair-plan.md"
+      - "logs/trace/consistency/08-repair-plan.json"
+      - "logs/trace/consistency/08-repair-plan-gate.json"
+      - "logs/trace/consistency/08-repair-plan-evidence.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+  - stage_id: "dic-09"
+    read_allowlist:
+      - "work/design/README.md"
+      - "work/loopforge.config.yaml"
+      - "logs/trace/consistency/*.md"
+      - "logs/trace/consistency/*.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+    write_allowlist:
+      - "logs/trace/consistency/09-finalization-summary.md"
+      - "logs/trace/consistency/09-finalization-gate.json"
+      - "logs/trace/consistency/09-finalization-evidence.json"
+      - "logs/trace/consistency/09-verification-results.json"
+      - "logs/trace/consistency/09-final-report-input.json"
+      - "logs/trace/final-report.md"
+      - "result/output.md"
+      - "result/issues/00-summary.md"
+      - "logs/trace/consistency/guard-denials.jsonl"
+
+negative_cases:
+  - id: "source-root-write-denied"
+    stage_id: "dic-04"
+    attempted_write: "SOURCE_ROOT/src/Main.java"
+    expected_result: "denied"
+    denial_evidence: "logs/trace/consistency/guard-denials.jsonl"
+  - id: "cross-stage-write-denied"
+    stage_id: "dic-06"
+    attempted_write: "logs/trace/consistency/08-repair-plan.md"
+    expected_result: "denied"
+    denial_evidence: "logs/trace/consistency/guard-denials.jsonl"

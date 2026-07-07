@@ -1,6 +1,9 @@
 profile:
   name: "consistency-check-example"
   class: "example"
+  role: "compatibility-example"
+  authoritative: false
+  superseded_by: "profiles/examples/default-java-consistency.yaml"
   intent: "illustrate a generic design-versus-implementation review"
 
 task:

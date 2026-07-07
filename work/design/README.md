@@ -1,54 +1,55 @@
-# 将 FlashDB 用 Rust 重写
+# Consistency-Check Task Contract
 
-本文件是比赛提交包预置的唯一需求、约束和验收依据。比赛环境通过 `SOURCE_ROOT` 注入只读源码；源码目录不要求包含 README，运行过程不得修改其中任何文件。
+This document is the authoritative contract for the baseline consistency-check workflow.
 
-## 题目背景
+## Purpose
 
-成熟的高性能 C/C++ 库仍可能出现内存安全问题。需要构建可复用的 Harness 工程，在保持既有模块关系、API 行为和业务语义的前提下，将注入的 FlashDB C 工程重写为 Rust 工程。
+The driver SHALL compare the documented design intent with the implementation found under `SOURCE_ROOT`, identify drift, and produce evidence that can be reviewed without mutating the source tree.
 
-## 解题要求
+## Input Model
 
-1. 跨文件深度关联上下文管理：不得破坏项目各模块调用关系，并支持单点渐进式重构。
-2. 编译与编译自愈闭环：遇到 Rust API、语法或类型不兼容时，根据错误输出定位问题并自动生成最小修复。
-3. 语义等价：重写后的业务逻辑必须与原实现等价，并生成覆盖全部主要路径的单元测试。
-4. `SOURCE_ROOT` 是只读输入；所有生成项目、日志和报告必须写入提交工作区的输出目录。
+- `SOURCE_ROOT` is the only external runtime input.
+- `SOURCE_ROOT` SHALL be treated as read-only.
+- The implementation under `SOURCE_ROOT` MAY be a project root or a parent directory that contains the project root.
+- The workflow MUST discover the relevant source layout from the filesystem and from the provided design contract.
 
-## 输入约定
+## Required Baseline Behavior
 
-- `SOURCE_ROOT` 指向 FlashDB 项目本身或包含该项目的上层目录。
-- Harness 必须根据 C/C++ 翻译单元、构建文件、测试文件和目录结构定位唯一项目根目录。
-- 重点迁移项目根目录下的 `src` 与 `tests`；如果布局不同，应根据实际源码结构识别等价目录。
-- `SOURCE_ROOT` 内的 README（若存在）只是源码项目文档，不是比赛需求来源。
+- The default workflow SHALL operate in `consistency-check` mode.
+- The default workflow SHALL be `analyze-only`.
+- The workflow SHALL use `work/design/README.md` as the contract source of truth.
+- The workflow SHALL preserve evidence under `logs/trace/`.
+- The workflow SHALL not write to `SOURCE_ROOT`.
 
-## 交付件要求
+## Required Outputs
 
-1. 生成的 Rust 项目名称为 `flashDB_rust`。
-2. 项目根目录必须包含 `Cargo.toml`、`src` 和 `tests`。
-3. 原 C 项目的核心逻辑必须转换为 Rust 实现。
-4. 原测试场景必须迁移为 Rust 测试或通过兼容方式等价覆盖。
-5. 项目必须能够执行：
-
-```text
-cargo build
-cargo test
-```
-
-6. Rust `unsafe` 使用比例必须低于 10%。
-
-## 验收标准
-
-- `SOURCE_ROOT` 中的核心 C/C++ 实现已完整映射到生成的 Rust 项目。
-- `SOURCE_ROOT` 中的原始测试项已迁移或等价覆盖。
-- `cargo build` 成功。
-- `cargo test` 成功且迁移测试实际执行。
-- 语义审计与测试映射证据能够证明主要行为未被破坏。
-- `unsafe` 比例低于 10%。
-- 整个运行前后 `SOURCE_ROOT` 内容保持不变。
-
-## 报告
-
-运行结束后至少生成：
+The baseline run SHALL produce at minimum:
 
 - `result/output.md`
 - `result/issues/00-summary.md`
-- `logs/trace/` 下的分析、修复和验证证据
+- `logs/trace/final-report.md`
+- `logs/trace/consistency/`
+
+## Completion Criteria
+
+The baseline change is complete when all of the following are true:
+
+1. Entry documentation describes the repository as a consistency-check harness.
+2. Default configuration resolves to `consistency-check` and `analyze-only`.
+3. This document clearly states the input, output, and read-only expectations.
+4. Follow-on changes can consume this contract without guessing the execution model.
+
+## Non-Goals
+
+- Do not define repair or code mutation behavior here.
+- Do not encode language-specific implementation rules here.
+- Do not require a README inside `SOURCE_ROOT`.
+
+## Review Questions
+
+If the workflow is unclear, answer these questions first:
+
+1. What design intent is being checked?
+2. What implementation surface is in scope?
+3. What evidence is required to judge drift?
+4. What outputs are expected at the end of the run?

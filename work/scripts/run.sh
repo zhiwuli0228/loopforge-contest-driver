@@ -15,15 +15,10 @@ while [[ $# -gt 0 ]]; do
       SOURCE_ROOT_VALUE="$2"
       shift 2
       ;;
-    --run|--init|--self-check|--detect|--verify|--finalize|--snapshot)
+    --run|--self-check)
       HAS_ACTION="true"
       EXTRA_ARGS+=("$1")
-      if [[ "$1" == "--snapshot" ]]; then
-        EXTRA_ARGS+=("$2")
-        shift 2
-      else
-        shift
-      fi
+      shift
       ;;
     --help|-h)
       EXTRA_ARGS+=("$1")
@@ -60,7 +55,7 @@ if [[ "$HAS_ACTION" == "false" && ! " ${EXTRA_ARGS[*]} " =~ " --help " && ! " ${
   EXTRA_ARGS+=("--run")
 fi
 
-mkdir -p "${RESULT_DIR}/issues" "${LOG_DIR}/trace/c-to-rust"
+mkdir -p "${RESULT_DIR}/issues" "${LOG_DIR}/trace/consistency"
 if [[ ! -f "${LOG_DIR}/interaction.md" ]]; then
   printf '# Interaction Log\n\nNo manual interaction.\n' > "${LOG_DIR}/interaction.md"
 fi

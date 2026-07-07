@@ -1,7 +1,7 @@
 framework:
   name: "loopforge-contest-driver"
   input_model: "preloaded-design-plus-source"
-  default_mode: "migration"
+  default_mode: "consistency-check"
 
 platform:
   layout: "single-root"
@@ -23,23 +23,29 @@ design:
   authoritative: true
 
 task:
-  name: "preloaded-design-driven-execution"
-  mode: "migration"
+  name: "design-implementation-consistency-check"
+  mode: "consistency-check"
   source: "preloaded-design"
-  profile: "profiles/examples/c-to-rust-migration.yaml"
+  profile: "profiles/examples/default-java-consistency.yaml"
 
 language:
-  primary: "c"
-  secondary:
-    - "rust"
+  default: "java"
+  detection: "auto"
+  adapter: "java"
+  fallback_adapter: "generic"
+  adapters:
+    - "java"
+    - "generic"
 
-objective: "derive C-to-Rust migration requirements from work/design/README.md and migrate the read-only SOURCE_ROOT project"
+objective: "compare the documented design contract with the implementation under SOURCE_ROOT and report drift without mutating the source tree"
 
 execution:
+  strategy: "analyze-only"
   unattended: true
   allow_manual_interaction: false
-  max_repair_rounds: 5
-  max_semantic_repair_rounds: 4
+  allow_patch: false
+  max_repair_rounds: 0
+  max_semantic_repair_rounds: 0
   # Optional unattended agent/fixer executable. It receives the task JSON path
   # as argv and through LOOPFORGE_REPAIR_TASK; env LOOPFORGE_REPAIR_COMMAND
   # overrides this setting on both Windows and Linux.
@@ -48,7 +54,7 @@ execution:
     command: null
   fail_soft: true
   always_finalize: true
-  allow_code_generation: true
+  allow_code_generation: false
   allow_static_rule_modification: false
   commit: false
   push: false
@@ -56,40 +62,36 @@ execution:
 
 mode_selection:
   source: "preloaded-design"
-  fallback: "migration"
+  fallback: "consistency-check"
 
 coding_skill:
-  enabled: true
-  required: true
-  skill: "skills/c-to-rust-migration/SKILL.md"
-  apply_at:
-    - "source_inventory"
-    - "api_mapping"
-    - "migration_plan"
-    - "rust_project_generation"
-    - "test_migration"
-    - "verification"
-  output: "logs/trace/c-to-rust/05-migration-summary.md"
+  enabled: false
+  required: false
+  skill: "skills/code-implementation/SKILL.md"
+  apply_at: []
+  output: "logs/trace/consistency/05-analysis-summary.md"
 
 verification:
   source: "profile-or-framework-default"
-  working_directory: "DESIGN_DERIVED_OUTPUT_PROJECT"
+  working_directory: "SOURCE_ROOT"
   timeout_seconds: 18000
   commands:
     default:
-      - "cargo build --locked"
-      - "cargo test --locked -- --nocapture"
+      - "auto-detect"
 
 outputs:
   result_report: "result/output.md"
   issue_summary: "result/issues/00-summary.md"
   trace_dir: "logs/trace"
   interaction_log: "logs/interaction.md"
-  migration_dir: "logs/trace/c-to-rust"
-  source_inventory: "logs/trace/c-to-rust/01-source-inventory.md"
-  api_mapping: "logs/trace/c-to-rust/02-api-mapping.md"
-  migration_plan: "logs/trace/c-to-rust/03-migration-plan.md"
-  implementation_summary: "logs/trace/c-to-rust/05-migration-summary.md"
-  verification_report: "logs/trace/c-to-rust/06-verification-report.md"
-  unsafe_report: "logs/trace/c-to-rust/unsafe-ratio.json"
+  consistency_dir: "logs/trace/consistency"
+  source_inventory: "logs/trace/consistency/02-source-inventory.md"
+  source_inventory_data: "logs/trace/consistency/02-source-inventory.json"
+  adapter_selection: "logs/trace/consistency/02-adapter-selection.json"
+  design_model: "logs/trace/consistency/03-design-model.json"
+  implementation_model: "logs/trace/consistency/04-implementation-model.json"
+  traceability_matrix: "logs/trace/consistency/05-traceability-matrix.json"
+  drift_report: "logs/trace/consistency/06-drift-analysis.md"
+  risk_report: "logs/trace/consistency/07-risk-classification.md"
+  repair_plan: "logs/trace/consistency/08-repair-plan.md"
   final_report: "logs/trace/final-report.md"

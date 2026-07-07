@@ -165,20 +165,19 @@ fallback_status() {
   fi
 
   # Determine schema from .openspec.yaml
-  local schema_name="c2r-migration"
+  local schema_name="spec-driven"
   if [[ -f "${change_dir}/.openspec.yaml" ]]; then
-    schema_name=$(grep 'schema:' "${change_dir}/.openspec.yaml" 2>/dev/null | head -1 | sed 's/^schema:[[:space:]]*//' || echo "c2r-migration")
+    schema_name=$(grep 'schema:' "${change_dir}/.openspec.yaml" 2>/dev/null | head -1 | sed 's/^schema:[[:space:]]*//' || echo "spec-driven")
   fi
 
   local schema_file="${SCHEMAS_DIR}/${schema_name}/schema.yaml"
   if [[ ! -f "$schema_file" ]]; then
-    # Package schema (e.g. spec-driven) — fall back to c2r-migration if available
-    schema_file="${SCHEMAS_DIR}/c2r-migration/schema.yaml"
+    schema_file="${SCHEMAS_DIR}/spec-driven/schema.yaml"
     if [[ ! -f "$schema_file" ]]; then
       echo "[openspec.sh] ERROR: schema '${schema_name}' not found and no fallback available" >&2
       return 1
     fi
-    schema_name="c2r-migration"
+    schema_name="spec-driven"
   fi
 
   # Parse artifact IDs from schema
@@ -271,15 +270,15 @@ fallback_instructions() {
   fi
 
   local change_dir="${CHANGES_DIR}/${change_name}"
-  local schema_name="c2r-migration"
+  local schema_name="spec-driven"
   if [[ -f "${change_dir}/.openspec.yaml" ]]; then
-    schema_name=$(grep 'schema:' "${change_dir}/.openspec.yaml" 2>/dev/null | head -1 | sed 's/^schema:[[:space:]]*//' || echo "c2r-migration")
+    schema_name=$(grep 'schema:' "${change_dir}/.openspec.yaml" 2>/dev/null | head -1 | sed 's/^schema:[[:space:]]*//' || echo "spec-driven")
   fi
 
   local schema_file="${SCHEMAS_DIR}/${schema_name}/schema.yaml"
   if [[ ! -f "$schema_file" ]]; then
-    schema_file="${SCHEMAS_DIR}/c2r-migration/schema.yaml"
-    schema_name="c2r-migration"
+    schema_file="${SCHEMAS_DIR}/spec-driven/schema.yaml"
+    schema_name="spec-driven"
   fi
   local template_dir="${SCHEMAS_DIR}/${schema_name}/templates"
 

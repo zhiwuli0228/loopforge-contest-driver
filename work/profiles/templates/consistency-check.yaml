@@ -1,6 +1,9 @@
 profile:
   name: "consistency-check-template"
   class: "template"
+  role: "non-authoritative-template"
+  authoritative: false
+  superseded_by: "profiles/examples/default-java-consistency.yaml"
   intent: "starting point for design-versus-implementation analysis"
 
 task:

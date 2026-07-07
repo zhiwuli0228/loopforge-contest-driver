@@ -22,9 +22,8 @@ TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
 NEG_SRC="$TMP_ROOT/empty-source"
-POS_SRC="$TMP_ROOT/source-without-layout"
 VALID_SRC="$TMP_ROOT/valid-source"
-mkdir -p "$NEG_SRC" "$POS_SRC" "$VALID_SRC/src" "$VALID_SRC/tests"
+mkdir -p "$NEG_SRC" "$VALID_SRC/src" "$VALID_SRC/tests"
 
 cat > "$VALID_SRC/src/demo.h" <<'README'
 void demo_init(void);
@@ -49,37 +48,41 @@ run_case() {
   local expect_status="$2"
   shift 2
 
-  rm -f "${RESULT_DIR}/output.md" "${RESULT_DIR}/issues/00-summary.md" "${LOG_DIR}/trace/run-summary.json"
+  rm -f "${RESULT_DIR}/output.md" "${RESULT_DIR}/issues/00-summary.md" "${LOG_DIR}/trace/run-summary.json" "${LOG_DIR}/trace/final-report.md"
 
   "$PYTHON_BIN" "${WORK_DIR}/runtime/loopforge_runner.py" \
     --work-dir "${WORK_DIR}" \
     --source-root "${source_root}" \
     --result-dir "${RESULT_DIR}" \
     --log-dir "${LOG_DIR}" \
-    --run
+    --run >/dev/null
 
   test -f "${RESULT_DIR}/output.md"
   test -f "${RESULT_DIR}/issues/00-summary.md"
   test -f "${LOG_DIR}/trace/run-summary.json"
+  test -f "${LOG_DIR}/trace/final-report.md"
 
-  grep -q "status: \`${expect_status}\`" "${RESULT_DIR}/output.md"
+  grep -q "Status: ${expect_status}" "${RESULT_DIR}/output.md"
   for issue_code in "$@"; do
     grep -q "${issue_code}" "${RESULT_DIR}/issues/00-summary.md"
   done
 }
 
-detect_case() {
+check_self() {
   local source_root="$1"
-  local detect_path="${LOG_DIR}/trace/execution-adapter/state/detect-summary.json"
-  rm -f "$detect_path"
+  local self_check_path="${LOG_DIR}/trace/consistency/00-preflight-self-check.json"
+  rm -f "$self_check_path"
   "$PYTHON_BIN" "${WORK_DIR}/runtime/loopforge_runner.py" \
-    --work-dir "${WORK_DIR}" --source-root "$source_root" \
-    --result-dir "${RESULT_DIR}" --log-dir "${LOG_DIR}" --detect >/dev/null
-  "$PYTHON_BIN" -c 'import json,sys; p=json.load(open(sys.argv[1], encoding="utf-8")); assert p["ok"] and len(p["packet"]["design_readme_sha256"]) == 64' "$detect_path"
+    --work-dir "${WORK_DIR}" \
+    --source-root "$source_root" \
+    --result-dir "${RESULT_DIR}" \
+    --log-dir "${LOG_DIR}" \
+    --self-check >/dev/null
+  "$PYTHON_BIN" -c 'import json,sys; p=json.load(open(sys.argv[1], encoding="utf-8")); assert p["ok"] and len(p["design_readme_sha256"]) == 64' "$self_check_path"
 }
 
-run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "source_layout_missing"
-run_case "$POS_SRC" "BLOCKED_WITH_REPORT" "source_layout_missing"
-detect_case "$VALID_SRC"
+run_case "$NEG_SRC" "BLOCKED_WITH_REPORT" "source_root_missing"
+run_case "$VALID_SRC" "DEGRADED_FINAL_REPORT_READY"
+check_self "$VALID_SRC"
 
 echo "smoke test passed"

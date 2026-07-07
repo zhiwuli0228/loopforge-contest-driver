@@ -1,649 +1,71 @@
 #!/usr/bin/env python3
-"""LoopForge execution orchestrator — thin data-preparation layer.
-
-Responsibilities:
-  - Resolve SOURCE_ROOT, validate environment, self-check
-  - Run tools.py parse-source (structured data, no judgment)
-  - Run semantic_planning (deterministic migration plan)
-  - Write context package for Agent consumption
-  - Output instructions for Agent to execute SKILL.md
-
-All judgment phases (understanding, design, code generation, testing,
-repair, semantic audit, gating) are delegated to the Agent via
-work/skills/c-to-rust-migration-v2/SKILL.md.
-"""
+"""Authoritative consistency-check runtime runner."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import os
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-from agent_task_packet import AgentTaskPacket, RuntimePaths, resolve_runtime_contract
-from c_project_root_resolver import resolve_c_project_root, write_resolution_trace
-from semantic_planning import PlanningBlocked, plan_from_trace
-from source_analysis import build_complete_analysis, write_complete_analysis
-from source_analysis_verify_gate import build_and_verify_source_analysis
+import yaml
+
+WORK_ROOT = Path(__file__).resolve().parents[1]
+if str(WORK_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORK_ROOT))
+
+from runtime.code_inventory import build_source_inventory, extract_implementation_model
+from runtime.design_scanner import scan_design_root
+from runtime.report_writer import compose_report_payload, write_reports
+from runtime.traceability_builder import build_traceability, render_traceability_summary
+from runtime.verification_runner import resolve_verification_commands, run_verification
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-TRACE_NAMESPACE = "c-to-rust"
-REQUIRED_RUNTIME_FILES = [
-    "work/runtime/loopforge_runner.py",
-    "work/runtime/agent_task_packet.py",
-    "work/runtime/c_project_root_resolver.py",
-    "work/runtime/source_analysis_verify_gate.py",
-    "work/runtime/source_analysis.py",
-    "work/runtime/semantic_planning.py",
-    "work/runtime/semantic-planning.json",
-    "work/runtime/rust_project_generation.py",
-    "work/runtime/rust-project-generation.json",
-    "work/runtime/test_migration_validation.py",
-    "work/runtime/timeout_policy.py",
-    "work/runtime/self_healing_loop.py",
-    "work/runtime/tools.py",
-    "work/runtime/check_unsafe_ratio.py",
-    "work/vendor/pycparser/__init__.py",
-    "work/vendor/PYCPARSER-LICENSE",
-]
-REQUIRED_ADAPTER_FILES = [
-    "work/rules/loopforge/adapters/c-to-rust/source-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/output-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/test-migration-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/unsafe-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/verification-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/semantic-equivalence-contract.md",
-    "work/rules/loopforge/adapters/c-to-rust/repair-loop-contract.md",
-]
-REQUIRED_MISC_FILES = [
+TRACE_NAMESPACE = "consistency"
+REQUIRED_WORKFLOW_FILES = [
     "INSTRUCTION.md",
     "README.md",
     "work/design/README.md",
     "work/loopforge.config.yaml",
-    "work/profiles/examples/c-to-rust-migration.yaml",
-    "work/skills/c-to-rust-migration-v2/SKILL.md",
+    "work/runtime/tools.py",
+    "work/runtime/design_scanner.py",
+    "work/runtime/code_inventory.py",
+    "work/runtime/traceability_builder.py",
+    "work/runtime/verification_runner.py",
+    "work/runtime/report_writer.py",
+    "work/skills/design-implementation-consistency/SKILL.md",
+    "work/skills/loopforge-driver/SKILL.md",
+    "work/profiles/examples/default-java-consistency.yaml",
+    "work/profiles/superspec/design-implementation-consistency-stages.yaml",
+    "work/profiles/superpower/design-implementation-consistency-guards.yaml",
+    "work/subagent/design-implementation-consistency-stage-map.yaml",
+    "work/subagent/dic-00-preflight.md",
+    "work/subagent/dic-01-design-intake.md",
+    "work/subagent/dic-02-source-inventory.md",
+    "work/subagent/dic-03-design-model.md",
+    "work/subagent/dic-04-implementation-model.md",
+    "work/subagent/dic-05-traceability-map.md",
+    "work/subagent/dic-06-drift-analysis.md",
+    "work/subagent/dic-07-risk-classification.md",
+    "work/subagent/dic-08-repair-plan.md",
+    "work/subagent/dic-09-finalize.md",
 ]
-REQUIRED_SUBAGENT_FILES = [
-    "work/subagent/c2r-00-preflight.md",
-    "work/subagent/c2r-01-understand.md",
-    "work/subagent/c2r-02-design.md",
-    "work/subagent/c2r-03-spec.md",
-    "work/subagent/c2r-04-plan.md",
-    "work/subagent/c2r-05-implement.md",
-    "work/subagent/c2r-06-test.md",
-    "work/subagent/c2r-07-repair.md",
-    "work/subagent/c2r-08-semantic-audit.md",
-    "work/subagent/c2r-09-quality-gates.md",
-    "work/subagent/c2r-10-finalize.md",
-]
+LEGACY_FORBIDDEN_LITERALS = (
+    "c-to-rust-migration-v2",
+    "c-to-rust-migration-guards",
+    "c-to-rust-migration-stages",
+    "logs/trace/c-to-rust",
+    "work/rules/loopforge/adapters/c-to-rust",
+    "work/subagent/c2r-",
+)
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime(ISO_FORMAT)
-
-
-def parse_scalar(value: str) -> Any:
-    lowered = value.lower()
-    if lowered == "true":
-        return True
-    if lowered == "false":
-        return False
-    if lowered in {"null", "~"}:
-        return None
-    if value == "[]":
-        return []
-    if value == "{}":
-        return {}
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-        return value[1:-1]
-    if value.lstrip("-").isdigit():
-        try:
-            return int(value)
-        except ValueError:
-            return value
-    try:
-        return float(value)
-    except ValueError:
-        return value
-
-
-def parse_simple_yaml(text: str) -> Dict[str, Any]:
-    root: Dict[str, Any] = {}
-    stack: List[Tuple[int, Any]] = [(-1, root)]
-    lines = text.splitlines()
-
-    def next_meaningful(start: int) -> Optional[str]:
-        for candidate in lines[start + 1 :]:
-            stripped = candidate.strip()
-            if stripped and not stripped.startswith("#"):
-                return candidate
-        return None
-
-    for index, raw in enumerate(lines):
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        indent = len(raw) - len(raw.lstrip(" "))
-        while len(stack) > 1 and indent <= stack[-1][0]:
-            stack.pop()
-        container = stack[-1][1]
-
-        if stripped.startswith("- "):
-            if not isinstance(container, list):
-                raise ValueError(f"invalid list item near line {index + 1}")
-            item_text = stripped[2:].strip()
-            if ":" in item_text:
-                item_key, item_value = item_text.split(":", 1)
-                item_key = item_key.strip()
-                item_value = item_value.strip()
-                item: Dict[str, Any] = {}
-                if item_value:
-                    item[item_key] = parse_scalar(item_value)
-                else:
-                    upcoming = next_meaningful(index)
-                    nested: Any = {}
-                    if upcoming is not None:
-                        next_indent = len(upcoming) - len(upcoming.lstrip(" "))
-                        if next_indent > indent and upcoming.strip().startswith("- "):
-                            nested = []
-                    item[item_key] = nested
-                container.append(item)
-                stack.append((indent, item))
-            else:
-                container.append(parse_scalar(item_text))
-            continue
-
-        key, value = stripped.split(":", 1)
-        key = key.strip()
-        value = value.strip()
-        if value:
-            if isinstance(container, list):
-                raise ValueError(f"unexpected mapping item near line {index + 1}")
-            container[key] = parse_scalar(value)
-            continue
-
-        upcoming = next_meaningful(index)
-        next_container: Any = {}
-        if upcoming is not None:
-            next_indent = len(upcoming) - len(upcoming.lstrip(" "))
-            if next_indent > indent and upcoming.strip().startswith("- "):
-                next_container = []
-        if isinstance(container, list):
-            raise ValueError(f"unexpected nested mapping near line {index + 1}")
-        container[key] = next_container
-        stack.append((indent, next_container))
-
-    return root
-
-
-def ensure_parent(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def write_json(path: Path, payload: Dict[str, Any]) -> None:
-    ensure_parent(path)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
-
-
-def path_is_relative_to(path: Path, other: Path) -> bool:
-    try:
-        path.relative_to(other)
-        return True
-    except ValueError:
-        return False
-
-
-def sanitize_dirname(value: str, fallback: str = "c_to_rust_output") -> str:
-    cleaned = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in value).strip("_-")
-    return cleaned or fallback
-
-
-def sanitize_text(text: str, workspace_root: Path) -> str:
-    normalized_text = text.replace("\\", "/")
-    roots = {str(workspace_root), str(workspace_root).replace("\\", "/")}
-    for root in roots:
-        normalized_text = normalized_text.replace(root, ".")
-        normalized_text = re.sub(re.escape(root), ".", normalized_text, flags=re.IGNORECASE)
-    return normalized_text
-
-
-def sanitize_payload(value: Any, workspace_root: Path) -> Any:
-    if isinstance(value, Path):
-        try:
-            return str(value.resolve().relative_to(workspace_root)).replace("\\", "/")
-        except ValueError:
-            return value.name
-    if isinstance(value, dict):
-        return {key: sanitize_payload(item, workspace_root) for key, item in value.items()}
-    if isinstance(value, list):
-        return [sanitize_payload(item, workspace_root) for item in value]
-    if isinstance(value, str):
-        return sanitize_text(value, workspace_root)
-    return value
-
-
-class LoopForgeRunner:
-    def __init__(self, workspace_root: Path, work_dir: Path, source_root: Path, result_dir: Path, log_dir: Path) -> None:
-        self.workspace_root = workspace_root.resolve()
-        self.work_dir = work_dir.resolve()
-        self.input_root = source_root.resolve()
-        self.result_dir = result_dir.resolve()
-        self.log_dir = log_dir.resolve()
-        self.trace_dir = self.log_dir / "trace"
-        self.artifact_dir = self.trace_dir / "execution-adapter"
-        self.migration_trace_dir = self.trace_dir / TRACE_NAMESPACE
-        for writable_root in (self.result_dir, self.log_dir, self.work_dir / "output"):
-            if path_is_relative_to(writable_root, self.input_root):
-                raise ValueError(f"writable destination must be outside SOURCE_ROOT: {writable_root}")
-        self.layout_resolution = resolve_c_project_root(self.input_root)
-        write_resolution_trace(self.layout_resolution, self.migration_trace_dir)
-        resolved = self.layout_resolution.get("resolved_project_root", "")
-        self.source_root = Path(resolved).resolve() if resolved else self.input_root
-        self.config = parse_simple_yaml((self.work_dir / "loopforge.config.yaml").read_text(encoding="utf-8"))
-        profile_rel = str(self.config.get("task", {}).get("profile", "")).replace("/", os.sep)
-        self.profile = parse_simple_yaml((self.work_dir / profile_rel).read_text(encoding="utf-8"))
-        self.runtime_contract = resolve_runtime_contract(self.work_dir / "design" / "README.md", self.profile)
-        self.output_base_dir = Path(os.environ.get("LOOPFORGE_OUTPUT_DIR", str(self.work_dir / "output"))).resolve()
-        if path_is_relative_to(self.output_base_dir, self.input_root):
-            raise ValueError(f"writable destination must be outside SOURCE_ROOT: {self.output_base_dir}")
-        self.project_dir = self.output_base_dir / sanitize_dirname(self.runtime_contract["output_project_name"])
-        self.result_output_path = self.result_dir / "output.md"
-        self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
-        self.interaction_log_path = self.log_dir / "interaction.md"
-        self.run_summary_path = self.trace_dir / "run-summary.json"
-        self.final_report_path = self.trace_dir / "final-report.md"
-        self.self_check_path = self.artifact_dir / "state" / "self-check.json"
-        self.context_pkg_path = self.artifact_dir / "state" / "context-package.json"
-        self.source_inventory_json = self.migration_trace_dir / "source-inventory.json"
-
-    def display_path(self, path: Path | str) -> str:
-        if isinstance(path, str):
-            if path in {"", "missing", "NOT_RUN"}:
-                return path
-            candidate = Path(path)
-        else:
-            candidate = path
-        try:
-            return str(candidate.resolve().relative_to(self.workspace_root)).replace("\\", "/")
-        except ValueError:
-            return str(candidate).replace("\\", "/")
-
-    def write_json(self, path: Path, payload: Dict[str, Any]) -> None:
-        write_json(path, sanitize_payload(payload, self.workspace_root))
-
-    def create_agent_task_packet(self) -> AgentTaskPacket:
-        packet = AgentTaskPacket(
-            paths=RuntimePaths(
-                workspace_root=self.workspace_root,
-                work_dir=self.work_dir,
-                input_root=self.input_root,
-                source_root=self.source_root,
-                result_dir=self.result_dir,
-                log_dir=self.log_dir,
-                trace_dir=self.trace_dir,
-                artifact_dir=self.artifact_dir,
-                migration_trace_dir=self.migration_trace_dir,
-                output_base_dir=self.output_base_dir,
-                project_dir=self.project_dir,
-            ),
-            config=self.config,
-            profile=self.profile,
-            design_readme_path=Path(self.runtime_contract["design_readme_path"]),
-            design_readme_sha256=str(self.runtime_contract["design_readme_sha256"]),
-            max_repair_rounds=int(self.config.get("execution", {}).get("max_repair_rounds", 2) or 2),
-            source_project_name=str(self.runtime_contract["source_project_name"]),
-            source_language=str(self.runtime_contract["source_language"]),
-            target_language=str(self.runtime_contract["target_language"]),
-            output_project_name=str(self.runtime_contract["output_project_name"]),
-            output_project_dir=self.project_dir,
-            source_dirs=[str(item) for item in self.runtime_contract["source_dirs"]],
-            test_dirs=[str(item) for item in self.runtime_contract["test_dirs"]],
-            build_commands=[str(item) for item in self.runtime_contract["build_commands"]],
-            unsafe_ratio_max=float(self.runtime_contract["unsafe_ratio_max"]),
-            api_name_hints=[str(item) for item in self.runtime_contract["api_name_hints"]],
-            module_hints=[str(item) for item in self.runtime_contract["module_hints"]],
-        )
-        packet.metadata["source_root_resolution"] = str(self.source_root)
-        packet.metadata["input_root"] = str(self.input_root)
-        packet.metadata["layout_resolution"] = self.layout_resolution
-        packet.metadata["design_readme_path"] = self.runtime_contract["design_readme_path"]
-        packet.metadata["design_readme_sha256"] = self.runtime_contract["design_readme_sha256"]
-        packet.metadata["design_readme_error"] = self.runtime_contract["design_readme_error"]
-        return packet
-
-    def ensure_outputs(self) -> None:
-        self.result_dir.mkdir(parents=True, exist_ok=True)
-        (self.result_dir / "issues").mkdir(parents=True, exist_ok=True)
-        self.trace_dir.mkdir(parents=True, exist_ok=True)
-        self.artifact_dir.mkdir(parents=True, exist_ok=True)
-        (self.artifact_dir / "state").mkdir(parents=True, exist_ok=True)
-        self.migration_trace_dir.mkdir(parents=True, exist_ok=True)
-        if not self.interaction_log_path.exists():
-            self.interaction_log_path.write_text("# Interaction Log\n\nNo manual interaction.\n", encoding="utf-8")
-
-    def self_check(self, packet: AgentTaskPacket) -> Dict[str, Any]:
-        required_files = REQUIRED_RUNTIME_FILES + REQUIRED_ADAPTER_FILES + REQUIRED_MISC_FILES + REQUIRED_SUBAGENT_FILES
-        missing = [path for path in required_files if not (self.workspace_root / path).exists()]
-        invalid_source = self.layout_resolution["status"] != "RESOLVED"
-        design_error = str(packet.metadata.get("design_readme_error", ""))
-        if invalid_source:
-            detail = self.layout_resolution["reason"]
-            candidates = self.layout_resolution.get("candidate_roots", [])
-            if detail == "ambiguous project roots":
-                detail += ": " + ", ".join(f"{item['root']} (score={item['score']})" for item in candidates if item["usable"])
-            packet.add_issue("source_layout_missing", detail)
-        for item in missing:
-            packet.add_issue("required_asset_missing", item)
-        if design_error:
-            packet.add_issue(design_error, f"invalid preloaded design contract: {packet.design_readme_path}")
-        payload = {
-            "ok": not missing and not invalid_source and not design_error,
-            "required_files_checked": required_files,
-            "missing_files": missing,
-            "input_root": str(self.input_root),
-            "source_root": str(self.source_root),
-            "design_readme_path": packet.metadata.get("design_readme_path", ""),
-            "design_readme_sha256": packet.metadata.get("design_readme_sha256", ""),
-            "design_readme_error": design_error,
-            "invalid_source_root": invalid_source,
-            "layout_resolution": self.layout_resolution,
-            "issues": list(packet.issues),
-        }
-        self.write_json(self.self_check_path, payload)
-        return payload
-
-    def _run_source_analysis(self, packet: AgentTaskPacket) -> Dict[str, Any]:
-        """Run deterministic C source analysis via source_analysis.py (pycparser + regex).
-        No body_kind classification. No translation judgment. Pure data."""
-        legacy = {
-            "project_root": str(self.source_root),
-            "public_apis": [],
-            "functions": [],
-            "test_files": [],
-        }
-        bundle = build_complete_analysis(packet, legacy)
-        write_complete_analysis(bundle, self.migration_trace_dir)
-        artifacts = bundle.get("artifacts", {})
-        inventory = artifacts.get("source-inventory.json", {})
-        public_api = artifacts.get("public-api-map.json", {})
-        call_graph = artifacts.get("call-graph.json", {})
-        type_map = artifacts.get("type-map.json", {})
-        globals_map = artifacts.get("global-state-map.json", {})
-        verification = artifacts.get("analysis-verification.json", {})
-        return {
-            "ok": verification.get("passed", False),
-            "run_id": bundle["metadata"]["run_id"],
-            "project_root": str(self.source_root),
-            "source_files": inventory.get("files", []),
-            "source_tests": inventory.get("source_tests", []),
-            "test_functions": inventory.get("test_functions", []),
-            "public_apis": [api["name"] for api in public_api.get("apis", [])],
-            "functions": call_graph.get("functions", []),
-            "types": type_map.get("types", []),
-            "call_graph": call_graph.get("call_edges", []),
-            "globals": globals_map.get("globals", []),
-            "parse_failures": verification.get("parse_failures", []),
-            "design_readme_path": str(packet.design_readme_path),
-            "design_readme_sha256": packet.design_readme_sha256,
-            "support_level": "supported" if verification.get("passed") else "blocked",
-            "verification": verification,
-            "source_dirs": [str(d) for d in self.layout_resolution.get("source_dirs", [])],
-            "test_dirs": [str(d) for d in self.layout_resolution.get("test_dirs", [])],
-            "src_files": [item["path"] for item in inventory.get("files", [])],
-            "test_files": [item["path"] for item in inventory.get("source_tests", [])],
-            "tests": inventory.get("source_tests", []),
-            "module_hints": list({item["path"].split("/")[0] for item in inventory.get("files", []) if "/" in item["path"]}),
-            "type_table": type_map.get("types", []),
-            "macro_table": artifacts.get("preprocessor-variants.json", {}).get("macros", []),
-        }
-
-    def _build_context_package(self, packet: AgentTaskPacket, analysis: Dict[str, Any], source_gate: Dict[str, Any], semantic_plan: Dict[str, Any]) -> Dict[str, Any]:
-        """Build the context package for Agent consumption.
-
-        All paths are absolute. The Agent reads this JSON and executes SKILL.md."""
-        return {
-            "generated_at": utc_now(),
-            "SOURCE_ROOT": str(self.source_root),
-            "WORK_DIR": str(self.work_dir),
-            "OUTPUT_DIR": str(packet.output_project_dir),
-            "RESULT_DIR": str(self.result_dir),
-            "LOG_DIR": str(self.log_dir),
-            "OPENSPEC_CHANGE": "c-to-rust-migration",
-            "SOURCE_PROJECT_NAME": packet.source_project_name,
-            "OUTPUT_PROJECT_NAME": packet.output_project_name,
-            "DESIGN_README_PATH": str(packet.design_readme_path),
-            "DESIGN_README_SHA256": packet.design_readme_sha256,
-            "MAX_REPAIR_ROUNDS": packet.max_repair_rounds,
-            "UNSAFE_RATIO_MAX": packet.unsafe_ratio_max,
-            "PRIOR_OUTPUTS": {
-                "source_inventory": str(self.migration_trace_dir / "source-inventory.json"),
-                "public_api_map": str(self.migration_trace_dir / "public-api-map.json"),
-                "call_graph": str(self.migration_trace_dir / "call-graph.json"),
-                "type_map": str(self.migration_trace_dir / "type-map.json"),
-                "global_state_map": str(self.migration_trace_dir / "global-state-map.json"),
-                "analysis_verification": str(self.migration_trace_dir / "analysis-verification.json"),
-                "source_analysis_verify_report": str(self.migration_trace_dir / "source-analysis-verify-report.md"),
-                "migration_trace_dir": str(self.migration_trace_dir),
-                "semantic_planning_dir": str(self.migration_trace_dir),
-            },
-            "ANALYSIS_SUMMARY": {
-                "source_file_count": len(analysis.get("source_files", [])),
-                "public_api_count": len(analysis.get("public_apis", [])),
-                "test_function_count": len(analysis.get("test_functions", [])),
-                "type_count": len(analysis.get("types", [])),
-                "call_edge_count": len(analysis.get("call_graph", [])),
-                "parse_failures": analysis.get("parse_failures", []),
-            },
-            "SKILL_PATH": str(self.work_dir / "skills" / "c-to-rust-migration-v2" / "SKILL.md"),
-            "SUBAGENT_DIR": str(self.work_dir / "subagent"),
-            "TOOLS_PY_PATH": str(self.work_dir / "runtime" / "tools.py"),
-            "SUPERPOWER_GUARDS_PATH": str(self.work_dir / "profiles" / "superpower" / "c-to-rust-migration-guards.yaml"),
-        }
-
-    def _write_agent_delegation_report(self, packet: AgentTaskPacket, analysis: Dict[str, Any], context_pkg: Dict[str, Any]) -> Dict[str, Any]:
-        """Write the result/output.md with Stage 1 completion and Stage 2 handoff instructions."""
-        public_apis = analysis.get("public_apis", [])
-        source_files = analysis.get("source_files", [])
-        test_functions = analysis.get("test_functions", [])
-
-        output_lines = [
-            "# Output",
-            "",
-            "## Stage 1 Complete — Data Preparation",
-            "",
-            "- status: `AGENT_DELEGATION_READY`",
-            f"- generated_at: `{utc_now()}`",
-            f"- input_root: `{self.display_path(self.input_root)}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
-            f"- design_readme: `{self.display_path(analysis.get('design_readme_path') or 'missing')}`",
-            f"- design_readme_sha256: `{analysis.get('design_readme_sha256') or 'missing'}`",
-            f"- rust_project: `{self.display_path(packet.output_project_dir)}`",
-            f"- source_file_count: `{len(source_files)}`",
-            f"- public_api_count: `{len(public_apis)}`",
-            f"- test_function_count: `{len(test_functions)}`",
-            "",
-            "Source analysis and semantic planning are complete. The context package is ready.",
-            f"Context package: `{self.display_path(self.context_pkg_path)}`",
-            "",
-            "## Stage 2 — Agent Judgment (Phases 0→10)",
-            "",
-            "The orchestrator MUST immediately proceed to Stage 2. Read the orchestrator skill:",
-            "",
-            f"  `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`",
-            "",
-            "### Quick Start",
-            "",
-            "1. Read `work/skills/c-to-rust-migration-v2/SKILL.md`",
-            "2. Read `logs/trace/execution-adapter/state/context-package.json` for all absolute paths",
-            "3. Execute Phase 0 (preflight) — verify context package integrity",
-            "4. Execute Phase 1 (understand) — delegate to `c2r-01-understand.md` subagent",
-            "5. Continue through Phase 10 (finalize) — write `READY_FOR_EVALUATION`",
-            "",
-            "### Phase Sequence",
-            "",
-            "```",
-            "Phase 0 (preflight)    → Read context-package.json, verify paths",
-            "Phase 1 (understand)   → Subagent c2r-01-understand.md + PRIOR_OUTPUTS",
-            "Phase 2 (design)       → Subagent c2r-02-design.md",
-            "Phase 3 (spec)         → Subagent c2r-03-spec.md (per module)",
-            "Phase 4 (plan)         → Subagent c2r-04-plan.md → tasks.md + implement-plan.md",
-            "Phase 5 (implement)    → Subagent c2r-05-implement.md × N batches → src/**/*.rs",
-            "Phase 6 (test)         → Subagent c2r-06-test.md × N batches → tests/**/*.rs",
-            "Phase 7 (repair)       → Subagent c2r-07-repair.md → cargo build + test fixes",
-            "Phase 8 (semantic)     → Subagent c2r-08-semantic-audit.md → invariant tests",
-            "Phase 9 (quality)      → Subagent c2r-09-quality-gates.md → unsafe / fault / neutrality",
-            "Phase 10 (finalize)    → tools.py write-report → result/output.md (READY_FOR_EVALUATION)",
-            "```",
-            "",
-            "### Rules",
-            "- Python `tools.py` returns raw data only — NEVER makes pass/fail judgments",
-            "- All judgment (code generation, repair decisions, gate evaluation) is Agent responsibility",
-            "- Each phase returns `PHASE_PASS`, `PHASE_BLOCKED`, or `PHASE_DEGRADED`",
-            "- On `PHASE_BLOCKED`: stop immediately, report blocker",
-            "",
-            "### Source APIs Detected",
-            "",
-        ]
-        output_lines.extend([f"- `{api}`" for api in (public_apis or ["none detected"])])
-        output_lines.append("")
-        self.result_output_path.write_text("\n".join(output_lines), encoding="utf-8")
-
-        issue_lines = [
-            "# Issue Summary",
-            "",
-            "- final_status: AGENT_DELEGATION_READY",
-            f"- generated_at: `{utc_now()}`",
-            f"- input_root: `{self.display_path(self.input_root)}`",
-            f"- source_root: `{self.display_path(self.source_root)}`",
-            "- issue_count: 0 (pre-generation phase)",
-            "",
-            "## Note",
-            "",
-            "The Python runner has completed data preparation. All further phases are delegated to the Agent.",
-            "Check result/output.md for Agent execution instructions.",
-            "",
-        ]
-        self.issue_summary_path.write_text("\n".join(issue_lines), encoding="utf-8")
-
-        return {
-            "status": "AGENT_DELEGATION_READY",
-            "context_package_path": str(self.context_pkg_path),
-            "result_output_path": str(self.result_output_path),
-        }
-
-    def run_entrypoint(self) -> Dict[str, Any]:
-        """Prepare data and delegate to Agent.
-
-        1. Self-check environment
-        2. Run source analysis (deterministic, no body_kind)
-        3. Run semantic planning (deterministic migration plan)
-        4. Write context package for Agent
-        5. Output Agent delegation instructions
-        """
-        self.ensure_outputs()
-        packet = self.create_agent_task_packet()
-
-        # Stage 1: Self-check
-        self_check_payload = self.self_check(packet)
-        if not self_check_payload["ok"]:
-            self._write_blocked_report(packet, self_check_payload, "SELF_CHECK_FAILED")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "self_check": self_check_payload}
-
-        # Stage 2: Source analysis (deterministic data extraction, no body_kind)
-        analysis = self._run_source_analysis(packet)
-        self.write_json(self.migration_trace_dir / "semantic-invariants.json", {"invariants": []})
-
-        if not analysis["ok"]:
-            source_gate = {"passed": False, "status": "BLOCKED_WITH_REPORT", "failures": analysis.get("verification", {}).get("failures", []), "first_blocking_point": "C_SOURCE_ANALYSIS"}
-            self._write_blocked_report(packet, source_gate, "SOURCE_ANALYSIS_FAILED")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "source_gate": source_gate}
-
-        # Source analysis verify gate
-        source_gate = build_and_verify_source_analysis(packet, analysis, self.migration_trace_dir)
-        if not source_gate.get("passed"):
-            self._write_blocked_report(packet, source_gate, "SOURCE_ANALYSIS_VERIFY_FAILED")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "source_gate": source_gate}
-
-        # Stage 3: Semantic planning (deterministic migration plan)
-        try:
-            semantic_plan = plan_from_trace(self.migration_trace_dir)
-        except PlanningBlocked as exc:
-            plan_gate = {"passed": False, "status": "BLOCKED_WITH_REPORT", "failures": exc.failures, "first_blocking_point": "SEMANTIC_MIGRATION_PLANNING"}
-            self._write_blocked_report(packet, plan_gate, "PLANNING_BLOCKED")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "plan_gate": plan_gate}
-
-        if not semantic_plan.get("passed"):
-            self._write_blocked_report(packet, semantic_plan, "PLANNING_NOT_PASSED")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "analysis": analysis, "plan_gate": semantic_plan}
-
-        # Stage 4: Build context package for Agent (absolute paths, no sanitization)
-        context_pkg = self._build_context_package(packet, analysis, source_gate, semantic_plan)
-        self.context_pkg_path.parent.mkdir(parents=True, exist_ok=True)
-        self.context_pkg_path.write_text(json.dumps(context_pkg, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
-
-        # Stage 5: Write delegation report
-        delegation = self._write_agent_delegation_report(packet, analysis, context_pkg)
-
-        # Write final report
-        final_report = {
-            "generated_at": utc_now(),
-            "status": "AGENT_DELEGATION_READY",
-            "self_check": self_check_payload,
-            "source_analysis": analysis.get("verification", {}),
-            "source_gate": source_gate,
-            "semantic_planning": semantic_plan,
-            "context_package_path": str(self.context_pkg_path),
-            "instructions": "The Agent must read work/skills/c-to-rust-migration-v2/SKILL.md and execute phases 0-10.",
-        }
-        self.write_json(self.run_summary_path, final_report)
-        self.write_json((self.artifact_dir / "state" / "packet.json"), packet.to_dict())
-        self.final_report_path.write_text(
-            "# LoopForge Final Report\n\n"
-            f"- status: `AGENT_DELEGATION_READY`\n"
-            f"- generated_at: `{utc_now()}`\n"
-            f"- source_root: `{self.display_path(self.source_root)}`\n"
-            f"- output_project_dir: `{self.display_path(packet.output_project_dir)}`\n\n"
-            "## Data preparation complete. All judgment phases delegated to Agent.\n\n"
-            f"Context Package: `{self.display_path(self.context_pkg_path)}`\n\n"
-            f"Skill: `{self.display_path(self.work_dir / 'skills' / 'c-to-rust-migration-v2' / 'SKILL.md')}`\n\n",
-            encoding="utf-8",
-        )
-
-        return {
-            "ok": True,
-            "status": "AGENT_DELEGATION_READY",
-            "self_check": self_check_payload,
-            "analysis": analysis,
-            "source_gate": source_gate,
-            "semantic_planning": semantic_plan,
-            "delegation": delegation,
-        }
-
-    def _write_blocked_report(self, packet: AgentTaskPacket, gate: Dict[str, Any], reason: str) -> None:
-        """Write BLOCKED_WITH_REPORT output when a pre-generation stage fails."""
-        self.result_output_path.write_text(
-            "# Output\n\n"
-            f"- status: `BLOCKED_WITH_REPORT`\n"
-            f"- reason: `{reason}`\n"
-            f"- generated_at: `{utc_now()}`\n\n"
-            f"## Gate Details\n\n"
-            f"```json\n{json.dumps(gate, indent=2, ensure_ascii=True)}\n```\n",
-            encoding="utf-8",
-        )
-        self.issue_summary_path.write_text(
-            "# Issue Summary\n\n"
-            f"- final_status: BLOCKED_WITH_REPORT\n"
-            f"- reason: {reason}\n"
-            f"- generated_at: `{utc_now()}`\n\n"
-            f"## Gate\n\n"
-            f"```json\n{json.dumps(gate, indent=2, ensure_ascii=True)}\n```\n",
-            encoding="utf-8",
-        )
 
 
 def resolve_path(base: Path, value: str) -> Path:
@@ -653,8 +75,8 @@ def resolve_path(base: Path, value: str) -> Path:
     return path.resolve()
 
 
-def resolve_default_source_root(workspace_root: Path, platform_name: Optional[str] = None) -> Path:
-    current_platform = platform_name or os.name
+def resolve_default_source_root(workspace_root: Path, platform_name: str | None = None) -> Path:
+    current_platform = platform_name or ("nt" if sys.platform.startswith("win") else "posix")
     if current_platform == "nt":
         return (workspace_root / "__CONTEST_PLATFORM_SOURCE_ROOT__" / "source").resolve()
     for candidate in [Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source"), Path("/__CONTEST_PLATFORM_SOURCE_ROOT__")]:
@@ -663,8 +85,249 @@ def resolve_default_source_root(workspace_root: Path, platform_name: Optional[st
     return Path("/__CONTEST_PLATFORM_SOURCE_ROOT__/source").resolve()
 
 
+def _relative_to(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _guard_outside_source(source_root: Path, *targets: Path) -> None:
+    for target in targets:
+        try:
+            target.resolve().relative_to(source_root.resolve())
+        except ValueError:
+            continue
+        raise ValueError(f"writable destination must be outside SOURCE_ROOT: {target}")
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _load_yaml(path: Path) -> Dict[str, Any]:
+    with path.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def _normalized_final_status(payload: Dict[str, Any]) -> str:
+    raw_status = payload.get("final_status", "BLOCKED")
+    findings = payload.get("findings", [])
+    if raw_status == "READY":
+        return "FINALIZED_NO_FINDINGS"
+    if findings:
+        return "FINALIZED_WITH_FINDINGS"
+    if raw_status == "DEGRADED":
+        return "DEGRADED_FINAL_REPORT_READY"
+    return "BLOCKED_WITH_REPORT"
+
+
+class LoopForgeRunner:
+    def __init__(self, workspace_root: Path, work_dir: Path, source_root: Path, result_dir: Path, log_dir: Path) -> None:
+        self.workspace_root = workspace_root.resolve()
+        self.work_dir = work_dir.resolve()
+        self.source_root = source_root.resolve()
+        self.result_dir = result_dir.resolve()
+        self.log_dir = log_dir.resolve()
+        self.trace_dir = self.log_dir / "trace"
+        self.consistency_trace_dir = self.trace_dir / TRACE_NAMESPACE
+        self.output_path = self.result_dir / "output.md"
+        self.issue_summary_path = self.result_dir / "issues" / "00-summary.md"
+        self.final_report_path = self.trace_dir / "final-report.md"
+        self.run_summary_path = self.trace_dir / "run-summary.json"
+        self.self_check_path = self.consistency_trace_dir / "00-preflight-self-check.json"
+        self.design_root = self.work_dir / "design"
+        self.design_readme_path = self.design_root / "README.md"
+        self.config_path = self.work_dir / "loopforge.config.yaml"
+        self.config = _load_yaml(self.config_path) if self.config_path.exists() else {}
+        profile_rel = self.config.get("task", {}).get("profile", "profiles/examples/default-java-consistency.yaml")
+        self.profile_path = resolve_path(self.work_dir, profile_rel)
+        _guard_outside_source(self.source_root, self.result_dir, self.log_dir)
+
+    def ensure_outputs(self) -> None:
+        self.result_dir.mkdir(parents=True, exist_ok=True)
+        (self.result_dir / "issues").mkdir(parents=True, exist_ok=True)
+        self.trace_dir.mkdir(parents=True, exist_ok=True)
+        self.consistency_trace_dir.mkdir(parents=True, exist_ok=True)
+
+    def _legacy_reference_issues(self) -> List[str]:
+        issues: List[str] = []
+        authoritative_files = [
+            self.work_dir / "skills" / "design-implementation-consistency" / "SKILL.md",
+            self.work_dir / "skills" / "loopforge-driver" / "SKILL.md",
+            self.work_dir / "scripts" / "run.sh",
+        ]
+        for path in authoritative_files:
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for literal in LEGACY_FORBIDDEN_LITERALS:
+                if literal in text:
+                    issues.append(f"legacy_reference:{_relative_to(path, self.workspace_root)}:{literal}")
+        return issues
+
+    def create_self_check_payload(self) -> Dict[str, Any]:
+        issues: List[str] = []
+        for relative in REQUIRED_WORKFLOW_FILES:
+            if not (self.workspace_root / relative).exists():
+                issues.append(f"missing_required_asset:{relative}")
+        if not self.source_root.exists():
+            issues.append(f"source_root_missing:{self.source_root}")
+        elif not self.source_root.is_dir():
+            issues.append(f"source_root_not_directory:{self.source_root}")
+        elif not any(self.source_root.rglob("*")):
+            issues.append(f"source_root_empty:{self.source_root}")
+        if not self.design_readme_path.is_file():
+            issues.append(f"design_readme_missing:{self.design_readme_path}")
+        issues.extend(self._legacy_reference_issues())
+
+        design_hash = _sha256(self.design_readme_path) if self.design_readme_path.is_file() else ""
+        payload = {
+            "ok": not issues,
+            "generated_at": utc_now(),
+            "workspace_root": str(self.workspace_root),
+            "work_dir": str(self.work_dir),
+            "source_root": str(self.source_root),
+            "design_readme_path": str(self.design_readme_path),
+            "design_readme_sha256": design_hash,
+            "profile_path": str(self.profile_path),
+            "issues": issues,
+        }
+        self.ensure_outputs()
+        self.self_check_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        return payload
+
+    def _write_blocked_reports(self, payload: Dict[str, Any], reason: str) -> None:
+        self.ensure_outputs()
+        report = {
+            "final_status": "BLOCKED_WITH_REPORT",
+            "reason": reason,
+            "issues": payload.get("issues", []),
+            "design_readme_sha256": payload.get("design_readme_sha256", ""),
+            "source_root": payload.get("source_root", ""),
+        }
+        self.output_path.write_text(
+            "# Design-Implementation Consistency Report\n\n"
+            "## Final Status\n\n"
+            "- Status: BLOCKED_WITH_REPORT\n"
+            f"- Reason: {reason}\n\n"
+            "## Issues\n\n"
+            + "\n".join(f"- {item}" for item in payload.get("issues", []))
+            + "\n",
+            encoding="utf-8",
+        )
+        self.issue_summary_path.write_text(
+            "# Issue Summary\n\n"
+            f"- {reason}\n"
+            + ("\n".join(f"- {item}" for item in payload.get("issues", [])) + "\n" if payload.get("issues") else ""),
+            encoding="utf-8",
+        )
+        self.final_report_path.write_text(json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        self.run_summary_path.write_text(json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+
+    def run(self) -> Dict[str, Any]:
+        self.ensure_outputs()
+        self_check = self.create_self_check_payload()
+        if not self_check["ok"]:
+            self._write_blocked_reports(self_check, "self_check_failed")
+            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "self_check": self_check}
+
+        profile_arg = str(self.profile_path)
+        design_scan = scan_design_root(self.design_root)
+        source_inventory = build_source_inventory(self.source_root, profile_arg)
+        implementation = extract_implementation_model(self.source_root, profile_arg)
+        traceability = build_traceability(design_scan["design_model"], implementation["implementation_model"])
+
+        (self.consistency_trace_dir / "01-design-inventory.json").write_text(
+            json.dumps(design_scan["inventory"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "03-design-model.json").write_text(
+            json.dumps(design_scan["design_model"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "03-design-model-evidence.json").write_text(
+            json.dumps(design_scan["evidence_index"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "02-source-inventory.json").write_text(
+            json.dumps(source_inventory, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "02-adapter-selection.json").write_text(
+            json.dumps(source_inventory["selection"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "02-source-inventory-gate.json").write_text(
+            json.dumps(
+                {
+                    "status": "PASS",
+                    "selected_adapter": source_inventory["selected_adapter"],
+                    "file_count": source_inventory["file_count"],
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        (self.consistency_trace_dir / "04-implementation-model.json").write_text(
+            json.dumps(implementation["implementation_model"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "04-implementation-model-evidence.json").write_text(
+            json.dumps(implementation["inventory"], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "05-traceability-matrix.json").write_text(
+            json.dumps(traceability, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "05-traceability-map.md").write_text(
+            render_traceability_summary(traceability), encoding="utf-8"
+        )
+        (self.consistency_trace_dir / "05-traceability-map-evidence.json").write_text(
+            json.dumps({"links": traceability.get("links", []), "gaps": traceability.get("gaps", [])}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        for placeholder_name in ("06-drift-findings.json", "07-risk-classification.json", "08-repair-plan.json"):
+            placeholder_path = self.consistency_trace_dir / placeholder_name
+            if not placeholder_path.exists():
+                placeholder_path.write_text(json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        verification_plan = resolve_verification_commands(
+            self.source_root,
+            profile_arg,
+            adapter_id=source_inventory["selected_adapter"],
+        )
+        verification = run_verification(
+            self.source_root,
+            commands=verification_plan["commands"],
+            command_source=verification_plan["command_source"],
+        )
+        (self.consistency_trace_dir / "09-verification-results.json").write_text(
+            json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+        payload = compose_report_payload(
+            trace_root=self.consistency_trace_dir,
+            result_dir=self.result_dir,
+            design_root=self.design_root,
+            source_root=self.source_root,
+            profile_path=self.profile_path,
+        )
+        payload["final_status"] = _normalized_final_status(payload)
+        payload_output = self.consistency_trace_dir / "09-final-report-input.json"
+        payload_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        outputs = write_reports(payload, result_dir=self.result_dir, trace_dir=self.trace_dir)
+
+        summary = {
+            "ok": True,
+            "status": payload["final_status"],
+            "generated_at": utc_now(),
+            "self_check": self_check,
+            "selected_adapter": source_inventory["selected_adapter"],
+            "verification_status": verification.get("overall_status", "unknown"),
+            "outputs": outputs,
+            "trace_root": str(self.consistency_trace_dir),
+        }
+        self.run_summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        return summary
+
+
 def parse_args(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="LoopForge execution orchestrator — data preparation + Agent delegation")
+    parser = argparse.ArgumentParser(description="Run the authoritative analyze-only consistency pipeline")
     parser.add_argument("--work-dir", default="work")
     parser.add_argument("--source-root")
     parser.add_argument("--result-dir", default="result")
@@ -675,7 +338,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 
 
 def print_json(payload: Dict[str, Any]) -> None:
-    print(json.dumps(payload, indent=2, ensure_ascii=True))
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
 
 
 def main(argv: List[str]) -> int:
@@ -684,10 +347,10 @@ def main(argv: List[str]) -> int:
         print("No action provided.", file=sys.stderr)
         return 2
 
-    script_root = Path(__file__).resolve().parent.parent.parent  # runtime -> work -> repo root
+    script_root = Path(__file__).resolve().parent.parent.parent
     work_dir = resolve_path(script_root, args.work_dir)
     workspace_root = work_dir.parent
-    source_arg = (args.source_root or os.environ.get("SOURCE_ROOT", "")).strip()
+    source_arg = (args.source_root or "").strip()
     source_root = resolve_path(workspace_root, source_arg) if source_arg else resolve_default_source_root(workspace_root)
     result_dir = resolve_path(workspace_root, args.result_dir)
     log_dir = resolve_path(workspace_root, args.log_dir)
@@ -695,18 +358,11 @@ def main(argv: List[str]) -> int:
     try:
         runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
         if args.self_check:
-            packet = runner.create_agent_task_packet()
-            runner.ensure_outputs()
-            print_json(runner.self_check(packet))
+            print_json(runner.create_self_check_payload())
         if args.run:
-            print_json(runner.run_entrypoint())
+            print_json(runner.run())
     except Exception as exc:
-        fallback = {
-            "ok": False,
-            "status": "BLOCKED_WITH_REPORT",
-            "exception": {"kind": type(exc).__name__, "detail": str(exc)},
-        }
-        print_json(fallback)
+        print_json({"ok": False, "status": "BLOCKED_WITH_REPORT", "error": f"{type(exc).__name__}: {exc}"})
         return 0
     return 0
 

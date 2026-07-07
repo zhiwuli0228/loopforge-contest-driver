@@ -1,0 +1,357 @@
+superspec:
+  name: "design-implementation-consistency-stages"
+  version: "1.0"
+  purpose: "Ordered stage contract for analyze-only design-implementation consistency checks."
+  artifact_root: "logs/trace/consistency"
+  final_report: "logs/trace/final-report.md"
+  result_report: "result/output.md"
+  issue_summary: "result/issues/00-summary.md"
+execution_defaults:
+  strategy: "analyze-only"
+  fail_soft: true
+  always_finalize: true
+  handoff_mode: "file-paths-and-summaries-only"
+
+stages:
+  - id: "dic-00"
+    stage_package: "work/subagent/dic-00-preflight.md"
+    name: "Preflight"
+    responsibility: "Validate required inputs, resolve profile, and record execution defaults."
+    consumes_from: []
+    inputs:
+      - "INSTRUCTION.md"
+      - "work/loopforge.config.yaml"
+      - "work/profiles/examples/default-java-consistency.yaml"
+      - "work/profiles/superspec/design-implementation-consistency-stages.yaml"
+      - "work/profiles/superpower/design-implementation-consistency-guards.yaml"
+      - "work/subagent/design-implementation-consistency-stage-map.yaml"
+      - "work/design/README.md"
+      - "SOURCE_ROOT"
+    outputs:
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/00-preflight-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/00-preflight-report.md"
+      gate: "logs/trace/consistency/00-preflight-gate.json"
+      evidence_index: "logs/trace/consistency/00-preflight-evidence.json"
+      structured: []
+    gate:
+      success: "READY_FOR_DIC_01"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-01"
+    stage_package: "work/subagent/dic-01-design-intake.md"
+    name: "Design Intake"
+    responsibility: "Summarize the authoritative design contract and identify review scope."
+    consumes_from:
+      - "dic-00"
+    inputs:
+      - "work/design/README.md"
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/00-preflight-evidence.json"
+    outputs:
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-inventory.json"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/01-design-intake.md"
+      gate: "logs/trace/consistency/01-design-intake-gate.json"
+      evidence_index: "logs/trace/consistency/01-design-intake-evidence.json"
+      structured:
+        - "logs/trace/consistency/01-design-inventory.json"
+    gate:
+      success: "READY_FOR_DIC_02"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-02"
+    stage_package: "work/subagent/dic-02-source-inventory.md"
+    name: "Source Inventory"
+    responsibility: "Inventory source layout, detectable frameworks, verification entry points, and the selected language adapter."
+    consumes_from:
+      - "dic-00"
+      - "dic-01"
+    inputs:
+      - "SOURCE_ROOT"
+      - "logs/trace/consistency/00-preflight-report.md"
+      - "logs/trace/consistency/00-preflight-gate.json"
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+    outputs:
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+      - "logs/trace/consistency/02-source-inventory-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/02-source-inventory.md"
+      gate: "logs/trace/consistency/02-source-inventory-gate.json"
+      evidence_index: "logs/trace/consistency/02-source-inventory-evidence.json"
+      structured:
+        - "logs/trace/consistency/02-source-inventory.json"
+        - "logs/trace/consistency/02-adapter-selection.json"
+    gate:
+      success: "READY_FOR_DIC_03"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-03"
+    stage_package: "work/subagent/dic-03-design-model.md"
+    name: "Design Model Extraction"
+    responsibility: "Normalize the design contract into an adapter-neutral model."
+    consumes_from:
+      - "dic-01"
+      - "dic-02"
+    inputs:
+      - "work/design/README.md"
+      - "logs/trace/consistency/01-design-intake.md"
+      - "logs/trace/consistency/01-design-intake-gate.json"
+      - "logs/trace/consistency/01-design-intake-evidence.json"
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+    outputs:
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/03-design-model-summary.md"
+      gate: "logs/trace/consistency/03-design-model-gate.json"
+      evidence_index: "logs/trace/consistency/03-design-model-evidence.json"
+      structured:
+        - "logs/trace/consistency/03-design-model.json"
+    gate:
+      success: "READY_FOR_DIC_04"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-04"
+    stage_package: "work/subagent/dic-04-implementation-model.md"
+    name: "Implementation Model Extraction"
+    responsibility: "Extract implementation structures into the same adapter-neutral model family."
+    consumes_from:
+      - "dic-02"
+      - "dic-03"
+    inputs:
+      - "SOURCE_ROOT"
+      - "logs/trace/consistency/02-source-inventory.md"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/02-adapter-selection.json"
+      - "logs/trace/consistency/02-source-inventory-gate.json"
+      - "logs/trace/consistency/02-source-inventory-evidence.json"
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+    outputs:
+      - "logs/trace/consistency/04-implementation-model-summary.md"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-gate.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/04-implementation-model-summary.md"
+      gate: "logs/trace/consistency/04-implementation-model-gate.json"
+      evidence_index: "logs/trace/consistency/04-implementation-model-evidence.json"
+      structured:
+        - "logs/trace/consistency/04-implementation-model.json"
+    gate:
+      success: "READY_FOR_DIC_05"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-05"
+    stage_package: "work/subagent/dic-05-traceability-map.md"
+    name: "Traceability Mapping"
+    responsibility: "Map design entities to implementation entities and record gaps or ambiguous links."
+    consumes_from:
+      - "dic-03"
+      - "dic-04"
+    inputs:
+      - "logs/trace/consistency/03-design-model-summary.md"
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-gate.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/04-implementation-model-summary.md"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-gate.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+    outputs:
+      - "logs/trace/consistency/05-traceability-map.md"
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-gate.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/05-traceability-map.md"
+      gate: "logs/trace/consistency/05-traceability-map-gate.json"
+      evidence_index: "logs/trace/consistency/05-traceability-map-evidence.json"
+      structured:
+        - "logs/trace/consistency/05-traceability-matrix.json"
+    gate:
+      success: "READY_FOR_DIC_06"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-06"
+    stage_package: "work/subagent/dic-06-drift-analysis.md"
+    name: "Drift Analysis"
+    responsibility: "Identify candidate inconsistencies with evidence from both sides of the comparison."
+    consumes_from:
+      - "dic-03"
+      - "dic-04"
+      - "dic-05"
+    inputs:
+      - "logs/trace/consistency/03-design-model.json"
+      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/04-implementation-model.json"
+      - "logs/trace/consistency/04-implementation-model-evidence.json"
+      - "logs/trace/consistency/05-traceability-map.md"
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-gate.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+    outputs:
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/06-drift-analysis.md"
+      gate: "logs/trace/consistency/06-drift-analysis-gate.json"
+      evidence_index: "logs/trace/consistency/06-drift-analysis-evidence.json"
+      structured:
+        - "logs/trace/consistency/06-drift-findings.json"
+    gate:
+      success: "READY_FOR_DIC_07"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-07"
+    stage_package: "work/subagent/dic-07-risk-classification.md"
+    name: "Risk Classification"
+    responsibility: "Assign severity and execution risk to confirmed drift findings."
+    consumes_from:
+      - "dic-05"
+      - "dic-06"
+    inputs:
+      - "logs/trace/consistency/05-traceability-matrix.json"
+      - "logs/trace/consistency/05-traceability-map-evidence.json"
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+    outputs:
+      - "logs/trace/consistency/07-risk-classification.md"
+      - "logs/trace/consistency/07-risk-classification.json"
+      - "logs/trace/consistency/07-risk-classification-gate.json"
+      - "logs/trace/consistency/07-risk-classification-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/07-risk-classification.md"
+      gate: "logs/trace/consistency/07-risk-classification-gate.json"
+      evidence_index: "logs/trace/consistency/07-risk-classification-evidence.json"
+      structured:
+        - "logs/trace/consistency/07-risk-classification.json"
+    gate:
+      success: "READY_FOR_DIC_08"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-08"
+    stage_package: "work/subagent/dic-08-repair-plan.md"
+    name: "Repair Planning"
+    responsibility: "Describe bounded repair options without authorizing source mutation."
+    consumes_from:
+      - "dic-06"
+      - "dic-07"
+    inputs:
+      - "logs/trace/consistency/06-drift-analysis.md"
+      - "logs/trace/consistency/06-drift-findings.json"
+      - "logs/trace/consistency/06-drift-analysis-gate.json"
+      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+      - "logs/trace/consistency/07-risk-classification.md"
+      - "logs/trace/consistency/07-risk-classification.json"
+      - "logs/trace/consistency/07-risk-classification-gate.json"
+      - "logs/trace/consistency/07-risk-classification-evidence.json"
+    outputs:
+      - "logs/trace/consistency/08-repair-plan.md"
+      - "logs/trace/consistency/08-repair-plan.json"
+      - "logs/trace/consistency/08-repair-plan-gate.json"
+      - "logs/trace/consistency/08-repair-plan-evidence.json"
+    handoff:
+      summary: "logs/trace/consistency/08-repair-plan.md"
+      gate: "logs/trace/consistency/08-repair-plan-gate.json"
+      evidence_index: "logs/trace/consistency/08-repair-plan-evidence.json"
+      structured:
+        - "logs/trace/consistency/08-repair-plan.json"
+    gate:
+      success: "READY_FOR_DIC_09"
+      failure: "READY_FOR_DIC_09"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "dic-09"
+
+  - id: "dic-09"
+    stage_package: "work/subagent/dic-09-finalize.md"
+    name: "Finalization"
+    responsibility: "Assemble final reporting, preserve denial evidence, and emit terminal status."
+    consumes_from:
+      - "dic-00"
+      - "dic-01"
+      - "dic-02"
+      - "dic-03"
+      - "dic-04"
+      - "dic-05"
+      - "dic-06"
+      - "dic-07"
+      - "dic-08"
+    inputs:
+      - "work/design/README.md"
+      - "work/loopforge.config.yaml"
+      - "logs/trace/consistency/*.md"
+      - "logs/trace/consistency/*.json"
+      - "logs/trace/consistency/guard-denials.jsonl"
+    outputs:
+      - "logs/trace/consistency/09-finalization-summary.md"
+      - "logs/trace/consistency/09-finalization-gate.json"
+      - "logs/trace/consistency/09-finalization-evidence.json"
+      - "logs/trace/consistency/09-verification-results.json"
+      - "logs/trace/consistency/09-final-report-input.json"
+      - "logs/trace/final-report.md"
+      - "result/output.md"
+      - "result/issues/00-summary.md"
+    handoff:
+      summary: "logs/trace/consistency/09-finalization-summary.md"
+      gate: "logs/trace/consistency/09-finalization-gate.json"
+      evidence_index: "logs/trace/consistency/09-finalization-evidence.json"
+      structured:
+        - "logs/trace/consistency/09-verification-results.json"
+        - "logs/trace/consistency/09-final-report-input.json"
+        - "logs/trace/final-report.md"
+        - "result/output.md"
+        - "result/issues/00-summary.md"
+    gate:
+      success: "FINALIZED_NO_FINDINGS_OR_WITH_FINDINGS"
+      failure: "BLOCKED_WITH_REPORT"
+    failure_behavior:
+      preserve_evidence: true
+      when_always_finalize: "self"

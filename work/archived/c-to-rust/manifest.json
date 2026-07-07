@@ -1,0 +1,63 @@
+{
+  "archive_root": "work/archived/c-to-rust",
+  "status": "non-default",
+  "authoritative_workflow": "design-implementation consistency",
+  "migrated_at_change": "legacy-c2rust-asset-isolation",
+  "entries": [
+    {
+      "original_path": "work/skills/c-to-rust-migration",
+      "archived_path": "work/archived/c-to-rust/skills/c-to-rust-migration",
+      "reason": "Legacy migration skill; removed from default consistency entrypoints."
+    },
+    {
+      "original_path": "work/skills/c-to-rust-migration-v2",
+      "archived_path": "work/archived/c-to-rust/skills/c-to-rust-migration-v2",
+      "reason": "Legacy staged migration skill; removed from default consistency entrypoints."
+    },
+    {
+      "original_path": "work/profiles/examples/c-to-rust-migration.yaml",
+      "archived_path": "work/archived/c-to-rust/profiles/examples/c-to-rust-migration.yaml",
+      "reason": "Legacy migration profile; no longer authoritative."
+    },
+    {
+      "original_path": "work/profiles/superspec/c-to-rust-migration-stages.yaml",
+      "archived_path": "work/archived/c-to-rust/profiles/superspec/c-to-rust-migration-stages.yaml",
+      "reason": "Legacy migration stage graph; removed from default stage resolution."
+    },
+    {
+      "original_path": "work/profiles/superpower/c-to-rust-migration-guards.yaml",
+      "archived_path": "work/archived/c-to-rust/profiles/superpower/c-to-rust-migration-guards.yaml",
+      "reason": "Legacy migration guard contract; removed from default consistency permissions."
+    },
+    {
+      "original_path": "work/subagent/c2r-*.md",
+      "archived_path": "work/archived/c-to-rust/subagent/",
+      "reason": "Legacy migration subagents; no longer discoverable as default stage packages."
+    },
+    {
+      "original_path": "work/subagent/c-to-rust-*.md",
+      "archived_path": "work/archived/c-to-rust/subagent/",
+      "reason": "Legacy migration subagents; no longer discoverable as default stage packages."
+    },
+    {
+      "original_path": "work/rules/loopforge/adapters/c-to-rust",
+      "archived_path": "work/archived/c-to-rust/rules/loopforge/adapters/c-to-rust",
+      "reason": "Legacy adapter rules; removed from default consistency runtime dependencies."
+    },
+    {
+      "original_path": "work/runtime/rust_project_generation.py",
+      "archived_path": "work/archived/c-to-rust/runtime/rust_project_generation.py",
+      "reason": "Legacy runtime helper; no longer used by the authoritative consistency pipeline."
+    },
+    {
+      "original_path": "work/runtime/check_unsafe_ratio.py",
+      "archived_path": "work/archived/c-to-rust/runtime/check_unsafe_ratio.py",
+      "reason": "Legacy runtime helper; replaced by consistency-local tool logic."
+    },
+    {
+      "original_path": "work/runtime/test_migration_validation.py",
+      "archived_path": "work/archived/c-to-rust/runtime/test_migration_validation.py",
+      "reason": "Legacy runtime helper; replaced by consistency-local tool logic."
+    }
+  ]
+}

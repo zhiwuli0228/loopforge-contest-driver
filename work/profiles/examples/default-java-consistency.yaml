@@ -1,0 +1,146 @@
+profile:
+  name: "default-java-consistency"
+  class: "example"
+  role: "authoritative-default"
+  authoritative: true
+  supersedes:
+    - "profiles/examples/consistency-check.yaml"
+    - "profiles/examples/java-consistency-check.yaml"
+  intent: "default design-implementation consistency contract for Java-first repositories with generic fallback"
+
+task:
+  mode: "consistency-check"
+  objective: "compare the documented design contract with the implementation under SOURCE_ROOT without mutating the source tree"
+  language:
+    detection: "auto"
+    default_adapter: "java"
+    fallback_adapter: "generic"
+    supported_adapters:
+      - "java"
+      - "generic"
+
+contracts:
+  skill: "work/skills/design-implementation-consistency/SKILL.md"
+  stages: "work/profiles/superspec/design-implementation-consistency-stages.yaml"
+  guards: "work/profiles/superpower/design-implementation-consistency-guards.yaml"
+  stage_packages: "work/subagent/design-implementation-consistency-stage-map.yaml"
+
+inputs:
+  required:
+    - "work/design/README.md"
+    - "SOURCE_ROOT"
+  optional:
+    - "verification override commands"
+    - "traceability focus"
+
+execution:
+  strategy: "analyze-only"
+  unattended: true
+  allow_manual_interaction: false
+  allow_patch: false
+  allow_code_generation: false
+  fail_soft: true
+  always_finalize: true
+  max_repair_rounds: 0
+
+analysis:
+  dimensions:
+    - "api_contract"
+    - "data_model"
+    - "state_flow"
+    - "business_rule"
+    - "error_handling"
+    - "config"
+    - "security"
+    - "test_coverage"
+
+language:
+  detection:
+    enabled: true
+    selection:
+      require_evidence: true
+      inventory_output: "logs/trace/consistency/02-source-inventory.json"
+      selection_output: "logs/trace/consistency/02-adapter-selection.json"
+    selectors:
+      java:
+        files:
+          - "pom.xml"
+          - "build.gradle"
+          - "build.gradle.kts"
+          - "settings.gradle"
+          - "settings.gradle.kts"
+        source_globs:
+          - "**/*.java"
+      generic:
+        fallback: true
+  adapters:
+    java:
+      framework_detection:
+        - "spring"
+        - "springboot"
+        - "springmvc"
+        - "mybatis"
+        - "maven"
+        - "gradle"
+      source_patterns:
+        controllers:
+          - "**/*Controller.java"
+          - "**/*Resource.java"
+        services:
+          - "**/*Service.java"
+          - "**/*ServiceImpl.java"
+        data_models:
+          - "**/*DTO.java"
+          - "**/*Request.java"
+          - "**/*Response.java"
+          - "**/*Entity.java"
+          - "**/*VO.java"
+        tests:
+          - "**/*Test.java"
+          - "**/*Tests.java"
+      verification:
+        preferred_commands:
+          - "./mvnw test"
+          - "mvn test"
+          - "./gradlew test"
+          - "gradle test"
+        fallback_commands: []
+    generic:
+      verification:
+        preferred_commands: []
+        fallback_commands: []
+
+verification:
+  source: "profile-or-framework-default"
+  working_directory_hint: "SOURCE_ROOT"
+  command_selection:
+    source: "detected-adapter"
+    java_preferred:
+      - "./mvnw test"
+      - "mvn test"
+      - "./gradlew test"
+      - "gradle test"
+    generic_fallback: []
+    on_missing_command: "report-unavailable"
+  allow_degraded_verification: true
+  require_failure_reason: true
+  require_stdout_stderr_summary: true
+  commands: []
+
+reporting:
+  final_report: "logs/trace/final-report.md"
+  result_report: "result/output.md"
+  issue_summary: "result/issues/00-summary.md"
+  consistency_trace_root: "logs/trace/consistency"
+  model_paths:
+    design_inventory: "logs/trace/consistency/01-design-inventory.json"
+    source_inventory: "logs/trace/consistency/02-source-inventory.json"
+    adapter_selection: "logs/trace/consistency/02-adapter-selection.json"
+    design: "logs/trace/consistency/03-design-model.json"
+    implementation: "logs/trace/consistency/04-implementation-model.json"
+    traceability: "logs/trace/consistency/05-traceability-matrix.json"
+    drift_findings: "logs/trace/consistency/06-drift-findings.json"
+    risk_classification: "logs/trace/consistency/07-risk-classification.json"
+    repair_plan: "logs/trace/consistency/08-repair-plan.json"
+    verification_results: "logs/trace/consistency/09-verification-results.json"
+    final_report_input: "logs/trace/consistency/09-final-report-input.json"
