@@ -1,6 +1,6 @@
 ---
 name: loopforge-driver
-description: Execute the repository's default design-implementation consistency workflow against a read-only SOURCE_ROOT.
+description: Execute the repository's default design-implementation consistency workflow against a standard submission package.
 ---
 
 # LoopForge Driver Skill
@@ -17,8 +17,7 @@ Use this skill as the repository-level entry point for unattended `consistency-c
 ## Required Inputs
 
 - `INSTRUCTION.md`
-- `SOURCE_ROOT`
-- `work/design/README.md`
+- `SUBMISSION_ROOT`
 - `work/loopforge.config.yaml`
 - `work/skills/design-implementation-consistency/SKILL.md`
 - `work/profiles/examples/default-java-consistency.yaml`
@@ -40,19 +39,19 @@ The repository default schema is `spec-driven`. Legacy `c2r-migration` artifacts
 
 ## Mission
 
-Drive an unattended design-implementation consistency run using `work/design/README.md` as the task definition and `SOURCE_ROOT` as read-only source input.
+Drive an unattended design-implementation consistency run using `SUBMISSION_ROOT/README.md` and `SUBMISSION_ROOT/design-docs/` as the task definition and `SUBMISSION_ROOT/code/` as the business implementation input.
 
 ## Hard Constraints
 
 - Do not modify static files in the LoopForge root during execution.
 - Do not require humans to fill placeholder task name, language, objective, or verification commands.
-- Do not write into `SOURCE_ROOT`; outputs must stay under `logs/trace/consistency/`, `logs/trace/final-report.md`, `result/output.md`, and `result/issues/00-summary.md`.
+- Do not write into immutable submission-package assets; outputs must stay under `logs/trace/consistency/`, `logs/trace/final-report.md`, `result/output.md`, and `result/issues/00-summary.md`.
 - Do not resolve the default workflow through archived `c-to-rust` or `c2r` paths.
 - Stop after verification and report generation.
 
 ## Entrypoints
 
-- Linux: `SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh`
+- Linux: `SUBMISSION_ROOT="/path/to/submission" bash work/scripts/run.sh`
 - Linux fallback: `bash work/scripts/run.sh`
 
 ## Required Procedure
@@ -62,7 +61,7 @@ Drive an unattended design-implementation consistency run using `work/design/REA
 Run the repository driver:
 
 ```bash
-SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh --run
+SUBMISSION_ROOT="/path/to/submission" bash work/scripts/run.sh --run
 ```
 
 This writes:

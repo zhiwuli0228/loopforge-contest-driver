@@ -6,11 +6,11 @@ profile:
   supersedes:
     - "profiles/examples/consistency-check.yaml"
     - "profiles/examples/java-consistency-check.yaml"
-  intent: "default design-implementation consistency contract for Java-first repositories with generic fallback"
+  intent: "default design-implementation consistency contract for Java-first contest repair with generic fallback"
 
 task:
   mode: "consistency-check"
-  objective: "compare the documented design contract with the implementation under SOURCE_ROOT without mutating the source tree"
+  objective: "repair the implementation under SUBMISSION_ROOT/code to satisfy the documented design contract in SUBMISSION_ROOT while preserving immutable contest baselines and proving progress with verification"
   language:
     detection: "auto"
     default_adapter: "java"
@@ -27,21 +27,27 @@ contracts:
 
 inputs:
   required:
-    - "work/design/README.md"
-    - "SOURCE_ROOT"
+    - "SUBMISSION_ROOT/README.md"
+    - "SUBMISSION_ROOT/design-docs"
+    - "SUBMISSION_ROOT/code"
   optional:
+    - "SUBMISSION_ROOT/test-cases"
+    - "SUBMISSION_ROOT/maven-settings.xml"
     - "verification override commands"
     - "traceability focus"
 
 execution:
-  strategy: "analyze-only"
+  strategy: "repair-and-verify"
   unattended: true
   allow_manual_interaction: false
-  allow_patch: false
-  allow_code_generation: false
+  allow_patch: true
+  allow_code_generation: true
   fail_soft: true
   always_finalize: true
-  max_repair_rounds: 0
+  max_repair_rounds: 1
+  mutable_paths:
+    - "SUBMISSION_ROOT/code/**"
+    - "SUBMISSION_ROOT/maven-settings.xml"
 
 analysis:
   dimensions:
@@ -100,22 +106,36 @@ language:
           - "**/*Tests.java"
       verification:
         preferred_commands:
+          - "mvn -s maven-settings.xml -f code/pom.xml test"
+          - "mvn -s maven-settings.xml -f code/pom.xml install -DskipTests"
+          - "mvn -s maven-settings.xml -f test-cases/pom.xml test"
+        fallback_commands:
           - "./mvnw test"
           - "mvn test"
           - "./gradlew test"
           - "gradle test"
-        fallback_commands: []
     generic:
       verification:
         preferred_commands: []
         fallback_commands: []
 
 verification:
-  source: "profile-or-framework-default"
-  working_directory_hint: "SOURCE_ROOT"
+  source: "submission-readme-first"
+  working_directory_hint: "SUBMISSION_ROOT"
   command_selection:
-    source: "detected-adapter"
-    java_preferred:
+    source: "contest-contract-or-detected-adapter"
+    ordered_classes:
+      - name: "project_tests"
+        command: "mvn -s maven-settings.xml -f code/pom.xml test"
+        required_before: []
+      - name: "project_install"
+        command: "mvn -s maven-settings.xml -f code/pom.xml install -DskipTests"
+        required_before:
+          - "black_box_tests"
+      - name: "black_box_tests"
+        command: "mvn -s maven-settings.xml -f test-cases/pom.xml test"
+        required_before: []
+    java_fallback:
       - "./mvnw test"
       - "mvn test"
       - "./gradlew test"
@@ -132,15 +152,20 @@ reporting:
   result_report: "result/output.md"
   issue_summary: "result/issues/00-summary.md"
   consistency_trace_root: "logs/trace/consistency"
+  final_statuses:
+    - "SUBMISSION_PASSED"
+    - "SUBMISSION_PARTIAL"
+    - "SUBMISSION_BLOCKED"
+    - "SUBMISSION_INVALID"
   model_paths:
-    design_inventory: "logs/trace/consistency/01-design-inventory.json"
+    acceptance_baseline: "logs/trace/consistency/01-acceptance-baseline.json"
     source_inventory: "logs/trace/consistency/02-source-inventory.json"
     adapter_selection: "logs/trace/consistency/02-adapter-selection.json"
-    design: "logs/trace/consistency/03-design-model.json"
-    implementation: "logs/trace/consistency/04-implementation-model.json"
-    traceability: "logs/trace/consistency/05-traceability-matrix.json"
-    drift_findings: "logs/trace/consistency/06-drift-findings.json"
-    risk_classification: "logs/trace/consistency/07-risk-classification.json"
-    repair_plan: "logs/trace/consistency/08-repair-plan.json"
+    gap_model: "logs/trace/consistency/03-gap-model.json"
+    repair_batches: "logs/trace/consistency/04-repair-batches.json"
+    repair_execution: "logs/trace/consistency/05-repair-execution.json"
+    build_verification: "logs/trace/consistency/06-build-verification.json"
+    black_box_verification: "logs/trace/consistency/07-black-box-verification.json"
+    retry_repair: "logs/trace/consistency/08-retry-repair.json"
     verification_results: "logs/trace/consistency/09-verification-results.json"
     final_report_input: "logs/trace/consistency/09-final-report-input.json"

@@ -21,9 +21,10 @@ class LanguageAdaptersTests(unittest.TestCase):
         self.generic_fixture = WORK_ROOT / "runtime" / "tests" / "fixtures" / "generic-counter"
 
     def test_java_selection_and_extraction_emit_canonical_objects(self):
-        inventory = build_source_inventory(self.java_fixture, self.profile_path)
+        inventory = build_source_inventory(self.java_fixture, self.profile_path, submission_root=self.java_fixture, test_root=self.java_fixture / "src" / "test" / "java")
         self.assertEqual(inventory["selected_adapter"], "java")
         self.assertTrue(inventory["selection"]["signals"])
+        self.assertTrue(inventory["submission_root"])
 
         extracted = extract_implementation_model(self.java_fixture, self.profile_path)
         kinds = {item["kind"] for item in extracted["implementation_model"]["objects"]}
@@ -37,7 +38,7 @@ class LanguageAdaptersTests(unittest.TestCase):
             self.assertIn("confidence", item)
 
     def test_generic_fallback_marks_partial_objects(self):
-        inventory = build_source_inventory(self.generic_fixture, self.profile_path)
+        inventory = build_source_inventory(self.generic_fixture, self.profile_path, submission_root=self.generic_fixture)
         self.assertEqual(inventory["selected_adapter"], "generic")
         self.assertTrue(inventory["selection"]["fallback_used"])
 

@@ -60,7 +60,7 @@ def _resolve_output_guarded(path_str: str, source_root: str | Path | None = None
             path.relative_to(source_path)
         except ValueError:
             return path
-        _die("guard", f"refusing to write inside SOURCE_ROOT: {path}")
+        _die("guard", f"refusing to write inside protected root: {path}")
     return path
 
 
@@ -219,7 +219,7 @@ def cmd_scan_design(args: argparse.Namespace) -> None:
     if not design_root.is_dir():
         _die("scan-design", f"design-root does not exist: {design_root}")
 
-    result = scan_design_root(design_root)
+    result = scan_design_root(design_root, submission_readme=args.submission_readme)
 
     if args.output:
         out_path = _resolve_output_guarded(args.output, args.source_root)
@@ -272,6 +272,7 @@ def cmd_run_verification(args: argparse.Namespace) -> None:
         project_dir,
         args.profile,
         adapter_id=adapter_id,
+        submission_root=args.submission_root,
         commands_override=command_override,
     )
     result = run_verification(
@@ -423,6 +424,8 @@ def cmd_write_report(args: argparse.Namespace) -> None:
             result_dir=result_dir,
             design_root=args.design_root,
             source_root=args.source_root,
+            submission_root=args.submission_root,
+            test_root=args.test_root,
             profile_path=args.profile,
         )
     elif not sys.stdin.isatty():
@@ -472,7 +475,12 @@ def cmd_scan_code(args: argparse.Namespace) -> None:
     if not source_root.is_dir():
         _die("scan-code", f"source-root does not exist: {source_root}")
 
-    inventory = build_source_inventory(source_root, args.profile)
+    inventory = build_source_inventory(
+        source_root,
+        args.profile,
+        submission_root=args.submission_root,
+        test_root=args.test_root,
+    )
 
     if args.output:
         out_path = _resolve_output_guarded(args.output, source_root)
@@ -595,19 +603,21 @@ def main(argv: Optional[List[str]] = None) -> None:
     p.add_argument("--output", help="Write JSON to file instead of stdout")
 
     # scan-design
-    p = sub.add_parser("scan-design", help="Inventory design documents and extract a canonical design model")
+    p = sub.add_parser("scan-design", help="Inventory acceptance-baseline documents and extract a canonical design model")
     p.add_argument("--design-root", required=True)
+    p.add_argument("--submission-readme", help="Optional standard-package README to include as the primary design contract")
     p.add_argument("--source-root", help="Optional SOURCE_ROOT for write-guard enforcement")
     p.add_argument("--output", help="Write the design inventory JSON to file")
     p.add_argument("--model-output", help="Write the canonical design model JSON to file")
     p.add_argument("--evidence-output", help="Write the design evidence index JSON to file")
 
     # run-verification
-    p = sub.add_parser("run-verification", help="Execute build/test commands, return raw results")
+    p = sub.add_parser("run-verification", help="Execute ordered build/black-box verification commands, return raw results")
     p.add_argument("--project-dir", help="Project directory to execute verification commands in")
     p.add_argument("--source-root", help="Alias for --project-dir in consistency-check flows")
     p.add_argument("--profile", help="Consistency profile YAML used to resolve default commands")
     p.add_argument("--adapter", help="Adapter id used to select profile-based verification defaults")
+    p.add_argument("--submission-root", help="Standard submission package root used to resolve authoritative verification commands")
     p.add_argument("--selection-input", help="Adapter-selection JSON path used to infer the adapter id")
     p.add_argument("--commands", help='Optional JSON array, e.g. \'["mvn test"]\'')
     p.add_argument("--output", help="Write the verification JSON to file")
@@ -630,12 +640,14 @@ def main(argv: Optional[List[str]] = None) -> None:
     p.add_argument("--forbidden-terms", required=True, help='JSON array of terms')
 
     # write-report
-    p = sub.add_parser("write-report", help="Write structured consistency reports and final audit markdown")
+    p = sub.add_parser("write-report", help="Write structured repair-and-verify reports and final audit markdown")
     p.add_argument("--result-dir", required=True)
     p.add_argument("--trace-dir", help="Directory containing final audit markdown output")
     p.add_argument("--trace-root", help="Consistency trace root used to compose a report payload from artifacts")
     p.add_argument("--design-root", help="Design root recorded in the final report scope")
     p.add_argument("--source-root", help="Source root recorded in the final report scope and used for write guards")
+    p.add_argument("--submission-root", help="Submission root recorded in the final report scope")
+    p.add_argument("--test-root", help="Test root recorded in the final report scope")
     p.add_argument("--profile", help="Consistency profile YAML used to resolve model paths")
     p.add_argument("--data", help="JSON string (or pipe via stdin)")
     p.add_argument("--data-file", help="Path to JSON input payload")
@@ -645,6 +657,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     # scan-code
     p = sub.add_parser("scan-code", help="Inventory source files and select the language adapter")
     p.add_argument("--source-root", required=True)
+    p.add_argument("--submission-root", help="Optional standard submission root recorded in inventory metadata")
+    p.add_argument("--test-root", help="Optional black-box test root recorded in inventory metadata")
     p.add_argument("--profile", help="Path to the consistency profile YAML")
     p.add_argument("--output", help="Write inventory JSON to file")
     p.add_argument("--selection-output", help="Write adapter selection JSON to file")

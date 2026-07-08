@@ -5,14 +5,18 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${ROOT_DIR}/work"
 RESULT_DIR="${LOOPFORGE_RESULT_DIR:-${ROOT_DIR}/result}"
 LOG_DIR="${LOOPFORGE_LOG_DIR:-${ROOT_DIR}/logs}"
-SOURCE_ROOT_VALUE="${SOURCE_ROOT:-}"
+SUBMISSION_ROOT_VALUE="${SUBMISSION_ROOT:-${SOURCE_ROOT:-}}"
 EXTRA_ARGS=()
 HAS_ACTION="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --submission-root)
+      SUBMISSION_ROOT_VALUE="$2"
+      shift 2
+      ;;
     --source-root)
-      SOURCE_ROOT_VALUE="$2"
+      SUBMISSION_ROOT_VALUE="$2"
       shift 2
       ;;
     --run|--self-check)
@@ -31,24 +35,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$SOURCE_ROOT_VALUE" ]]; then
+if [[ -z "$SUBMISSION_ROOT_VALUE" ]]; then
   PLATFORM_NAME="$(uname -s 2>/dev/null || true)"
   if [[ "$PLATFORM_NAME" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__/source" ]]; then
-    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
+    SUBMISSION_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__/source"
   elif [[ "$PLATFORM_NAME" == "Linux" && -d "/__CONTEST_PLATFORM_SOURCE_ROOT__" ]]; then
-    SOURCE_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
+    SUBMISSION_ROOT_VALUE="/__CONTEST_PLATFORM_SOURCE_ROOT__"
   else
-    SOURCE_ROOT_VALUE=""
+    SUBMISSION_ROOT_VALUE=""
   fi
 fi
 
-if [[ -n "$SOURCE_ROOT_VALUE" ]]; then
-export SOURCE_ROOT="$SOURCE_ROOT_VALUE"
+if [[ -n "$SUBMISSION_ROOT_VALUE" ]]; then
+  export SUBMISSION_ROOT="$SUBMISSION_ROOT_VALUE"
+  export SOURCE_ROOT="$SUBMISSION_ROOT_VALUE"
 fi
 
-RUNNER_SOURCE_ARGS=()
-if [[ -n "$SOURCE_ROOT_VALUE" ]]; then
-  RUNNER_SOURCE_ARGS=(--source-root "${SOURCE_ROOT_VALUE}")
+RUNNER_SUBMISSION_ARGS=()
+if [[ -n "$SUBMISSION_ROOT_VALUE" ]]; then
+  RUNNER_SUBMISSION_ARGS=(--submission-root "${SUBMISSION_ROOT_VALUE}")
 fi
 
 if [[ "$HAS_ACTION" == "false" && ! " ${EXTRA_ARGS[*]} " =~ " --help " && ! " ${EXTRA_ARGS[*]} " =~ " -h " ]]; then
@@ -73,5 +78,5 @@ fi
   --work-dir "${WORK_DIR}" \
   --result-dir "${RESULT_DIR}" \
   --log-dir "${LOG_DIR}" \
-  "${RUNNER_SOURCE_ARGS[@]}" \
+  "${RUNNER_SUBMISSION_ARGS[@]}" \
   "${EXTRA_ARGS[@]}"

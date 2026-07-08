@@ -7,11 +7,11 @@ LoopForge is a generic contest execution harness.
 The external task input is:
 
 ```text
-work/design/README.md + read-only SOURCE_ROOT
+read-only SUBMISSION_ROOT
 ```
 
-`SOURCE_ROOT` points to the source tree supplied by the contest platform or by a local evaluator.
-Task requirements, constraints, and acceptance context come only from `work/design/README.md`.
+`SUBMISSION_ROOT` points to the contest-style submission package supplied by the platform or by a local evaluator.
+Task requirements, constraints, and acceptance context come from `SUBMISSION_ROOT/README.md` and `SUBMISSION_ROOT/design-docs/`.
 
 ## Read Order
 
@@ -29,7 +29,7 @@ Read and follow:
 Linux:
 
 ```bash
-SOURCE_ROOT="/path/to/source" bash work/scripts/run.sh
+SUBMISSION_ROOT="/path/to/submission" bash work/scripts/run.sh
 ```
 
 Linux fallback:
@@ -40,26 +40,13 @@ bash work/scripts/run.sh
 
 ## Source Path Resolution
 
-Resolve the source path in this order:
+Resolve the submission path in this order:
 
-1. Platform-provided source path
-2. Explicit `--source-root`
-3. `SOURCE_ROOT`
-4. Contest platform source mount on Linux
-5. Contest platform `SOURCE_ROOT` mount
+1. Platform-provided submission path
+2. Explicit `--submission-root`
+3. `SUBMISSION_ROOT`
+4. Explicit `--source-root` or legacy `SOURCE_ROOT` as a temporary compatibility alias
+5. Contest platform source mount on Linux
 
-Runtime evidence must be written under `logs/trace/`. The source tree under `SOURCE_ROOT` is read-only and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
+Runtime evidence must be written under `logs/trace/`. The submission package under `SUBMISSION_ROOT` is read-only in analyze-only mode and must not receive `.loopforge`, reports, snapshots, or generated artifacts.
 Evaluator-facing outputs must be written under `result/` and `logs/`.
-
-## C-To-Rust Output Contract
-
-The migration output project must be generated at a runtime-derived repository-root directory:
-
-- `<runtime-derived-output-project>/Cargo.toml`
-- `<runtime-derived-output-project>/src/`
-- `<runtime-derived-output-project>/tests/`
-
-Final verification must run inside the runtime-derived Rust output project:
-
-- `cargo build`
-- `cargo test`

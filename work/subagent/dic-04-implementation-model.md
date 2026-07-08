@@ -1,56 +1,58 @@
 ---
 stage_id: "dic-04"
-stage_name: "Implementation Model Extraction"
+stage_name: "Repair Batch Planning"
 stage_package: "work/subagent/dic-04-implementation-model.md"
 predecessors:
+  - "dic-00"
+  - "dic-01"
   - "dic-02"
   - "dic-03"
 inputs:
-  - "SOURCE_ROOT"
+  - "logs/trace/consistency/00-submission-layout.json"
+  - "logs/trace/consistency/01-acceptance-baseline.json"
   - "logs/trace/consistency/02-source-inventory.md"
   - "logs/trace/consistency/02-source-inventory.json"
   - "logs/trace/consistency/02-adapter-selection.json"
-  - "logs/trace/consistency/02-source-inventory-gate.json"
-  - "logs/trace/consistency/02-source-inventory-evidence.json"
-  - "logs/trace/consistency/03-design-model-summary.md"
-  - "logs/trace/consistency/03-design-model.json"
-  - "logs/trace/consistency/03-design-model-gate.json"
+  - "logs/trace/consistency/03-gap-model-summary.md"
+  - "logs/trace/consistency/03-gap-model.json"
+  - "logs/trace/consistency/03-gap-model-gate.json"
+  - "logs/trace/consistency/03-gap-model-evidence.json"
 outputs:
-  - "logs/trace/consistency/04-implementation-model-summary.md"
-  - "logs/trace/consistency/04-implementation-model.json"
-  - "logs/trace/consistency/04-implementation-model-gate.json"
-  - "logs/trace/consistency/04-implementation-model-evidence.json"
+  - "logs/trace/consistency/04-repair-batches.md"
+  - "logs/trace/consistency/04-repair-batches.json"
+  - "logs/trace/consistency/04-repair-batches-gate.json"
+  - "logs/trace/consistency/04-repair-batches-evidence.json"
 success_gate: "READY_FOR_DIC_05"
-failure_gate: "BLOCKED_WITH_REPORT"
+failure_gate: "SUBMISSION_BLOCKED"
 when_always_finalize: "dic-09"
-source_reads_allowed: true
+source_reads_allowed: false
 source_writes_allowed: false
 advisory_only: false
 ---
 
-# DIC Stage Package: Implementation Model Extraction
+# DIC Stage Package: Repair Batch Planning
 
 ## Objective
 
-Run the selected adapter against `SOURCE_ROOT` and normalize implementation structures into the canonical implementation model while preserving extraction evidence.
+Turn accepted gaps into bounded repair batches ordered by verification value, file ownership, and mutation risk.
 
 ## Orchestrator Boundary
 
-- Pass only declared inventory, adapter-selection, and design-model artifacts plus the `SOURCE_ROOT` path.
-- Do not move raw source text through parent context; keep source inspection and evidence capture inside this stage.
+- Pass only declared submission-layout, inventory, and gap-model artifacts.
+- Do not pass mutable source text or hidden patch drafts through parent context.
 
 ## Required Outputs
 
-- `logs/trace/consistency/04-implementation-model-summary.md`: extraction summary and coverage notes
-- `logs/trace/consistency/04-implementation-model.json`: canonical implementation model
-- `logs/trace/consistency/04-implementation-model-gate.json`: gate result with next-step disposition
-- `logs/trace/consistency/04-implementation-model-evidence.json`: adapter provenance, source evidence, and denied-action references
+- `logs/trace/consistency/04-repair-batches.md`: human-readable repair batch plan
+- `logs/trace/consistency/04-repair-batches.json`: structured repair batches with target files, rationale, and verification intent
+- `logs/trace/consistency/04-repair-batches-gate.json`: gate result with next-step disposition
+- `logs/trace/consistency/04-repair-batches-evidence.json`: evidence index linking each repair batch to specific gaps and baseline constraints
 
 ## Gate Rules
 
-- Success: a valid implementation model is produced using the declared adapter contract.
-- Failure: preserve partial extraction output, adapter provenance, and failure reason so the pipeline can stop cleanly or finalize with degraded evidence.
+- Success: each batch is bounded to declared mutable targets and references sufficient evidence to justify repair execution.
+- Failure: preserve partial batches, blocked targets, and scope reasons so the pipeline can stop cleanly or finalize with degraded evidence.
 
 ## Handoff Rules
 
-- `dic-05` and later stages may consume only the summary, model JSON, gate file, and evidence index.
+- `dic-05` and `dic-08` may consume only the summary, batch JSON, gate file, and evidence index.

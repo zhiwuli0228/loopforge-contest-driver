@@ -4,10 +4,10 @@
   "failed_stage": "dic-06",
   "expected_finalize_stage": "dic-09",
   "required_preserved_artifacts": [
-    "logs/trace/consistency/06-drift-analysis.md",
-    "logs/trace/consistency/06-drift-findings.json",
-    "logs/trace/consistency/06-drift-analysis-gate.json",
-    "logs/trace/consistency/06-drift-analysis-evidence.json"
+    "logs/trace/consistency/06-build-verification.md",
+    "logs/trace/consistency/06-build-verification.json",
+    "logs/trace/consistency/06-build-verification-gate.json",
+    "logs/trace/consistency/06-build-verification-evidence.json"
   ],
   "required_terminal_outputs": [
     "logs/trace/consistency/09-finalization-summary.md",
@@ -17,6 +17,6 @@
     "result/output.md",
     "result/issues/00-summary.md"
   ],
-  "source_write_forbidden_glob": "SOURCE_ROOT/**",
+  "source_write_forbidden_glob": "SUBMISSION_ROOT/README.md",
   "handoff_mode": "file-paths-and-summaries-only"
 }

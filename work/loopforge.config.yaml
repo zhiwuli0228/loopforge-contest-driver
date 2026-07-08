@@ -1,31 +1,41 @@
 framework:
   name: "loopforge-contest-driver"
-  input_model: "preloaded-design-plus-source"
+  input_model: "standard-submission-package"
   default_mode: "consistency-check"
 
 platform:
   layout: "single-root"
   work_dir: "work"
   windows_code_dir: "work/code"
-  linux_source_root_env: "SOURCE_ROOT"
+  linux_submission_root_env: "SUBMISSION_ROOT"
   artifact_dir: "logs/trace"
   official_submission_os: "linux"
   local_development_os:
     - "windows"
     - "linux"
 
-source:
-  root_env: "SOURCE_ROOT"
+submission:
+  root_env: "SUBMISSION_ROOT"
+  legacy_root_env: "SOURCE_ROOT"
+  readme: "README.md"
+  design_dir: "design-docs"
+  code_dir: "code"
+  test_dir: "test-cases"
+  metadata_files:
+    - "contest.meta.yaml"
+    - "contest.meta.yml"
+  mutable_support_assets:
+    - "maven-settings.xml"
 
 design:
   readme: "work/design/README.md"
   required: true
-  authoritative: true
+  authoritative: false
 
 task:
   name: "design-implementation-consistency-check"
   mode: "consistency-check"
-  source: "preloaded-design"
+  source: "submission-package"
   profile: "profiles/examples/default-java-consistency.yaml"
 
 language:
@@ -37,31 +47,28 @@ language:
     - "java"
     - "generic"
 
-objective: "compare the documented design contract with the implementation under SOURCE_ROOT and report drift without mutating the source tree"
+objective: "repair the implementation in SUBMISSION_ROOT/code to satisfy the submission README and design-docs contract while preserving immutable baselines and proving progress with ordered verification"
 
 execution:
-  strategy: "analyze-only"
+  strategy: "repair-and-verify"
   unattended: true
   allow_manual_interaction: false
-  allow_patch: false
-  max_repair_rounds: 0
+  allow_patch: true
+  max_repair_rounds: 1
   max_semantic_repair_rounds: 0
-  # Optional unattended agent/fixer executable. It receives the task JSON path
-  # as argv and through LOOPFORGE_REPAIR_TASK; env LOOPFORGE_REPAIR_COMMAND
-  # overrides this setting on both Windows and Linux.
   repair_provider:
     enabled: "auto"
     command: null
   fail_soft: true
   always_finalize: true
-  allow_code_generation: false
+  allow_code_generation: true
   allow_static_rule_modification: false
   commit: false
   push: false
   create_pr: false
 
 mode_selection:
-  source: "preloaded-design"
+  source: "submission-package"
   fallback: "consistency-check"
 
 coding_skill:
@@ -69,15 +76,20 @@ coding_skill:
   required: false
   skill: "skills/code-implementation/SKILL.md"
   apply_at: []
-  output: "logs/trace/consistency/05-analysis-summary.md"
+  output: "logs/trace/consistency/05-repair-execution.md"
 
 verification:
-  source: "profile-or-framework-default"
-  working_directory: "SOURCE_ROOT"
+  source: "submission-readme-first"
+  working_directory: "SUBMISSION_ROOT"
   timeout_seconds: 18000
   commands:
-    default:
-      - "auto-detect"
+    ordered:
+      - name: "project_tests"
+        command: "mvn -s maven-settings.xml -f code/pom.xml test"
+      - name: "project_install"
+        command: "mvn -s maven-settings.xml -f code/pom.xml install -DskipTests"
+      - name: "black_box_tests"
+        command: "mvn -s maven-settings.xml -f test-cases/pom.xml test"
 
 outputs:
   result_report: "result/output.md"
@@ -85,13 +97,15 @@ outputs:
   trace_dir: "logs/trace"
   interaction_log: "logs/interaction.md"
   consistency_dir: "logs/trace/consistency"
+  acceptance_baseline: "logs/trace/consistency/01-acceptance-baseline.json"
   source_inventory: "logs/trace/consistency/02-source-inventory.md"
   source_inventory_data: "logs/trace/consistency/02-source-inventory.json"
   adapter_selection: "logs/trace/consistency/02-adapter-selection.json"
-  design_model: "logs/trace/consistency/03-design-model.json"
-  implementation_model: "logs/trace/consistency/04-implementation-model.json"
-  traceability_matrix: "logs/trace/consistency/05-traceability-matrix.json"
-  drift_report: "logs/trace/consistency/06-drift-analysis.md"
-  risk_report: "logs/trace/consistency/07-risk-classification.md"
-  repair_plan: "logs/trace/consistency/08-repair-plan.md"
+  gap_model: "logs/trace/consistency/03-gap-model.json"
+  repair_batches: "logs/trace/consistency/04-repair-batches.md"
+  repair_batches_data: "logs/trace/consistency/04-repair-batches.json"
+  repair_execution: "logs/trace/consistency/05-repair-execution.md"
+  build_verification: "logs/trace/consistency/06-build-verification.md"
+  black_box_verification: "logs/trace/consistency/07-black-box-verification.md"
+  retry_repair: "logs/trace/consistency/08-retry-repair.md"
   final_report: "logs/trace/final-report.md"

@@ -24,13 +24,13 @@
 - `work/profiles/superspec/consistency-check-stages.yaml`
   Legacy eight-stage repair-capable reference. It is not the default staged contract for consistency analysis.
 - `work/profiles/superpower/consistency-check-guards.yaml`
-  Legacy repair-capable guard reference. It allows source writes and therefore cannot serve the analyze-only default.
+  Legacy repair-capable guard reference. It is not the default contest guard contract.
 
 ## Conflicting Defaults Resolved Here
 
 - Default profile path resolves to `profiles/examples/default-java-consistency.yaml`.
 - Default adapter resolves to `java`.
 - Fallback adapter resolves to `generic`.
-- Default execution resolves to `analyze-only`.
-- Default source-write policy resolves to deny all writes under `SOURCE_ROOT`.
+- Default execution resolves to `repair-and-verify`.
+- Default source-write policy resolves to permit only `SUBMISSION_ROOT/code/**` and explicitly declared support assets.
 - Default stage graph resolves to `dic-00` through `dic-09`.

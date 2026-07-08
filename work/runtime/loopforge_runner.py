@@ -17,10 +17,9 @@ WORK_ROOT = Path(__file__).resolve().parents[1]
 if str(WORK_ROOT) not in sys.path:
     sys.path.insert(0, str(WORK_ROOT))
 
-from runtime.code_inventory import build_source_inventory, extract_implementation_model
+from runtime.code_inventory import build_source_inventory
 from runtime.design_scanner import scan_design_root
 from runtime.report_writer import compose_report_payload, write_reports
-from runtime.traceability_builder import build_traceability, render_traceability_summary
 from runtime.verification_runner import resolve_verification_commands, run_verification
 
 
@@ -34,7 +33,6 @@ REQUIRED_WORKFLOW_FILES = [
     "work/runtime/tools.py",
     "work/runtime/design_scanner.py",
     "work/runtime/code_inventory.py",
-    "work/runtime/traceability_builder.py",
     "work/runtime/verification_runner.py",
     "work/runtime/report_writer.py",
     "work/skills/design-implementation-consistency/SKILL.md",
@@ -62,6 +60,12 @@ LEGACY_FORBIDDEN_LITERALS = (
     "work/rules/loopforge/adapters/c-to-rust",
     "work/subagent/c2r-",
 )
+FINAL_STATUSES = (
+    "SUBMISSION_PASSED",
+    "SUBMISSION_PARTIAL",
+    "SUBMISSION_BLOCKED",
+    "SUBMISSION_INVALID",
+)
 
 
 def utc_now() -> str:
@@ -75,7 +79,7 @@ def resolve_path(base: Path, value: str) -> Path:
     return path.resolve()
 
 
-def resolve_default_source_root(workspace_root: Path, platform_name: str | None = None) -> Path:
+def resolve_default_submission_root(workspace_root: Path, platform_name: str | None = None) -> Path:
     current_platform = platform_name or ("nt" if sys.platform.startswith("win") else "posix")
     if current_platform == "nt":
         return (workspace_root / "__CONTEST_PLATFORM_SOURCE_ROOT__" / "source").resolve()
@@ -92,13 +96,13 @@ def _relative_to(path: Path, root: Path) -> str:
         return path.resolve().as_posix()
 
 
-def _guard_outside_source(source_root: Path, *targets: Path) -> None:
+def _guard_outside_submission(submission_root: Path, *targets: Path) -> None:
     for target in targets:
         try:
-            target.resolve().relative_to(source_root.resolve())
+            target.resolve().relative_to(submission_root.resolve())
         except ValueError:
             continue
-        raise ValueError(f"writable destination must be outside SOURCE_ROOT: {target}")
+        raise ValueError(f"writable destination must be outside SUBMISSION_ROOT: {target}")
 
 
 def _sha256(path: Path) -> str:
@@ -110,23 +114,11 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(handle) or {}
 
 
-def _normalized_final_status(payload: Dict[str, Any]) -> str:
-    raw_status = payload.get("final_status", "BLOCKED")
-    findings = payload.get("findings", [])
-    if raw_status == "READY":
-        return "FINALIZED_NO_FINDINGS"
-    if findings:
-        return "FINALIZED_WITH_FINDINGS"
-    if raw_status == "DEGRADED":
-        return "DEGRADED_FINAL_REPORT_READY"
-    return "BLOCKED_WITH_REPORT"
-
-
 class LoopForgeRunner:
-    def __init__(self, workspace_root: Path, work_dir: Path, source_root: Path, result_dir: Path, log_dir: Path) -> None:
+    def __init__(self, workspace_root: Path, work_dir: Path, submission_root: Path, result_dir: Path, log_dir: Path) -> None:
         self.workspace_root = workspace_root.resolve()
         self.work_dir = work_dir.resolve()
-        self.source_root = source_root.resolve()
+        self.submission_root = submission_root.resolve()
         self.result_dir = result_dir.resolve()
         self.log_dir = log_dir.resolve()
         self.trace_dir = self.log_dir / "trace"
@@ -136,13 +128,18 @@ class LoopForgeRunner:
         self.final_report_path = self.trace_dir / "final-report.md"
         self.run_summary_path = self.trace_dir / "run-summary.json"
         self.self_check_path = self.consistency_trace_dir / "00-preflight-self-check.json"
-        self.design_root = self.work_dir / "design"
-        self.design_readme_path = self.design_root / "README.md"
         self.config_path = self.work_dir / "loopforge.config.yaml"
         self.config = _load_yaml(self.config_path) if self.config_path.exists() else {}
         profile_rel = self.config.get("task", {}).get("profile", "profiles/examples/default-java-consistency.yaml")
         self.profile_path = resolve_path(self.work_dir, profile_rel)
-        _guard_outside_source(self.source_root, self.result_dir, self.log_dir)
+        submission_cfg = self.config.get("submission", {})
+        self.package_readme_path = self.submission_root / submission_cfg.get("readme", "README.md")
+        self.design_root = self.submission_root / submission_cfg.get("design_dir", "design-docs")
+        self.code_root = self.submission_root / submission_cfg.get("code_dir", "code")
+        self.test_root = self.submission_root / submission_cfg.get("test_dir", "test-cases")
+        self.mutable_support_assets = [self.submission_root / item for item in submission_cfg.get("mutable_support_assets", [])]
+        self.metadata_paths = [self.submission_root / item for item in submission_cfg.get("metadata_files", [])]
+        _guard_outside_submission(self.submission_root, self.result_dir, self.log_dir)
 
     def ensure_outputs(self) -> None:
         self.result_dir.mkdir(parents=True, exist_ok=True)
@@ -171,45 +168,73 @@ class LoopForgeRunner:
         for relative in REQUIRED_WORKFLOW_FILES:
             if not (self.workspace_root / relative).exists():
                 issues.append(f"missing_required_asset:{relative}")
-        if not self.source_root.exists():
-            issues.append(f"source_root_missing:{self.source_root}")
-        elif not self.source_root.is_dir():
-            issues.append(f"source_root_not_directory:{self.source_root}")
-        elif not any(self.source_root.rglob("*")):
-            issues.append(f"source_root_empty:{self.source_root}")
-        if not self.design_readme_path.is_file():
-            issues.append(f"design_readme_missing:{self.design_readme_path}")
+        if not self.submission_root.exists():
+            issues.append(f"submission_root_missing:{self.submission_root}")
+        elif not self.submission_root.is_dir():
+            issues.append(f"submission_root_not_directory:{self.submission_root}")
+        elif not any(self.submission_root.rglob("*")):
+            issues.append(f"submission_root_empty:{self.submission_root}")
+        if not self.package_readme_path.is_file():
+            issues.append(f"submission_readme_missing:{self.package_readme_path}")
+        if not self.design_root.is_dir():
+            issues.append(f"design_docs_missing:{self.design_root}")
+        if not self.code_root.is_dir():
+            issues.append(f"code_root_missing:{self.code_root}")
+        if not self.test_root.is_dir() and not any(path.is_file() for path in self.metadata_paths):
+            issues.append(f"test_root_missing:{self.test_root}")
         issues.extend(self._legacy_reference_issues())
 
-        design_hash = _sha256(self.design_readme_path) if self.design_readme_path.is_file() else ""
+        design_hash = _sha256(self.package_readme_path) if self.package_readme_path.is_file() else ""
+        resolved_metadata = next((path for path in self.metadata_paths if path.is_file()), None)
         payload = {
             "ok": not issues,
             "generated_at": utc_now(),
             "workspace_root": str(self.workspace_root),
             "work_dir": str(self.work_dir),
-            "source_root": str(self.source_root),
-            "design_readme_path": str(self.design_readme_path),
-            "design_readme_sha256": design_hash,
+            "submission_root": str(self.submission_root),
+            "submission_readme_path": str(self.package_readme_path),
+            "submission_readme_sha256": design_hash,
+            "design_root": str(self.design_root),
+            "code_root": str(self.code_root),
+            "test_root": str(self.test_root),
+            "mutable_support_assets": [str(path) for path in self.mutable_support_assets],
+            "metadata_file": str(resolved_metadata) if resolved_metadata else "",
             "profile_path": str(self.profile_path),
             "issues": issues,
         }
         self.ensure_outputs()
         self.self_check_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+        (self.consistency_trace_dir / "00-submission-layout.json").write_text(
+            json.dumps(
+                {
+                    "submission_root": str(self.submission_root),
+                    "submission_readme": str(self.package_readme_path),
+                    "design_root": str(self.design_root),
+                    "code_root": str(self.code_root),
+                    "test_root": str(self.test_root) if self.test_root.is_dir() else "",
+                    "mutable_support_assets": [str(path) for path in self.mutable_support_assets],
+                    "metadata_file": str(resolved_metadata) if resolved_metadata else "",
+                },
+                indent=2,
+                ensure_ascii=True,
+            ) + "\n",
+            encoding="utf-8",
+        )
         return payload
 
-    def _write_blocked_reports(self, payload: Dict[str, Any], reason: str) -> None:
+    def _write_terminal_reports(self, payload: Dict[str, Any], reason: str, status: str) -> None:
         self.ensure_outputs()
         report = {
-            "final_status": "BLOCKED_WITH_REPORT",
+            "final_status": status,
             "reason": reason,
             "issues": payload.get("issues", []),
-            "design_readme_sha256": payload.get("design_readme_sha256", ""),
-            "source_root": payload.get("source_root", ""),
+            "submission_readme_sha256": payload.get("submission_readme_sha256", ""),
+            "submission_root": payload.get("submission_root", ""),
         }
         self.output_path.write_text(
             "# Design-Implementation Consistency Report\n\n"
             "## Final Status\n\n"
-            "- Status: BLOCKED_WITH_REPORT\n"
+            f"- Status: {status}\n"
             f"- Reason: {reason}\n\n"
             "## Issues\n\n"
             + "\n".join(f"- {item}" for item in payload.get("issues", []))
@@ -218,96 +243,91 @@ class LoopForgeRunner:
         )
         self.issue_summary_path.write_text(
             "# Issue Summary\n\n"
-            f"- {reason}\n"
+            f"- {status}: {reason}\n"
             + ("\n".join(f"- {item}" for item in payload.get("issues", [])) + "\n" if payload.get("issues") else ""),
             encoding="utf-8",
         )
         self.final_report_path.write_text(json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
         self.run_summary_path.write_text(json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 
+    def _write_json(self, name: str, payload: Dict[str, Any]) -> None:
+        (self.consistency_trace_dir / name).write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
     def run(self) -> Dict[str, Any]:
         self.ensure_outputs()
         self_check = self.create_self_check_payload()
         if not self_check["ok"]:
-            self._write_blocked_reports(self_check, "self_check_failed")
-            return {"ok": False, "status": "BLOCKED_WITH_REPORT", "self_check": self_check}
+            self._write_terminal_reports(self_check, "self_check_failed", "SUBMISSION_INVALID")
+            return {"ok": False, "status": "SUBMISSION_INVALID", "self_check": self_check}
 
         profile_arg = str(self.profile_path)
-        design_scan = scan_design_root(self.design_root)
-        source_inventory = build_source_inventory(self.source_root, profile_arg)
-        implementation = extract_implementation_model(self.source_root, profile_arg)
-        traceability = build_traceability(design_scan["design_model"], implementation["implementation_model"])
-
-        (self.consistency_trace_dir / "01-design-inventory.json").write_text(
-            json.dumps(design_scan["inventory"], indent=2, ensure_ascii=False), encoding="utf-8"
+        design_scan = scan_design_root(self.design_root, submission_readme=self.package_readme_path)
+        source_inventory = build_source_inventory(
+            self.code_root,
+            profile_arg,
+            submission_root=self.submission_root,
+            test_root=self.test_root if self.test_root.is_dir() else None,
         )
-        (self.consistency_trace_dir / "03-design-model.json").write_text(
-            json.dumps(design_scan["design_model"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "03-design-model-evidence.json").write_text(
-            json.dumps(design_scan["evidence_index"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "02-source-inventory.json").write_text(
-            json.dumps(source_inventory, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "02-adapter-selection.json").write_text(
-            json.dumps(source_inventory["selection"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "02-source-inventory-gate.json").write_text(
-            json.dumps(
-                {
-                    "status": "PASS",
-                    "selected_adapter": source_inventory["selected_adapter"],
-                    "file_count": source_inventory["file_count"],
-                },
-                indent=2,
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
-        (self.consistency_trace_dir / "04-implementation-model.json").write_text(
-            json.dumps(implementation["implementation_model"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "04-implementation-model-evidence.json").write_text(
-            json.dumps(implementation["inventory"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "05-traceability-matrix.json").write_text(
-            json.dumps(traceability, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "05-traceability-map.md").write_text(
-            render_traceability_summary(traceability), encoding="utf-8"
-        )
-        (self.consistency_trace_dir / "05-traceability-map-evidence.json").write_text(
-            json.dumps({"links": traceability.get("links", []), "gaps": traceability.get("gaps", [])}, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        for placeholder_name in ("06-drift-findings.json", "07-risk-classification.json", "08-repair-plan.json"):
-            placeholder_path = self.consistency_trace_dir / placeholder_name
-            if not placeholder_path.exists():
-                placeholder_path.write_text(json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8")
+        self._write_json("01-acceptance-baseline.json", design_scan["design_model"])
+        self._write_json("02-source-inventory.json", source_inventory)
+        self._write_json("02-adapter-selection.json", source_inventory["selection"])
+        gap_model = {
+            "objects": design_scan["design_model"].get("objects", []),
+            "gaps": [],
+            "findings": [],
+            "summary": {"acceptance_object_count": len(design_scan["design_model"].get("objects", []))},
+        }
+        repair_batches = {"batches": [], "strategy": "no-op-unattended-runner"}
+        repair_execution = {"changed_files": [], "status": "no-op", "reason": "runner preserves repair-aware artifacts without autonomous source mutation"}
+        self._write_json("03-gap-model.json", gap_model)
+        self._write_json("04-repair-batches.json", repair_batches)
+        self._write_json("05-repair-execution.json", repair_execution)
 
         verification_plan = resolve_verification_commands(
-            self.source_root,
+            self.submission_root,
             profile_arg,
             adapter_id=source_inventory["selected_adapter"],
+            submission_root=self.submission_root,
         )
         verification = run_verification(
-            self.source_root,
+            self.submission_root,
             commands=verification_plan["commands"],
             command_source=verification_plan["command_source"],
         )
-        (self.consistency_trace_dir / "09-verification-results.json").write_text(
-            json.dumps(verification, indent=2, ensure_ascii=False), encoding="utf-8"
+        build_results = [item for item in verification.get("results", []) if item.get("verification_class") != "black_box_tests"]
+        black_box_results = [item for item in verification.get("results", []) if item.get("verification_class") == "black_box_tests"]
+        build_status = "success" if build_results and all(item["status"] == "success" for item in build_results) else (
+            "blocked" if any(item["status"] == "blocked" for item in build_results) else
+            "failed" if any(item["status"] == "failed" for item in build_results) else
+            "timeout" if any(item["status"] == "timeout" for item in build_results) else
+            "unavailable" if build_results and all(item["status"] == "unavailable" for item in build_results) else
+            "partial" if build_results else "skipped"
         )
+        black_box_status = "success" if black_box_results and all(item["status"] == "success" for item in black_box_results) else (
+            "blocked" if any(item["status"] == "blocked" for item in black_box_results) else
+            "failed" if any(item["status"] == "failed" for item in black_box_results) else
+            "timeout" if any(item["status"] == "timeout" for item in black_box_results) else
+            "unavailable" if black_box_results and all(item["status"] == "unavailable" for item in black_box_results) else
+            "partial" if black_box_results else "skipped"
+        )
+        build_verification = {"overall_status": build_status, "results": build_results, "command_source": verification_plan["command_source"]}
+        black_box_verification = {"overall_status": black_box_status, "results": black_box_results, "command_source": verification_plan["command_source"]}
+        retry_repair = {"status": "not_attempted", "reason": "runner does not autonomously re-enter repair without an external repair provider"}
+
+        self._write_json("06-build-verification.json", build_verification)
+        self._write_json("07-black-box-verification.json", black_box_verification)
+        self._write_json("08-retry-repair.json", retry_repair)
+        self._write_json("09-verification-results.json", verification)
 
         payload = compose_report_payload(
             trace_root=self.consistency_trace_dir,
             result_dir=self.result_dir,
             design_root=self.design_root,
-            source_root=self.source_root,
+            source_root=self.code_root,
+            submission_root=self.submission_root,
+            test_root=self.test_root if self.test_root.is_dir() else None,
             profile_path=self.profile_path,
         )
-        payload["final_status"] = _normalized_final_status(payload)
         payload_output = self.consistency_trace_dir / "09-final-report-input.json"
         payload_output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         outputs = write_reports(payload, result_dir=self.result_dir, trace_dir=self.trace_dir)
@@ -327,8 +347,9 @@ class LoopForgeRunner:
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the authoritative analyze-only consistency pipeline")
+    parser = argparse.ArgumentParser(description="Run the authoritative repair-and-verify consistency pipeline")
     parser.add_argument("--work-dir", default="work")
+    parser.add_argument("--submission-root")
     parser.add_argument("--source-root")
     parser.add_argument("--result-dir", default="result")
     parser.add_argument("--log-dir", default="logs")
@@ -350,19 +371,19 @@ def main(argv: List[str]) -> int:
     script_root = Path(__file__).resolve().parent.parent.parent
     work_dir = resolve_path(script_root, args.work_dir)
     workspace_root = work_dir.parent
-    source_arg = (args.source_root or "").strip()
-    source_root = resolve_path(workspace_root, source_arg) if source_arg else resolve_default_source_root(workspace_root)
+    submission_arg = (args.submission_root or args.source_root or "").strip()
+    submission_root = resolve_path(workspace_root, submission_arg) if submission_arg else resolve_default_submission_root(workspace_root)
     result_dir = resolve_path(workspace_root, args.result_dir)
     log_dir = resolve_path(workspace_root, args.log_dir)
 
     try:
-        runner = LoopForgeRunner(workspace_root, work_dir, source_root, result_dir, log_dir)
+        runner = LoopForgeRunner(workspace_root, work_dir, submission_root, result_dir, log_dir)
         if args.self_check:
             print_json(runner.create_self_check_payload())
         if args.run:
             print_json(runner.run())
     except Exception as exc:
-        print_json({"ok": False, "status": "BLOCKED_WITH_REPORT", "error": f"{type(exc).__name__}: {exc}"})
+        print_json({"ok": False, "status": "SUBMISSION_BLOCKED", "error": f"{type(exc).__name__}: {exc}"})
         return 0
     return 0
 

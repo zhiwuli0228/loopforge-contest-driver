@@ -1,56 +1,52 @@
 ---
 stage_id: "dic-06"
-stage_name: "Drift Analysis"
+stage_name: "Build Verification"
 stage_package: "work/subagent/dic-06-drift-analysis.md"
 predecessors:
-  - "dic-03"
-  - "dic-04"
   - "dic-05"
 inputs:
-  - "logs/trace/consistency/03-design-model.json"
-  - "logs/trace/consistency/03-design-model-evidence.json"
-  - "logs/trace/consistency/04-implementation-model.json"
-  - "logs/trace/consistency/04-implementation-model-evidence.json"
-  - "logs/trace/consistency/05-traceability-map.md"
-  - "logs/trace/consistency/05-traceability-matrix.json"
-  - "logs/trace/consistency/05-traceability-map-gate.json"
-  - "logs/trace/consistency/05-traceability-map-evidence.json"
+  - "SUBMISSION_ROOT/code/**"
+  - "SUBMISSION_ROOT/maven-settings.xml"
+  - "logs/trace/consistency/05-repair-execution.md"
+  - "logs/trace/consistency/05-repair-execution.json"
+  - "logs/trace/consistency/05-repair-execution-gate.json"
+  - "logs/trace/consistency/05-repair-execution-evidence.json"
 outputs:
-  - "logs/trace/consistency/06-drift-analysis.md"
-  - "logs/trace/consistency/06-drift-findings.json"
-  - "logs/trace/consistency/06-drift-analysis-gate.json"
-  - "logs/trace/consistency/06-drift-analysis-evidence.json"
+  - "logs/trace/consistency/06-build-verification.md"
+  - "logs/trace/consistency/06-build-verification.json"
+  - "logs/trace/consistency/06-build-verification-gate.json"
+  - "logs/trace/consistency/06-build-verification-evidence.json"
 success_gate: "READY_FOR_DIC_07"
-failure_gate: "BLOCKED_WITH_REPORT"
+failure_gate: "READY_FOR_DIC_08"
 when_always_finalize: "dic-09"
-source_reads_allowed: false
+source_reads_allowed: true
 source_writes_allowed: false
 advisory_only: false
 ---
 
-# DIC Stage Package: Drift Analysis
+# DIC Stage Package: Build Verification
 
 ## Objective
 
-Evaluate mapped and unmapped entities to identify candidate and confirmed design-implementation drift with evidence from both sides.
+Run project-owned verification and installation commands required before black-box tests, and preserve their ordered outcomes as structured evidence.
 
 ## Orchestrator Boundary
 
-- Provide only declared model, traceability, and evidence artifacts.
-- Do not carry uncited findings in parent context; every candidate must appear in the stage outputs or remain unconfirmed.
+- Provide only the declared repair outputs, source paths, and mutable support-asset paths.
+- Do not reinterpret failed verification outside the stage outputs; every failure, skip, or unavailable command must be recorded explicitly.
 
 ## Required Outputs
 
-- `logs/trace/consistency/06-drift-analysis.md`: human-readable drift analysis
-- `logs/trace/consistency/06-drift-findings.json`: structured candidate and confirmed findings
-- `logs/trace/consistency/06-drift-analysis-gate.json`: gate result with next-step disposition
-- `logs/trace/consistency/06-drift-analysis-evidence.json`: evidence index that links findings to design and implementation evidence or explicit unavailable-evidence reasons
+- `logs/trace/consistency/06-build-verification.md`: human-readable build and project-test verification summary
+- `logs/trace/consistency/06-build-verification.json`: structured verification outcomes, including command class and prerequisite status
+- `logs/trace/consistency/06-build-verification-gate.json`: gate result with next-step disposition
+- `logs/trace/consistency/06-build-verification-evidence.json`: command provenance, stdout/stderr summary, and blocked-prerequisite evidence
 
 ## Gate Rules
 
-- Success: confirmed findings meet the evidence contract and unresolved candidates remain explicitly marked.
-- Failure: preserve partial findings, broken evidence chains, and analysis blockers so `dic-09` can finalize with degraded but auditable output.
+- Success: required build and project-owned verification commands complete with evidence adequate for black-box progression.
+- Failure: preserve command outcomes, partial outputs, and prerequisite failure evidence so execution can route to targeted retry or finalization.
 
 ## Handoff Rules
 
-- `dic-07`, `dic-08`, and `dic-09` may consume only the declared drift outputs.
+- `dic-07`, `dic-08`, and `dic-09` may consume only the declared verification outputs.

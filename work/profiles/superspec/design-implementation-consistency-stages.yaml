@@ -1,22 +1,23 @@
 superspec:
   name: "design-implementation-consistency-stages"
   version: "1.0"
-  purpose: "Ordered stage contract for analyze-only design-implementation consistency checks."
+  purpose: "Ordered stage contract for contest-default repair-and-verify design-implementation consistency execution."
   artifact_root: "logs/trace/consistency"
   final_report: "logs/trace/final-report.md"
   result_report: "result/output.md"
   issue_summary: "result/issues/00-summary.md"
 execution_defaults:
-  strategy: "analyze-only"
+  strategy: "repair-and-verify"
   fail_soft: true
   always_finalize: true
+  max_repair_rounds: 1
   handoff_mode: "file-paths-and-summaries-only"
 
 stages:
   - id: "dic-00"
     stage_package: "work/subagent/dic-00-preflight.md"
-    name: "Preflight"
-    responsibility: "Validate required inputs, resolve profile, and record execution defaults."
+    name: "Submission Preflight"
+    responsibility: "Validate required inputs, mutable support-asset policy, resolved profile, and execution defaults."
     consumes_from: []
     inputs:
       - "INSTRUCTION.md"
@@ -26,37 +27,41 @@ stages:
       - "work/profiles/superpower/design-implementation-consistency-guards.yaml"
       - "work/subagent/design-implementation-consistency-stage-map.yaml"
       - "work/design/README.md"
-      - "SOURCE_ROOT"
+      - "SUBMISSION_ROOT"
     outputs:
       - "logs/trace/consistency/00-preflight-report.md"
       - "logs/trace/consistency/00-preflight-gate.json"
       - "logs/trace/consistency/00-preflight-evidence.json"
+      - "logs/trace/consistency/00-submission-layout.json"
     handoff:
       summary: "logs/trace/consistency/00-preflight-report.md"
       gate: "logs/trace/consistency/00-preflight-gate.json"
       evidence_index: "logs/trace/consistency/00-preflight-evidence.json"
-      structured: []
+      structured:
+        - "logs/trace/consistency/00-submission-layout.json"
     gate:
       success: "READY_FOR_DIC_01"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_INVALID"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-01"
     stage_package: "work/subagent/dic-01-design-intake.md"
-    name: "Design Intake"
-    responsibility: "Summarize the authoritative design contract and identify review scope."
+    name: "Acceptance Baseline Extraction"
+    responsibility: "Extract the authoritative acceptance baseline from README.md and design-docs/."
     consumes_from:
       - "dic-00"
     inputs:
-      - "work/design/README.md"
+      - "SUBMISSION_ROOT/README.md"
+      - "SUBMISSION_ROOT/design-docs/**"
       - "logs/trace/consistency/00-preflight-report.md"
       - "logs/trace/consistency/00-preflight-gate.json"
       - "logs/trace/consistency/00-preflight-evidence.json"
+      - "logs/trace/consistency/00-submission-layout.json"
     outputs:
       - "logs/trace/consistency/01-design-intake.md"
-      - "logs/trace/consistency/01-design-inventory.json"
+      - "logs/trace/consistency/01-acceptance-baseline.json"
       - "logs/trace/consistency/01-design-intake-gate.json"
       - "logs/trace/consistency/01-design-intake-evidence.json"
     handoff:
@@ -64,28 +69,32 @@ stages:
       gate: "logs/trace/consistency/01-design-intake-gate.json"
       evidence_index: "logs/trace/consistency/01-design-intake-evidence.json"
       structured:
-        - "logs/trace/consistency/01-design-inventory.json"
+        - "logs/trace/consistency/01-acceptance-baseline.json"
     gate:
       success: "READY_FOR_DIC_02"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-02"
     stage_package: "work/subagent/dic-02-source-inventory.md"
-    name: "Source Inventory"
-    responsibility: "Inventory source layout, detectable frameworks, verification entry points, and the selected language adapter."
+    name: "Implementation Inventory"
+    responsibility: "Inventory source layout, adapters, verification entry points, and mutable support assets."
     consumes_from:
       - "dic-00"
       - "dic-01"
     inputs:
-      - "SOURCE_ROOT"
+      - "SUBMISSION_ROOT/code/**"
+      - "SUBMISSION_ROOT/test-cases/**"
+      - "SUBMISSION_ROOT/maven-settings.xml"
       - "logs/trace/consistency/00-preflight-report.md"
       - "logs/trace/consistency/00-preflight-gate.json"
       - "logs/trace/consistency/01-design-intake.md"
       - "logs/trace/consistency/01-design-intake-gate.json"
       - "logs/trace/consistency/01-design-intake-evidence.json"
+      - "logs/trace/consistency/01-acceptance-baseline.json"
+      - "logs/trace/consistency/00-submission-layout.json"
     outputs:
       - "logs/trace/consistency/02-source-inventory.md"
       - "logs/trace/consistency/02-source-inventory.json"
@@ -101,210 +110,220 @@ stages:
         - "logs/trace/consistency/02-adapter-selection.json"
     gate:
       success: "READY_FOR_DIC_03"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-03"
     stage_package: "work/subagent/dic-03-design-model.md"
-    name: "Design Model Extraction"
-    responsibility: "Normalize the design contract into an adapter-neutral model."
+    name: "Gap Modeling"
+    responsibility: "Model design-to-implementation gaps against the acceptance baseline with evidence from both sides."
     consumes_from:
       - "dic-01"
       - "dic-02"
     inputs:
-      - "work/design/README.md"
+      - "SUBMISSION_ROOT/README.md"
+      - "SUBMISSION_ROOT/design-docs/**"
+      - "SUBMISSION_ROOT/code/**"
       - "logs/trace/consistency/01-design-intake.md"
-      - "logs/trace/consistency/01-design-intake-gate.json"
-      - "logs/trace/consistency/01-design-intake-evidence.json"
+      - "logs/trace/consistency/01-acceptance-baseline.json"
       - "logs/trace/consistency/02-source-inventory.md"
       - "logs/trace/consistency/02-source-inventory.json"
       - "logs/trace/consistency/02-adapter-selection.json"
       - "logs/trace/consistency/02-source-inventory-gate.json"
     outputs:
-      - "logs/trace/consistency/03-design-model-summary.md"
-      - "logs/trace/consistency/03-design-model.json"
-      - "logs/trace/consistency/03-design-model-gate.json"
-      - "logs/trace/consistency/03-design-model-evidence.json"
+      - "logs/trace/consistency/03-gap-model-summary.md"
+      - "logs/trace/consistency/03-gap-model.json"
+      - "logs/trace/consistency/03-gap-model-gate.json"
+      - "logs/trace/consistency/03-gap-model-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/03-design-model-summary.md"
-      gate: "logs/trace/consistency/03-design-model-gate.json"
-      evidence_index: "logs/trace/consistency/03-design-model-evidence.json"
+      summary: "logs/trace/consistency/03-gap-model-summary.md"
+      gate: "logs/trace/consistency/03-gap-model-gate.json"
+      evidence_index: "logs/trace/consistency/03-gap-model-evidence.json"
       structured:
-        - "logs/trace/consistency/03-design-model.json"
+        - "logs/trace/consistency/03-gap-model.json"
     gate:
       success: "READY_FOR_DIC_04"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-04"
     stage_package: "work/subagent/dic-04-implementation-model.md"
-    name: "Implementation Model Extraction"
-    responsibility: "Extract implementation structures into the same adapter-neutral model family."
+    name: "Repair Batch Planning"
+    responsibility: "Turn accepted gaps into bounded repair batches, ordered by verification value and mutation scope."
     consumes_from:
+      - "dic-00"
+      - "dic-01"
       - "dic-02"
       - "dic-03"
     inputs:
-      - "SOURCE_ROOT"
+      - "logs/trace/consistency/00-submission-layout.json"
+      - "logs/trace/consistency/01-acceptance-baseline.json"
       - "logs/trace/consistency/02-source-inventory.md"
       - "logs/trace/consistency/02-source-inventory.json"
       - "logs/trace/consistency/02-adapter-selection.json"
-      - "logs/trace/consistency/02-source-inventory-gate.json"
-      - "logs/trace/consistency/02-source-inventory-evidence.json"
-      - "logs/trace/consistency/03-design-model-summary.md"
-      - "logs/trace/consistency/03-design-model.json"
-      - "logs/trace/consistency/03-design-model-gate.json"
+      - "logs/trace/consistency/03-gap-model-summary.md"
+      - "logs/trace/consistency/03-gap-model.json"
+      - "logs/trace/consistency/03-gap-model-gate.json"
+      - "logs/trace/consistency/03-gap-model-evidence.json"
     outputs:
-      - "logs/trace/consistency/04-implementation-model-summary.md"
-      - "logs/trace/consistency/04-implementation-model.json"
-      - "logs/trace/consistency/04-implementation-model-gate.json"
-      - "logs/trace/consistency/04-implementation-model-evidence.json"
+      - "logs/trace/consistency/04-repair-batches.md"
+      - "logs/trace/consistency/04-repair-batches.json"
+      - "logs/trace/consistency/04-repair-batches-gate.json"
+      - "logs/trace/consistency/04-repair-batches-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/04-implementation-model-summary.md"
-      gate: "logs/trace/consistency/04-implementation-model-gate.json"
-      evidence_index: "logs/trace/consistency/04-implementation-model-evidence.json"
+      summary: "logs/trace/consistency/04-repair-batches.md"
+      gate: "logs/trace/consistency/04-repair-batches-gate.json"
+      evidence_index: "logs/trace/consistency/04-repair-batches-evidence.json"
       structured:
-        - "logs/trace/consistency/04-implementation-model.json"
+        - "logs/trace/consistency/04-repair-batches.json"
     gate:
       success: "READY_FOR_DIC_05"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-05"
     stage_package: "work/subagent/dic-05-traceability-map.md"
-    name: "Traceability Mapping"
-    responsibility: "Map design entities to implementation entities and record gaps or ambiguous links."
+    name: "Repair Execution"
+    responsibility: "Apply bounded repairs within allowed mutable scope and record every changed target as evidence."
     consumes_from:
+      - "dic-00"
+      - "dic-01"
+      - "dic-02"
       - "dic-03"
       - "dic-04"
     inputs:
-      - "logs/trace/consistency/03-design-model-summary.md"
-      - "logs/trace/consistency/03-design-model.json"
-      - "logs/trace/consistency/03-design-model-gate.json"
-      - "logs/trace/consistency/03-design-model-evidence.json"
-      - "logs/trace/consistency/04-implementation-model-summary.md"
-      - "logs/trace/consistency/04-implementation-model.json"
-      - "logs/trace/consistency/04-implementation-model-gate.json"
-      - "logs/trace/consistency/04-implementation-model-evidence.json"
+      - "SUBMISSION_ROOT/code/**"
+      - "SUBMISSION_ROOT/maven-settings.xml"
+      - "logs/trace/consistency/00-submission-layout.json"
+      - "logs/trace/consistency/01-acceptance-baseline.json"
+      - "logs/trace/consistency/02-source-inventory.json"
+      - "logs/trace/consistency/03-gap-model.json"
+      - "logs/trace/consistency/04-repair-batches.md"
+      - "logs/trace/consistency/04-repair-batches.json"
+      - "logs/trace/consistency/04-repair-batches-gate.json"
+      - "logs/trace/consistency/04-repair-batches-evidence.json"
     outputs:
-      - "logs/trace/consistency/05-traceability-map.md"
-      - "logs/trace/consistency/05-traceability-matrix.json"
-      - "logs/trace/consistency/05-traceability-map-gate.json"
-      - "logs/trace/consistency/05-traceability-map-evidence.json"
+      - "logs/trace/consistency/05-repair-execution.md"
+      - "logs/trace/consistency/05-repair-execution.json"
+      - "logs/trace/consistency/05-repair-execution-gate.json"
+      - "logs/trace/consistency/05-repair-execution-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/05-traceability-map.md"
-      gate: "logs/trace/consistency/05-traceability-map-gate.json"
-      evidence_index: "logs/trace/consistency/05-traceability-map-evidence.json"
+      summary: "logs/trace/consistency/05-repair-execution.md"
+      gate: "logs/trace/consistency/05-repair-execution-gate.json"
+      evidence_index: "logs/trace/consistency/05-repair-execution-evidence.json"
       structured:
-        - "logs/trace/consistency/05-traceability-matrix.json"
+        - "logs/trace/consistency/05-repair-execution.json"
     gate:
       success: "READY_FOR_DIC_06"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-06"
     stage_package: "work/subagent/dic-06-drift-analysis.md"
-    name: "Drift Analysis"
-    responsibility: "Identify candidate inconsistencies with evidence from both sides of the comparison."
+    name: "Build Verification"
+    responsibility: "Run project-owned verification and installation commands required before black-box tests."
     consumes_from:
-      - "dic-03"
-      - "dic-04"
       - "dic-05"
     inputs:
-      - "logs/trace/consistency/03-design-model.json"
-      - "logs/trace/consistency/03-design-model-evidence.json"
-      - "logs/trace/consistency/04-implementation-model.json"
-      - "logs/trace/consistency/04-implementation-model-evidence.json"
-      - "logs/trace/consistency/05-traceability-map.md"
-      - "logs/trace/consistency/05-traceability-matrix.json"
-      - "logs/trace/consistency/05-traceability-map-gate.json"
-      - "logs/trace/consistency/05-traceability-map-evidence.json"
+      - "SUBMISSION_ROOT/code/**"
+      - "SUBMISSION_ROOT/maven-settings.xml"
+      - "logs/trace/consistency/05-repair-execution.md"
+      - "logs/trace/consistency/05-repair-execution.json"
+      - "logs/trace/consistency/05-repair-execution-gate.json"
+      - "logs/trace/consistency/05-repair-execution-evidence.json"
     outputs:
-      - "logs/trace/consistency/06-drift-analysis.md"
-      - "logs/trace/consistency/06-drift-findings.json"
-      - "logs/trace/consistency/06-drift-analysis-gate.json"
-      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+      - "logs/trace/consistency/06-build-verification.md"
+      - "logs/trace/consistency/06-build-verification.json"
+      - "logs/trace/consistency/06-build-verification-gate.json"
+      - "logs/trace/consistency/06-build-verification-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/06-drift-analysis.md"
-      gate: "logs/trace/consistency/06-drift-analysis-gate.json"
-      evidence_index: "logs/trace/consistency/06-drift-analysis-evidence.json"
+      summary: "logs/trace/consistency/06-build-verification.md"
+      gate: "logs/trace/consistency/06-build-verification-gate.json"
+      evidence_index: "logs/trace/consistency/06-build-verification-evidence.json"
       structured:
-        - "logs/trace/consistency/06-drift-findings.json"
+        - "logs/trace/consistency/06-build-verification.json"
     gate:
       success: "READY_FOR_DIC_07"
-      failure: "BLOCKED_WITH_REPORT"
+      failure: "READY_FOR_DIC_08"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-07"
     stage_package: "work/subagent/dic-07-risk-classification.md"
-    name: "Risk Classification"
-    responsibility: "Assign severity and execution risk to confirmed drift findings."
+    name: "Black-Box Verification"
+    responsibility: "Run package-owned black-box verification after required build prerequisites complete."
     consumes_from:
-      - "dic-05"
       - "dic-06"
     inputs:
-      - "logs/trace/consistency/05-traceability-matrix.json"
-      - "logs/trace/consistency/05-traceability-map-evidence.json"
-      - "logs/trace/consistency/06-drift-analysis.md"
-      - "logs/trace/consistency/06-drift-findings.json"
-      - "logs/trace/consistency/06-drift-analysis-gate.json"
-      - "logs/trace/consistency/06-drift-analysis-evidence.json"
+      - "SUBMISSION_ROOT/code/**"
+      - "SUBMISSION_ROOT/test-cases/**"
+      - "SUBMISSION_ROOT/maven-settings.xml"
+      - "logs/trace/consistency/06-build-verification.md"
+      - "logs/trace/consistency/06-build-verification.json"
+      - "logs/trace/consistency/06-build-verification-gate.json"
+      - "logs/trace/consistency/06-build-verification-evidence.json"
     outputs:
-      - "logs/trace/consistency/07-risk-classification.md"
-      - "logs/trace/consistency/07-risk-classification.json"
-      - "logs/trace/consistency/07-risk-classification-gate.json"
-      - "logs/trace/consistency/07-risk-classification-evidence.json"
+      - "logs/trace/consistency/07-black-box-verification.md"
+      - "logs/trace/consistency/07-black-box-verification.json"
+      - "logs/trace/consistency/07-black-box-verification-gate.json"
+      - "logs/trace/consistency/07-black-box-verification-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/07-risk-classification.md"
-      gate: "logs/trace/consistency/07-risk-classification-gate.json"
-      evidence_index: "logs/trace/consistency/07-risk-classification-evidence.json"
+      summary: "logs/trace/consistency/07-black-box-verification.md"
+      gate: "logs/trace/consistency/07-black-box-verification-gate.json"
+      evidence_index: "logs/trace/consistency/07-black-box-verification-evidence.json"
       structured:
-        - "logs/trace/consistency/07-risk-classification.json"
+        - "logs/trace/consistency/07-black-box-verification.json"
     gate:
-      success: "READY_FOR_DIC_08"
-      failure: "BLOCKED_WITH_REPORT"
+      success: "READY_FOR_DIC_09"
+      failure: "READY_FOR_DIC_08"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "dic-09"
 
   - id: "dic-08"
     stage_package: "work/subagent/dic-08-repair-plan.md"
-    name: "Repair Planning"
-    responsibility: "Describe bounded repair options without authorizing source mutation."
+    name: "Targeted Regression Repair"
+    responsibility: "Use failed verification evidence to perform bounded retry repair without reopening unrelated scope."
     consumes_from:
+      - "dic-03"
+      - "dic-04"
       - "dic-06"
       - "dic-07"
     inputs:
-      - "logs/trace/consistency/06-drift-analysis.md"
-      - "logs/trace/consistency/06-drift-findings.json"
-      - "logs/trace/consistency/06-drift-analysis-gate.json"
-      - "logs/trace/consistency/06-drift-analysis-evidence.json"
-      - "logs/trace/consistency/07-risk-classification.md"
-      - "logs/trace/consistency/07-risk-classification.json"
-      - "logs/trace/consistency/07-risk-classification-gate.json"
-      - "logs/trace/consistency/07-risk-classification-evidence.json"
+      - "SUBMISSION_ROOT/code/**"
+      - "SUBMISSION_ROOT/maven-settings.xml"
+      - "logs/trace/consistency/03-gap-model.json"
+      - "logs/trace/consistency/04-repair-batches.json"
+      - "logs/trace/consistency/06-build-verification.md"
+      - "logs/trace/consistency/06-build-verification.json"
+      - "logs/trace/consistency/06-build-verification-gate.json"
+      - "logs/trace/consistency/06-build-verification-evidence.json"
+      - "logs/trace/consistency/07-black-box-verification.md"
+      - "logs/trace/consistency/07-black-box-verification.json"
+      - "logs/trace/consistency/07-black-box-verification-gate.json"
+      - "logs/trace/consistency/07-black-box-verification-evidence.json"
     outputs:
-      - "logs/trace/consistency/08-repair-plan.md"
-      - "logs/trace/consistency/08-repair-plan.json"
-      - "logs/trace/consistency/08-repair-plan-gate.json"
-      - "logs/trace/consistency/08-repair-plan-evidence.json"
+      - "logs/trace/consistency/08-retry-repair.md"
+      - "logs/trace/consistency/08-retry-repair.json"
+      - "logs/trace/consistency/08-retry-repair-gate.json"
+      - "logs/trace/consistency/08-retry-repair-evidence.json"
     handoff:
-      summary: "logs/trace/consistency/08-repair-plan.md"
-      gate: "logs/trace/consistency/08-repair-plan-gate.json"
-      evidence_index: "logs/trace/consistency/08-repair-plan-evidence.json"
+      summary: "logs/trace/consistency/08-retry-repair.md"
+      gate: "logs/trace/consistency/08-retry-repair-gate.json"
+      evidence_index: "logs/trace/consistency/08-retry-repair-evidence.json"
       structured:
-        - "logs/trace/consistency/08-repair-plan.json"
+        - "logs/trace/consistency/08-retry-repair.json"
     gate:
-      success: "READY_FOR_DIC_09"
+      success: "READY_FOR_DIC_06"
       failure: "READY_FOR_DIC_09"
     failure_behavior:
       preserve_evidence: true
@@ -312,8 +331,8 @@ stages:
 
   - id: "dic-09"
     stage_package: "work/subagent/dic-09-finalize.md"
-    name: "Finalization"
-    responsibility: "Assemble final reporting, preserve denial evidence, and emit terminal status."
+    name: "Final Verdict Assembly"
+    responsibility: "Assemble final reporting, preserve denial and verification evidence, and emit the terminal delivery verdict."
     consumes_from:
       - "dic-00"
       - "dic-01"
@@ -325,7 +344,8 @@ stages:
       - "dic-07"
       - "dic-08"
     inputs:
-      - "work/design/README.md"
+      - "SUBMISSION_ROOT/README.md"
+      - "logs/trace/consistency/00-submission-layout.json"
       - "work/loopforge.config.yaml"
       - "logs/trace/consistency/*.md"
       - "logs/trace/consistency/*.json"
@@ -350,8 +370,8 @@ stages:
         - "result/output.md"
         - "result/issues/00-summary.md"
     gate:
-      success: "FINALIZED_NO_FINDINGS_OR_WITH_FINDINGS"
-      failure: "BLOCKED_WITH_REPORT"
+      success: "SUBMISSION_PASSED_OR_PARTIAL"
+      failure: "SUBMISSION_BLOCKED"
     failure_behavior:
       preserve_evidence: true
       when_always_finalize: "self"

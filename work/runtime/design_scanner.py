@@ -75,12 +75,22 @@ def _document_name(path: Path, text: str) -> str:
     return path.stem
 
 
-def scan_design_root(design_root: str | Path) -> Dict[str, Any]:
+def scan_design_root(design_root: str | Path, submission_readme: str | Path | None = None) -> Dict[str, Any]:
     root = Path(design_root)
     if not root.is_dir():
         raise ValueError(f"design-root does not exist: {root}")
 
+    package_root = root
+    package_readme: Path | None = None
+    if submission_readme is not None:
+        package_readme = Path(submission_readme)
+        if not package_readme.is_file():
+            raise ValueError(f"submission-readme does not exist: {package_readme}")
+        package_root = package_readme.parent
+
     files = _iter_design_files(root)
+    if package_readme is not None:
+        files = [package_readme] + files
     if not files:
         raise ValueError(f"design-root has no supported design files: {root}")
 
@@ -91,12 +101,12 @@ def scan_design_root(design_root: str | Path) -> Dict[str, Any]:
     for path in files:
         text = path.read_text(encoding="utf-8", errors="ignore")
         lines = text.splitlines()
-        rel_path = _relative_path(root, path)
+        rel_path = _relative_path(package_root, path)
         headings = _parse_headings(text)
         title = _document_name(path, text)
         doc_id = stable_id(f"design:{rel_path}", "document", title)
         doc_summary = _extract_summary(lines, 0, len(lines))
-        doc_evidence = _evidence(root, path, "line:1", title, title=title)
+        doc_evidence = _evidence(package_root, path, "line:1", title, title=title)
         objects.append(
             DesignObject(
                 id=doc_id,
@@ -116,7 +126,7 @@ def scan_design_root(design_root: str | Path) -> Dict[str, Any]:
             summary = _extract_summary(lines, line_number, next_line)
             heading_id = stable_id(f"design:{rel_path}", _heading_kind(level), heading_text)
             heading_evidence = _evidence(
-                root,
+                package_root,
                 path,
                 f"line:{line_number}",
                 heading_text,
@@ -144,7 +154,8 @@ def scan_design_root(design_root: str | Path) -> Dict[str, Any]:
                 "heading_count": len(headings),
                 "line_count": len(lines),
                 "byte_count": len(text.encode("utf-8")),
-                "is_primary": rel_path == "README.md",
+                "is_primary": package_readme == path or rel_path == "README.md",
+                "source_kind": "submission_readme" if package_readme == path else "design_doc",
             }
         )
 
@@ -154,7 +165,9 @@ def scan_design_root(design_root: str | Path) -> Dict[str, Any]:
     )
     inventory = {
         "design_root": str(root),
-        "primary_design_file": "README.md" if (root / "README.md").is_file() else inventory_files[0]["path"],
+        "submission_root": str(package_root),
+        "submission_readme": _relative_path(package_root, package_readme) if package_readme is not None else "",
+        "primary_design_file": inventory_files[0]["path"],
         "file_count": len(inventory_files),
         "files": inventory_files,
         "object_count": len(objects),

@@ -1,55 +1,61 @@
 ---
 stage_id: "dic-08"
-stage_name: "Repair Planning"
+stage_name: "Targeted Regression Repair"
 stage_package: "work/subagent/dic-08-repair-plan.md"
 predecessors:
+  - "dic-03"
+  - "dic-04"
   - "dic-06"
   - "dic-07"
 inputs:
-  - "logs/trace/consistency/06-drift-analysis.md"
-  - "logs/trace/consistency/06-drift-findings.json"
-  - "logs/trace/consistency/06-drift-analysis-gate.json"
-  - "logs/trace/consistency/06-drift-analysis-evidence.json"
-  - "logs/trace/consistency/07-risk-classification.md"
-  - "logs/trace/consistency/07-risk-classification.json"
-  - "logs/trace/consistency/07-risk-classification-gate.json"
-  - "logs/trace/consistency/07-risk-classification-evidence.json"
+  - "SUBMISSION_ROOT/code/**"
+  - "SUBMISSION_ROOT/maven-settings.xml"
+  - "logs/trace/consistency/03-gap-model.json"
+  - "logs/trace/consistency/04-repair-batches.json"
+  - "logs/trace/consistency/06-build-verification.md"
+  - "logs/trace/consistency/06-build-verification.json"
+  - "logs/trace/consistency/06-build-verification-gate.json"
+  - "logs/trace/consistency/06-build-verification-evidence.json"
+  - "logs/trace/consistency/07-black-box-verification.md"
+  - "logs/trace/consistency/07-black-box-verification.json"
+  - "logs/trace/consistency/07-black-box-verification-gate.json"
+  - "logs/trace/consistency/07-black-box-verification-evidence.json"
 outputs:
-  - "logs/trace/consistency/08-repair-plan.md"
-  - "logs/trace/consistency/08-repair-plan.json"
-  - "logs/trace/consistency/08-repair-plan-gate.json"
-  - "logs/trace/consistency/08-repair-plan-evidence.json"
-success_gate: "READY_FOR_DIC_09"
+  - "logs/trace/consistency/08-retry-repair.md"
+  - "logs/trace/consistency/08-retry-repair.json"
+  - "logs/trace/consistency/08-retry-repair-gate.json"
+  - "logs/trace/consistency/08-retry-repair-evidence.json"
+success_gate: "READY_FOR_DIC_06"
 failure_gate: "READY_FOR_DIC_09"
 when_always_finalize: "dic-09"
-source_reads_allowed: false
-source_writes_allowed: false
-advisory_only: true
+source_reads_allowed: true
+source_writes_allowed: true
+advisory_only: false
 ---
 
-# DIC Stage Package: Repair Planning
+# DIC Stage Package: Targeted Regression Repair
 
 ## Objective
 
-Produce bounded, advisory-only repair options, candidate patch descriptions, and verification suggestions without mutating business source files.
+Use failed build or black-box verification evidence to perform bounded retry repair without reopening unrelated source scope.
 
 ## Orchestrator Boundary
 
-- Pass only the declared drift and risk artifacts.
-- Never grant write access to `SOURCE_ROOT` or imply that this stage may patch business code.
+- Pass only the declared gap model, repair batches, and verification evidence.
+- Never broaden retry scope beyond files, interfaces, rules, or support assets implicated by the failed verification evidence.
 
 ## Required Outputs
 
-- `logs/trace/consistency/08-repair-plan.md`: advisory repair plan
-- `logs/trace/consistency/08-repair-plan.json`: structured repair options and verification suggestions
-- `logs/trace/consistency/08-repair-plan-gate.json`: gate result; may still route to `dic-09` even if recommendations are partial
-- `logs/trace/consistency/08-repair-plan-evidence.json`: evidence index of findings referenced by each recommendation and any unavailable context
+- `logs/trace/consistency/08-retry-repair.md`: narrative summary of retry scope, applied changes, or retry blockage
+- `logs/trace/consistency/08-retry-repair.json`: structured retry result including targeted files, originating failures, and remaining blockers
+- `logs/trace/consistency/08-retry-repair-gate.json`: gate result that routes either back to `dic-06` or on to `dic-09`
+- `logs/trace/consistency/08-retry-repair-evidence.json`: evidence index linking retry actions to the verification failures that justified them
 
 ## Gate Rules
 
-- Success: the stage emits bounded recommendations consistent with the read-only workflow.
-- Failure: preserve why a useful recommendation could not be completed, but still direct execution to `dic-09`.
+- Success: retry scope remains bounded to verification-linked failures and the stage records changed targets or explicit no-op rationale.
+- Failure: preserve why retry could not proceed or could not improve the failing verification boundary, then direct finalization to report the blocked state.
 
 ## Handoff Rules
 
-- `dic-09` consumes only the declared advisory artifacts and must treat them as recommendations, not applied changes.
+- `dic-06` re-entry and `dic-09` finalization consume only the declared retry outputs.
