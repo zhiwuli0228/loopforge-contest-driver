@@ -48,10 +48,11 @@ Execute phases 0→10 in strict order. Do not skip, do not reorder.
 | 0 | preflight | `c2r-00-preflight.md` | — | — |
 | 1 | understand | `c2r-01-understand.md` | `parse-source` | `source-inventory.json` |
 | 2 | design | `c2r-02-design.md` | — | `design.md` |
-| 3 | spec | `c2r-03-spec.md` | — | `specs/*/spec.md` |
-| 4 | plan | `c2r-04-plan.md` | — | `tasks.md`, `implement-plan.md` |
-| 5 | implement | `c2r-05-implement.md` | `run-verification` | `src/**/*.rs` |
-| 6 | test | `c2r-06-test.md` | `run-verification` | `tests/**/*.rs` |
+| 3 | spec | `c2r-03-spec.md` | — | `specs/<cap>/spec-part-N.md` (sub-batched) |
+| 4 | plan | `c2r-04-plan.md` | — | `tasks.md`, `implement-plan.md`, `specs/test-migration/spec.md` |
+| 5a | implement | `c2r-05a-implement.md` | `run-verification` | `src/**/*.rs` |
+| 5b | unit-test | `c2r-05b-unit-test.md` | `run-verification` | `tests/<capability>_tests.rs` |
+| 6 | test | `c2r-06-test.md` | `run-verification` | integration `tests/**/*.rs` |
 | 7 | repair | `c2r-07-repair.md` | `run-verification` | fixes to `src/`, `tests/` |
 | 8 | semantic-audit | `c2r-08-semantic-audit.md` | `run-verification` | invariant tests |
 | 9 | quality-gates | `c2r-09-quality-gates.md` | `check-unsafe`, `fault-injection`, `neutrality-audit` | — |
@@ -134,29 +135,65 @@ Pass relevant output file paths to the next phase via `PRIOR_OUTPUTS`.
 - Output: `openspec/changes/<name>/design.md`
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
-### Phase 3 — Spec
-- **Delegate** to `work/subagent/c2r-03-spec.md`
-- Output: `specs/*/spec.md`
+### Phase 3 — Spec (Grouped by Source File, Sub-Batched by Function Count)
+
+- Subagent: `work/subagent/c2r-03-spec.md`
+- **Batch scheduling** from `01c-capability-map.json`:
+  1. **Group by C source file**: The raw capability map has 1 capability per API (e.g., 44 capabilities for FlashDB). Read all capabilities and group them by `evidence[0].file` (the C source file). Each file-group becomes one logical capability.
+     - Example: `src/fdb_kvdb.c` → group of 15 APIs → logical capability `fdb_kvdb`
+     - Example: `src/fdb.c` → group of 4 APIs → logical capability `fdb`
+  2. **Merge to reduce cardinality**: Instead of 44 subagents (one per API), only dispatch per source-file group. After grouping, a typical C project yields 3–6 file-groups.
+  3. **Auto-split large groups**: If a file-group has >4 APIs, split into sub-batches of 3–4 functions each. `fdb_kvdb` with 15 APIs → 4–5 sub-batches. `fdb` with 4 APIs → 1 sub-batch.
+  4. Each sub-batch receives:
+     - `CAPABILITY_ID` — derived from source file name (e.g., `fdb_kvdb` from `src/fdb_kvdb.c`)
+     - `FUNCTION_SUBSET` — JSON array of 2–4 API/function names assigned to this sub-batch
+     - `PART_INDEX` — 1-based part number
+     - `TOTAL_PARTS` — total parts for this file-group
+  5. Part 1 writes shared sections (Overview, Data Structures, Invariants, Dependencies). Parts 2+ write only their function Requirements + Test Specifications.
+  6. **All sub-batches from all file-groups dispatch in parallel** — each writes a unique file `specs/<capability_id>/spec-part-<N>.md`, no file conflicts.
+  7. Wait for all sub-batches to return gates.
+- Each subagent reads only the C source files for its file-group, and only deeply analyzes the functions in its `FUNCTION_SUBSET`
+- Does NOT write `test-migration/spec.md` — that is done by Phase 4
+- Output: `specs/<capability_id>/spec-part-<N>.md` — Phase 4 reads all parts as one logical spec
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
-### Phase 4 — Plan
-- **Delegate** to `work/subagent/c2r-04-plan.md`
-- Output: `tasks.md`, `implement-plan.md`
+### Phase 4 — Plan (+ Test-Migration Spec)
+
+- Subagent: `work/subagent/c2r-04-plan.md`
+- Reads all capability specs + capability map + source inventory
+- Creates `tasks.md` + `implement-plan.md` (batch plan for 5a/5b)
+- Also creates `specs/test-migration/spec.md` — C→Rust test mapping table (consumed by Phase 6)
+- Output: `tasks.md`, `implement-plan.md`, `specs/test-migration/spec.md`
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
-### Phase 5 — Implement
+### Phase 5a — Implement (Code + Compile)
+
+- Subagent: `work/subagent/c2r-05a-implement.md`
 - **Dynamic batch scheduling** from `implement-plan.md`:
   1. Parse batches → `{batch_id, capability, priority, dependencies, rust_target, features}`
-  2. **Designate scaffold batch**: Identify the lowest `batch_id` at P0 priority — this is the **scaffold batch**. The scaffold batch has special responsibilities: it reads ALL batch entries from `implement-plan.md`, extracts every module name and feature flag, and writes complete `lib.rs`, `Cargo.toml`, and `types.rs` before writing its own capability code. All other batches SHALL NOT modify these infrastructure files.
-  3. **File isolation verification**: After parsing, check that no two batches at the same priority level share a `rust_target` file. If conflicts are detected (same file path in multiple batches' `rust_target` lists), log a warning naming the conflicting batches and the shared file, and mark the affected batches for sequential execution in `batch_id` order within that priority level.
+  2. **Designate scaffold batch**: Identify the lowest `batch_id` at P0 priority — this is the **scaffold batch**. The scaffold batch writes complete `lib.rs`, `Cargo.toml`, and `types.rs` before writing its own capability code. All other batches SHALL NOT modify these infrastructure files.
+  3. **File isolation verification**: Check that no two batches at the same priority level share a `rust_target` file. If conflicts are detected, mark affected batches for sequential execution in `batch_id` order within that priority level.
   4. Group by priority: P0 → P1 → P2. Batches with no `rust_target` conflicts at the same level dispatch in parallel.
-  5. **Dispatch**: For each priority level, dispatch batches according to their conflict resolution (parallel or sequential). The scaffold batch is dispatched as part of P0 — it may run concurrently with other P0 batches since each batch writes to its own module files, but the scaffold batch's `lib.rs`/`Cargo.toml` must be written before non-scaffold batches read them (other P0 batches write to their own `rust_target` files, so they can safely run in parallel).
-  6. Wait for all batches at the current priority level to return gates before advancing to the next level.
-- Output: `src/**/*.rs` — `lib.rs`, `Cargo.toml`, and `types.rs` are written only by the scaffold batch; each capability module file is owned by exactly one batch (declared in its `rust_target` field)
+  5. **Dispatch**: For each priority level, dispatch batches according to conflict resolution. The scaffold batch is dispatched as part of P0 — it writes infrastructure files before other batches read them.
+  6. Wait for all batches at the current priority level to return gates before advancing.
+- Output: `src/**/*.rs` — `lib.rs`, `Cargo.toml`, and `types.rs` written only by scaffold batch; each capability module file owned by exactly one batch (declared in `rust_target`)
+- Each subagent reads spec's REQ/INV sections (ignores Test Specification), reads C source, writes Rust code, compiles, fixes compile errors (≤3 attempts)
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
-### Phase 6 — Test
+### Phase 5b — Unit Test (Test + Debug)
+
+- Subagent: `work/subagent/c2r-05b-unit-test.md`
+- Uses the SAME batch definitions from `implement-plan.md` as Phase 5a
+- Runs AFTER all Phase 5a batches complete (all priority levels)
+- **Dispatch**: Same P0→P1→P2 grouping as 5a, but without scaffold batch concerns (infrastructure files already written)
+- Each subagent reads the spec's **Test Specification** section (concrete inputs/outputs), reads the compiled Rust source (NOT C source), writes unit tests, runs tests, fixes bugs (≤3 attempts for test + implementation bugs)
+- Output: `tests/<capability>_tests.rs` — one test file per capability
+- Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
+
+### Phase 6 — Test (Integration)
 - Subagent: `work/subagent/c2r-06-test.md`
+- Runs AFTER all Phase 5b batches complete
+- Writes integration tests that span multiple capabilities — unit tests were already written per-capability in Phase 5b
 - Output: `tests/**/*.rs`
 - Gate: `PHASE_PASS`/`PHASE_BLOCKED`/`PHASE_DEGRADED`
 
@@ -211,10 +248,11 @@ Continue with warning if:
 Phase 0 ──→ (no file output)
 Phase 1 ──→ source-inventory.json (includes test_functions)
 Phase 2 ──→ design.md
-Phase 3 ──→ specs/<module>/spec.md + specs/test-migration/spec.md
-Phase 4 ──→ tasks.md + implement-plan.md
-Phase 5 ──→ src/**/*.rs (Rust source)
-Phase 6 ──→ tests/**/*.rs (Rust tests)
+Phase 3 ──→ specs/<capability_id>/spec-part-<N>.md (sub-batched by function count)
+Phase 4 ──→ tasks.md + implement-plan.md + specs/test-migration/spec.md
+Phase 5a ──→ src/**/*.rs (Rust source, compiled)
+Phase 5b ──→ tests/<capability>_tests.rs (unit tests)
+Phase 6 ──→ tests/**/*.rs (integration tests)
 Phase 7 ──→ (fixes to src/ and tests/)
 Phase 8 ──→ tests/**/*.rs (invariant tests, added to existing)
 Phase 9 ──→ (no file output)

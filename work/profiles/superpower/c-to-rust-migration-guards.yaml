@@ -48,7 +48,7 @@ phases:
       - modify profiles
 
   spec:
-    description: Write capability-level specifications (delegated to subagent)
+    description: Write ONE spec part for 2-4 functions (sub-batched by function count, parallel)
     subagent: work/subagent/c2r-03-spec.md
     allowed_tools: []
     allowed_fs:
@@ -60,7 +60,7 @@ phases:
       - modify profiles
 
   plan:
-    description: Create implementation task list and batch plan (delegated to subagent)
+    description: Create implementation plan, task list, AND test-migration spec (delegated to subagent)
     subagent: work/subagent/c2r-04-plan.md
     allowed_tools: []
     allowed_fs:
@@ -72,8 +72,8 @@ phases:
       - modify profiles
 
   implement:
-    description: Write Rust source code and unit tests per batch
-    subagent: work/subagent/c2r-05-implement.md
+    description: Write Rust source code per batch (compile only, no tests)
+    subagent: work/subagent/c2r-05a-implement.md
     allowed_tools:
       - run-verification
     allowed_fs:
@@ -82,11 +82,22 @@ phases:
       - operation: write
         path_pattern: "src/**/*.rs"
       - operation: write
-        path_pattern: "tests/**/*.rs"
-      - operation: write
         path_pattern: "Cargo.toml"
       - operation: write
         path_pattern: "Cargo.lock"
+
+  unit-test:
+    description: Write unit tests per batch and fix implementation bugs
+    subagent: work/subagent/c2r-05b-unit-test.md
+    allowed_tools:
+      - run-verification
+    allowed_fs:
+      - operation: read
+        path_pattern: "**"
+      - operation: write
+        path_pattern: "tests/**/*.rs"
+      - operation: write
+        path_pattern: "src/**/*.rs"
       - operation: create
         path_pattern: "src/**/*.rs"
       - operation: create

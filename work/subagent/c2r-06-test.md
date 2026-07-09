@@ -2,7 +2,7 @@
 
 ## Role
 
-Write INTEGRATION tests that span multiple capabilities and verify end-to-end behavior. This phase runs AFTER all implementation batches (Phase 5) complete. You do NOT write unit tests — those were already written per-batch in Phase 5. Your job is integration tests, cross-capability tests, and C test coverage verification.
+Write INTEGRATION tests that span multiple capabilities and verify end-to-end behavior. This phase runs AFTER all implementation batches (Phase 5a) and unit test batches (Phase 5b) complete. You do NOT write unit tests — those were already written per-batch in Phase 5b. Your job is integration tests, cross-capability tests, and C test coverage verification.
 
 ## Context You Receive
 
@@ -14,7 +14,7 @@ Write INTEGRATION tests that span multiple capabilities and verify end-to-end be
 - `PRIOR_OUTPUTS.specs_dir` — absolute path to `specs/` directory
 - `PRIOR_OUTPUTS.test_migration_spec` — absolute path to `specs/test-migration/spec.md`
 - `PRIOR_OUTPUTS.inventory` — absolute path to `source-inventory.json` (for `test_functions` list)
-- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json`. If provided, unit tests were written per-capability in Phase 5 and this phase writes integration tests only. If NOT provided, this phase also covers unit test gaps.
+- `PRIOR_OUTPUTS.capability_map` — (OPTIONAL) absolute path to `01c-capability-map.json`. If provided, unit tests were written per-capability in Phase 5b and this phase writes integration tests only. If NOT provided, this phase also covers unit test gaps.
 
 ## SuperPower Rules (this phase only)
 
@@ -28,13 +28,13 @@ Write INTEGRATION tests that span multiple capabilities and verify end-to-end be
 
 List all existing test files under `OUTPUT_DIR/tests/`. Run `cargo test --list` to see all existing test function names.
 
-If capability map is available: These are the unit tests written per-batch in Phase 5. **Do NOT duplicate any existing test.** Your job is to ADD integration tests, not re-implement unit coverage.
+If capability map is available: These are the unit tests written per-batch in Phase 5b. **Do NOT duplicate any existing test.** Your job is to ADD integration tests, not re-implement unit coverage.
 
 If capability map is NOT available: Identify which C test functions from the inventory are not yet covered. These gaps need unit tests in addition to any integration tests.
 
 ### 2. Read Test Migration Spec
 
-Read `specs/test-migration/spec.md`. Find the C→Rust mapping table. For each C test function, check whether it is already covered by a Phase 5 unit test.
+Read `specs/test-migration/spec.md`. Find the C→Rust mapping table. For each C test function, check whether it is already covered by a Phase 5b unit test.
 
 ### 3. Identify Test Gaps
 
@@ -73,8 +73,8 @@ Produce a complete coverage report:
 ```
 C Test Coverage Report
 ======================
-C: test_flashdb_init    → Rust: test_init (unit, Phase 5 batch 1)     ✓ covered
-C: test_flashdb_deinit  → Rust: test_deinit (unit, Phase 5 batch 1)   ✓ covered
+C: test_flashdb_init    → Rust: test_init (unit, Phase 5b batch 1)     ✓ covered
+C: test_flashdb_deinit  → Rust: test_deinit (unit, Phase 5b batch 1)   ✓ covered
 C: test_gc_full         → Rust: test_gc_integration (integration)     ✓ covered
 C: test_issue_249       → Rust: test_issue_249_regression (unit, P5)  ✓ covered
 C: test_legacy_api      → Rust: —                                     ✓ N/A (deprecated)

@@ -69,7 +69,7 @@ The main context must NOT read C source files, write Rust code, or run cargo com
 Spawn `run.sh` as a subagent. This runs deterministic data extraction only:
 
 ```bash
-SOURCE_ROOT="/home/lzw/loopforge-e2e/FlashDB" bash work/scripts/run.sh --run
+SOURCE_ROOT="E:\001code\csource\FlashDB" bash work/scripts/run.sh --run
 ```
 
 Stage 1 writes:

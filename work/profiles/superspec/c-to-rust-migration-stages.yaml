@@ -72,48 +72,65 @@ stages:
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
-  # ---- Phase 3: Spec ----
+  # ---- Phase 3: Spec (Sub-Batched by Function Count) ----
   - id: "03-spec"
-    name: "Specification"
+    name: "Specification (Sub-Batched, 2-4 functions per batch)"
     subagent: "c2r-03-spec.md"
     input:
       - "openspec/changes/<name>/design.md"
       - "logs/trace/c-to-rust/01c-capability-map.json"
-      - "SOURCE_ROOT/**"
-    output: "openspec/changes/<name>/specs/"
+      - "SOURCE_ROOT/**" (only the subagent's assigned capability C files)
+    output: "openspec/changes/<name>/specs/<capability_id>/spec-part-N.md" (one per sub-batch)
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_PLAN"
     failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
-  # ---- Phase 4: Plan ----
+  # ---- Phase 4: Plan (+ Test-Migration Spec) ----
   - id: "04-plan"
-    name: "Implementation Planning"
+    name: "Implementation Planning + Test-Migration Spec"
     subagent: "c2r-04-plan.md"
     input:
       - "openspec/changes/<name>/specs/"
       - "openspec/changes/<name>/design.md"
       - "logs/trace/c-to-rust/01c-capability-map.json"
+      - "logs/trace/c-to-rust/01-source-inventory.json"
     output:
       - "openspec/changes/<name>/tasks.md"
       - "openspec/changes/<name>/implement-plan.md"
+      - "openspec/changes/<name>/specs/test-migration/spec.md"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_IMPLEMENT"
     failure_gate: "BLOCKED_WITH_REPORT"
     blocked_gate: "BLOCKED_WITH_REPORT"
     can_modify_code: false
 
-  # ---- Phase 5: Implement ----
-  - id: "05-implement"
-    name: "Rust Implementation"
-    subagent: "c2r-05-implement.md"
+  # ---- Phase 5a: Implement (Code + Compile) ----
+  - id: "05a-implement"
+    name: "Rust Implementation (Code + Compile)"
+    subagent: "c2r-05a-implement.md"
     input:
       - "openspec/changes/<name>/tasks.md"
       - "openspec/changes/<name>/implement-plan.md"
       - "openspec/changes/<name>/specs/"
       - "work/profiles/superpower/c-to-rust-migration-guards.yaml"
     output: "work/output/*/src/**/*.rs"
+    parent_direct_execution_allowed: false
+    success_gate: "READY_FOR_UNIT_TEST"
+    failure_gate: "BLOCKED_WITH_REPORT"
+    blocked_gate: "BLOCKED_WITH_REPORT"
+    can_modify_code: true
+
+  # ---- Phase 5b: Unit Test (Test + Debug) ----
+  - id: "05b-unit-test"
+    name: "Unit Test (Test + Debug)"
+    subagent: "c2r-05b-unit-test.md"
+    input:
+      - "openspec/changes/<name>/implement-plan.md"
+      - "openspec/changes/<name>/specs/"
+      - "work/profiles/superpower/c-to-rust-migration-guards.yaml"
+    output: "work/output/*/tests/<capability>_tests.rs"
     parent_direct_execution_allowed: false
     success_gate: "READY_FOR_TEST"
     failure_gate: "BLOCKED_WITH_REPORT"
